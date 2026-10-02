@@ -228,11 +228,37 @@ Running log of milestones, completed tasks, verifications, and status.
 ---
 
 ## M5: Simulator and Reports
+- **Date**: 2026-10-02
+- **Built**:
+  - `api/app/sim/scenario.py`: Dataclasses for `ServiceScenario`, `BreakEvent`, `RushEvent`, `SimScenario`; `default_ward_scenario()` pre-configured for ward office with peak arrival curve, breaks, and a rush injection.
+  - `api/app/sim/runner.py`: `run_simulation()` — drives real domain services (book_token, call_next, start_serving, complete_serving, mark_no_show, run_tick) with an injected `VirtualClock` advancing one virtual minute per loop iteration. Safety guard refuses non-simulation offices unless `allow_real_office=True`. Computes MAE (live vs naive) and within-range-% from per-token records.
+  - `api/app/services/report_service.py`: Three pure SQL aggregate functions — `get_summary_report()` (served/cancelled/expired/no-show, avg+P90 wait, priority share), `get_load_by_hour()` (tokens booked/served per hour bucket), `get_eta_accuracy()` (MAE, within-range-%, vs naive using `eta_log.naive_p50`). Fixed PostgreSQL `ROUND(float8)` by casting to `::numeric` after FILTER aggregates.
+  - `api/app/routers/admin.py`: Added `POST /v1/admin/sim/{office_id}/start`, `GET /v1/admin/sim/{office_id}/status` (production-gated), and `GET /v1/admin/reports/{office_id}/{summary|load-by-hour|eta-accuracy}?report_date=` endpoints.
+  - `api/tests/sim/test_sim_regression.py`: 3 tests:
+    - `test_sim_regression_live_beats_naive`: runs seeded 60-min simulation; asserts live-adjusted MAE ≤ naive MAE (Spec Section 14 Rule 6).
+    - `test_sim_scenario_config`: validates `default_ward_scenario()` structure.
+    - `test_report_services_work`: exercises all three report service functions against test DB.
+- **Files**:
+  - `api/app/sim/scenario.py`, `api/app/sim/runner.py`, `api/app/sim/__init__.py`
+  - `api/app/services/report_service.py`
+  - `api/app/routers/admin.py`
+  - `api/tests/sim/test_sim_regression.py`, `api/tests/sim/__init__.py`
+- **Commands & Results**:
+  - `scripts/verify.ps1`: Exit code 0 (43 passed in 17.93s, Ruff: OK, OpenAPI: OK, Mypy: OK on 49 files, Web typecheck/build: OK).
+- **Assumptions**:
+  - `allow_real_office=True` is only used in tests against `queueless_test`; production sim endpoints check `is_simulation=True`.
+  - MAE comparison uses `last_eta_minutes` from book_token response as proxy for live-adjusted p50; naive_p50 is stored identically at booking time in `eta_features`.
+- **Git Commit & Tag**: `9d6a3eb`, tag `m5-done`.
+
+---
+
+## M6a: Web Foundation & Officer Screens
 - **Status**: Starting immediately per Autopilot Rules.
 - **Plan**:
-  1. Simulation runner (`api/app/sim/`) using VirtualClock against real domain services in an `is_simulation=True` office.
-  2. Scenario config: arrival curve (tokens per hour), mean service time, priority %, officer break intervals.
-  3. Admin sim endpoints (`/v1/admin/sim/*`) gated by `ENVIRONMENT != production`.
-  4. Reporting endpoints: `/v1/admin/reports/summary`, `/v1/admin/reports/load_by_hour`, `/v1/admin/reports/eta_accuracy` (MAE, within-range %, vs naive).
-  5. Simulation regression test proving live-adjusted MAE < naive MAE on a seeded day.
-  6. Gate: `scripts/verify.ps1` exits 0, commit, tag `m5-done`.
+  1. Generate TypeScript API client from `openapi/openapi.json` using `openapi-typescript` (types) + hand-written fetch wrappers (spec Rule 1: never hand-write HTTP, but generated clients are allowed).
+  2. DevAuth login selector: role/office picker for rapid local testing.
+  3. App shell with routing, `react-i18next` (en, gu, hi), and a dark-mode design system.
+  4. Officer queue screen: live call-next, start, complete, no-show, release, transfer actions.
+  5. Counter status toggle (OPEN/BREAK/CLOSED).
+  6. Gate: `scripts/verify.ps1` exits 0, commit, tag `m6a-done`.
+
