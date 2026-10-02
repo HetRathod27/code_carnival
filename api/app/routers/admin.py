@@ -1,3 +1,7 @@
+import asyncio
+from datetime import date, datetime, timezone
+from typing import Any
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -5,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app.core.auth import UserClaims, require_office_access, require_role
 from api.app.core.clock import Clock, get_clock
+from api.app.core.config import settings
 from api.app.core.db import get_db
 from api.app.core.errors import AppException, ErrorCode
 from api.app.models.entities import Office, OfficeSettings, Profile
@@ -16,8 +21,19 @@ from api.app.schemas.admin import (
 )
 from api.app.schemas.common import SuccessResponse
 from api.app.services.officer_service import generate_qr_payload
+from api.app.services.report_service import (
+    get_eta_accuracy,
+    get_load_by_hour,
+    get_summary_report,
+)
+from api.app.sim.runner import run_simulation
+from api.app.sim.scenario import default_ward_scenario
 
 router = APIRouter(prefix="/v1/admin", tags=["Admin"])
+
+# In-memory simulation state (single-process; reset on restart).
+# Maps office_id -> "RUNNING" | SimStats | None
+_sim_state: dict[str, Any] = {}
 
 
 @router.get("/offices", response_model=list[OfficeDetailOut])
@@ -160,3 +176,138 @@ async def create_staff(
     await session.execute(stmt)
     await session.commit()
     return SuccessResponse(message=f"Staff account '{payload.user_id}' created with role '{payload.role}'")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Simulator endpoints (disabled in production per Spec Section 9)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _require_non_production() -> None:
+    """Guard: sim endpoints are disabled in production config."""
+    if settings.ENVIRONMENT == "production":
+        raise AppException(
+            ErrorCode.UNAUTHORIZED,
+            "Simulation endpoints are disabled in production",
+            status.HTTP_403_FORBIDDEN,
+        )
+
+
+@router.post("/sim/{office_id}/start", tags=["Simulator"])
+async def start_simulation(
+    office_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Start a simulation run for the given office.
+    POST /v1/admin/sim/{office_id}/start
+    Disabled in production (Spec Section 9).
+    """
+    _require_non_production()
+    require_office_access(user, office_id)
+
+    if _sim_state.get(office_id) == "RUNNING":
+        raise AppException(ErrorCode.VALIDATION_ERROR, "Simulation already running for this office", 409)
+
+    scenario = default_ward_scenario(office_id)
+    start_dt = datetime(2050, 1, 1, 4, 30, 0, tzinfo=timezone.utc)  # 10:00 IST
+
+    _sim_state[office_id] = "RUNNING"
+
+    async def _run() -> None:
+        try:
+            result = await run_simulation(
+                session=session,
+                scenario=scenario,
+                start_dt=start_dt,
+                allow_real_office=True,
+            )
+            _sim_state[office_id] = {
+                "status": "COMPLETED",
+                "tokens_booked": result.tokens_booked,
+                "tokens_served": result.tokens_served,
+                "tokens_no_show": result.tokens_no_show,
+                "tokens_cancelled": result.tokens_cancelled,
+                "mae_live": result.mae_live,
+                "mae_naive": result.mae_naive,
+                "within_range_pct": result.within_range_pct,
+                "tick_count": result.tick_count,
+            }
+        except Exception as exc:
+            _sim_state[office_id] = {"status": "FAILED", "error": str(exc)}
+
+    asyncio.ensure_future(_run())
+
+    return {"status": "STARTED", "office_id": office_id}
+
+
+@router.get("/sim/{office_id}/status", tags=["Simulator"])
+async def get_simulation_status(
+    office_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+) -> dict[str, Any]:
+    """
+    Get simulation status/results for an office.
+    GET /v1/admin/sim/{office_id}/status
+    """
+    _require_non_production()
+    require_office_access(user, office_id)
+
+    state = _sim_state.get(office_id)
+    if state is None:
+        return {"status": "NOT_STARTED", "office_id": office_id}
+    if state == "RUNNING":
+        return {"status": "RUNNING", "office_id": office_id}
+    return {"office_id": office_id, **state}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Report endpoints (Spec Section 10)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/reports/{office_id}/summary", tags=["Reports"])
+async def report_summary(
+    office_id: str,
+    report_date: date,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Summary report: tokens served / cancelled / expired / no-show,
+    average and P90 wait, service time per service, priority share.
+    GET /v1/admin/reports/{office_id}/summary?report_date=YYYY-MM-DD
+    """
+    require_office_access(user, office_id)
+    return await get_summary_report(session, office_id, report_date)
+
+
+@router.get("/reports/{office_id}/load-by-hour", tags=["Reports"])
+async def report_load_by_hour(
+    office_id: str,
+    report_date: date,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Load by hour: tokens booked and served per hour bucket.
+    GET /v1/admin/reports/{office_id}/load-by-hour?report_date=YYYY-MM-DD
+    """
+    require_office_access(user, office_id)
+    return await get_load_by_hour(session, office_id, report_date)
+
+
+@router.get("/reports/{office_id}/eta-accuracy", tags=["Reports"])
+async def report_eta_accuracy(
+    office_id: str,
+    report_date: date,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    ETA accuracy report: MAE, % within predicted range, vs naive.
+    GET /v1/admin/reports/{office_id}/eta-accuracy?report_date=YYYY-MM-DD
+    """
+    require_office_access(user, office_id)
+    return await get_eta_accuracy(session, office_id, report_date)

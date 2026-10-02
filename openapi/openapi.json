@@ -1555,6 +1555,346 @@
         }
       }
     },
+    "/v1/admin/sim/{office_id}/start": {
+      "post": {
+        "tags": [
+          "Admin",
+          "Simulator"
+        ],
+        "summary": "Start Simulation",
+        "description": "Start a simulation run for the given office.\nPOST /v1/admin/sim/{office_id}/start\nDisabled in production (Spec Section 9).",
+        "operationId": "start_simulation_v1_admin_sim__office_id__start_post",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Start Simulation V1 Admin Sim  Office Id  Start Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/sim/{office_id}/status": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Simulator"
+        ],
+        "summary": "Get Simulation Status",
+        "description": "Get simulation status/results for an office.\nGET /v1/admin/sim/{office_id}/status",
+        "operationId": "get_simulation_status_v1_admin_sim__office_id__status_get",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Simulation Status V1 Admin Sim  Office Id  Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/reports/{office_id}/summary": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Reports"
+        ],
+        "summary": "Report Summary",
+        "description": "Summary report: tokens served / cancelled / expired / no-show,\naverage and P90 wait, service time per service, priority share.\nGET /v1/admin/reports/{office_id}/summary?report_date=YYYY-MM-DD",
+        "operationId": "report_summary_v1_admin_reports__office_id__summary_get",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "report_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Report Date"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Report Summary V1 Admin Reports  Office Id  Summary Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/reports/{office_id}/load-by-hour": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Reports"
+        ],
+        "summary": "Report Load By Hour",
+        "description": "Load by hour: tokens booked and served per hour bucket.\nGET /v1/admin/reports/{office_id}/load-by-hour?report_date=YYYY-MM-DD",
+        "operationId": "report_load_by_hour_v1_admin_reports__office_id__load_by_hour_get",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "report_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Report Date"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Report Load By Hour V1 Admin Reports  Office Id  Load By Hour Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/reports/{office_id}/eta-accuracy": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Reports"
+        ],
+        "summary": "Report Eta Accuracy",
+        "description": "ETA accuracy report: MAE, % within predicted range, vs naive.\nGET /v1/admin/reports/{office_id}/eta-accuracy?report_date=YYYY-MM-DD",
+        "operationId": "report_eta_accuracy_v1_admin_reports__office_id__eta_accuracy_get",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "report_date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Report Date"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Report Eta Accuracy V1 Admin Reports  Office Id  Eta Accuracy Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/tick": {
       "post": {
         "tags": [

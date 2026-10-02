@@ -194,24 +194,45 @@ Running log of milestones, completed tasks, verifications, and status.
 ---
 
 ## M4: Scheduler and Notifications
+- **Date**: 2026-10-02
+- **Built**:
+  - `api/app/services/scheduler_service.py`: Full tick implementation:
+    - `enqueue_notification()`: atomic INSERT with `ON CONFLICT (dedupe_key) DO NOTHING` for deduplication.
+    - `run_tick()`: acquires `pg_try_advisory_xact_lock(424242)` — returns `SKIPPED/LOCK_HELD` if concurrent tick is running.
+    - No-show sweep: CALLED tokens with `grace_deadline <= now` → NO_SHOW → WAITING (auto-requeue with sort_key bump) or CANCELLED, with REQUEUED/CANCELLED_BY_SYSTEM notifications.
+    - Expiry sweep: per-office timezone-aware cutoff (close_time + close_grace_minutes) → WAITING → EXPIRED with EXPIRED notification.
+    - ETA pass: loads queue snapshot per active queue, runs LiveAdjustedEngine, updates `last_eta_minutes`/`last_eta_reason`, fires GET_READY (p50 ≤ 15 min), LEAVE_NOW (eta - travel_minutes - 5 ≤ 0), ETA_CHANGED (|Δ| ≥ max(10, 25%·old), bucketed per 10-min window).
+    - NO_SHOW_WARNING: CALLED tokens with `grace_deadline - now ≤ 2 min`.
+    - Outbox flush: processes up to 50 PENDING rows, looks up user language from `devices`, renders localized text via templates, marks SENT.
+  - `api/app/routers/internal.py`: `POST /internal/tick` protected by `X-Internal-Secret` header + advisory lock.
+  - `api/app/notifications/templates.py`: Localized templates for TOKEN_CONFIRMED, GET_READY, LEAVE_NOW, YOUR_TURN, ETA_CHANGED, NO_SHOW_WARNING, REQUEUED, CANCELLED_BY_SYSTEM, EXPIRED in en/gu/hi (Core Rule 7).
+  - `api/tests/scheduler/test_scheduler.py`: 6 test cases:
+    - `test_tick_auth_guards`: 401 on missing/wrong secret, 200 on valid.
+    - `test_tick_advisory_lock_idempotency`: second concurrent tick returns SKIPPED/LOCK_HELD.
+    - `test_no_show_sweep_auto_requeue_and_cancel`: requeue_count < max → WAITING; ≥ max → CANCELLED.
+    - `test_expiry_sweep`: office past cutoff → WAITING tokens become EXPIRED.
+    - `test_notification_ladder_and_deduplication`: GET_READY/LEAVE_NOW fired; repeated tick produces no duplicates.
+    - `test_localized_notification_templates`: en/gu/hi strings verified.
+- **Files**:
+  - `api/app/services/scheduler_service.py`
+  - `api/app/routers/internal.py`
+  - `api/app/notifications/templates.py`
+  - `api/tests/scheduler/test_scheduler.py`
+- **Commands & Results**:
+  - `scripts/verify.ps1`: Exit code 0 (40 passed in 17.60s, Ruff: OK, OpenAPI: OK, Mypy: OK on 43 files, Web typecheck/build: OK).
+- **Assumptions**:
+  - Outbox delivery logs rendered text locally (simulating FCM); actual FCM push requires Firebase credentials (HUMAN_TODO).
+  - Advisory lock is transaction-scoped (`pg_try_advisory_xact_lock`, not session); released automatically at commit.
+- **Git Commit & Tag**: `632f63d`, tag `m4-done`.
+
+---
+
+## M5: Simulator and Reports
 - **Status**: Starting immediately per Autopilot Rules.
 - **Plan**:
-  1. Scheduler Endpoint (/internal/tick):
-     - Protected by shared internal secret header (X-Internal-Secret).
-     - Guarded by PostgreSQL advisory lock (pg_try_advisory_xact_lock(424242)) to ensure strict single execution and idempotency across multiple simultaneous triggers.
-  2. Sweeps:
-     - No-show sweep: Find CALLED tokens where grace_deadline <= now and serving_started_at IS NULL -> transition to NO_SHOW.
-       - If requeue_count < max_requeues: transition NO_SHOW -> WAITING with bumped requeue_count and new sort_key (requeue_offset positions behind head), append REQUEUED push notification.
-       - Else: transition NO_SHOW -> CANCELLED, append CANCELLED_BY_SYSTEM push notification.
-     - Expiry sweep: Offices past close_time + close_grace_minutes -> transition remaining WAITING tokens to EXPIRED.
-     - ETA sweep & Notification ladder: For active queues, load snapshots, compute ETAs, update last_eta_minutes and evaluate:
-       - GET_READY: ETA p50 <= 15 min.
-       - LEAVE_NOW: now >= leave_at where leave_at = ETA_p50 - travel_minutes - 5.
-       - ETA_CHANGED: when absolute delta >= max(10 min, 25%).
-  3. Outbox delivery:
-     - Process pending rows in notification_outbox with backoff retry and localized message templates (en, gu, hi).
-  4. Tests:
-     - Full idempotency tests when /internal/tick is called concurrently or repeatedly.
-     - Sweeps transition tests and notification ladder deduplication tests.
-  5. Verification & Gate:
-     - Run scripts/verify.ps1 exit code 0, commit, and tag m4-done.
+  1. Simulation runner (`api/app/sim/`) using VirtualClock against real domain services in an `is_simulation=True` office.
+  2. Scenario config: arrival curve (tokens per hour), mean service time, priority %, officer break intervals.
+  3. Admin sim endpoints (`/v1/admin/sim/*`) gated by `ENVIRONMENT != production`.
+  4. Reporting endpoints: `/v1/admin/reports/summary`, `/v1/admin/reports/load_by_hour`, `/v1/admin/reports/eta_accuracy` (MAE, within-range %, vs naive).
+  5. Simulation regression test proving live-adjusted MAE < naive MAE on a seeded day.
+  6. Gate: `scripts/verify.ps1` exits 0, commit, tag `m5-done`.
