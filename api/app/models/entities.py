@@ -289,3 +289,41 @@ class NotificationOutbox(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     send_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class PriorityCheck(Base):
+    __tablename__ = "priority_checks"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
+    token_id: Mapped[str] = mapped_column(String(64), ForeignKey("tokens.id", ondelete="CASCADE"), nullable=False)
+    officer_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    doc_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    result: Mapped[str] = mapped_column(
+        Enum("PENDING", "VERIFIED", "REJECTED", name="priority_status_enum", create_type=False),
+        nullable=False,
+    )
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CounterEvent(Base):
+    __tablename__ = "counter_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
+    counter_id: Mapped[str] = mapped_column(String(64), ForeignKey("counters.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum("OPEN", "BREAK", "CLOSED", name="counter_status_enum", create_type=False),
+        nullable=False,
+    )
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    actor: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class Device(Base):
+    __tablename__ = "devices"
+
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    fcm_token: Mapped[str] = mapped_column(String(512), nullable=False)
+    platform: Mapped[str] = mapped_column(String(32), default="android", nullable=False)
+    language: Mapped[str] = mapped_column(String(8), default="en", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+

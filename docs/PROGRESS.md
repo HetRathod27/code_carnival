@@ -92,27 +92,81 @@ Running log of milestones, completed tasks, verifications, and status.
 ---
 
 ### M2b: Officer Operations
+- **Date**: 2026-10-02
+- **Built**:
+  - Added models in `api/app/models/entities.py`: `PriorityCheck`, `CounterEvent`, `Device`.
+  - Implemented officer domain service in `api/app/services/officer_service.py`:
+    - `set_counter_status()` with rule O12 guard (cannot close counter with active serving token).
+    - `call_next()`:
+      - Spec 6.5 & Section 19.2 arrived-first dispatch within `dispatch_window`.
+      - Priority 1-in-N interleaving based on `office_settings.priority_ratio` and `calls_since_priority`.
+      - Increments `pass_over_count` on unarrived tokens up to `max_pass_overs`.
+      - Strict DB row-level locking (`queue_state` -> `counters` -> `tokens` `FOR UPDATE SKIP LOCKED`).
+      - Emits `YOUR_TURN` notification outbox record with deduplication.
+    - `start_serving()` & `complete_serving()`: records `outcome_code`, service duration, and updates `counter_service_stats`.
+    - `mark_no_show()`: transitions to `NO_SHOW`, emits `NO_SHOW` counter event.
+    - `release_token()`: returns token to `WAITING` without sort penalty.
+    - `transfer_token()`: transitions source token to `TRANSFERRED`, creates new target token carrying `sort_key`.
+    - `priority_check()`: records officer check; if rejected, applies strike and converts category to NORMAL.
+    - Strike limit enforcement in `book_token()`: blocks priority booking if user reached `strike_limit`.
+    - `check_in_token()` and `generate_office_qr_payload()`: HMAC-signed QR arrival check-in.
+  - Comprehensive test suite in `api/tests/domain/test_officer_operations.py`:
+    - `test_counter_guards_and_status`: verifies O12 guard against closing busy counters.
+    - `test_parallel_call_next_distinct_tokens`: verifies concurrency with `FOR UPDATE SKIP LOCKED`.
+    - `test_priority_ratio_interleave`: validates 3:1 interleaving pattern.
+    - `test_arrived_first_dispatch_and_pass_over`: verifies arrived-first dispatch and `pass_over_count` tracking.
+    - `test_priority_check_and_strike_limit`: verifies strike application and subsequent priority blocking.
+    - `test_signed_qr_checkin`: verifies cryptographic HMAC QR verification and arrival recording.
+    - `test_release_and_transfer_token`: validates release and transfer semantics.
+- **Files**:
+  - `api/app/models/entities.py`
+  - `api/app/services/officer_service.py`
+  - `api/app/services/token_service.py`
+  - `api/tests/domain/test_officer_operations.py`
+- **Commands & Results**:
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (20 passed in 9.86s, Ruff: OK, Mypy: OK, Web typecheck/build: OK).
+- **Assumptions**:
+  - Counter events and stats track service durations in seconds.
+  - Office QR check-in uses SHA256 HMAC over `office_id:date` with an office secret.
+- **Git Commit & Tag**: `m2b-done`.
+
+---
+
+## M2c: HTTP Layer & API
 - **Status**: Starting immediately per Autopilot Rules.
 - **Plan**:
-  1. Build officer operation service functions in `api/app/services/officer_service.py`:
-     - `call_next(session, clock, counter_id, officer_id)`:
-       - Follows spec 6.5 & Section 19.2 (arrived-first dispatch).
-       - Lock order: `queue_state` -> `counters` -> `tokens` (`FOR UPDATE SKIP LOCKED`).
-       - Priority interleave: checks `calls_since_priority` against `office_settings.priority_ratio` (default 3:1).
-       - Arrived-first dispatch within `dispatch_window`: prioritizes `arrived_at IS NOT NULL` tokens; increments `pass_over_count` on skipped waiting tokens up to `max_pass_overs` (default 2).
-       - Counter guards: ensures counter is open and officer is assigned.
-     - `start_serving(session, clock, token_id, counter_id, officer_id)`.
-     - `complete_serving(session, clock, token_id, outcome_code, counter_id, officer_id)`: updates stats, transitions to COMPLETED.
-     - `mark_no_show(session, clock, token_id, counter_id, officer_id)`: transitions to NO_SHOW.
-     - `release_token(session, clock, token_id, counter_id, officer_id)`: puts token back to WAITING.
-     - `transfer_token(session, clock, token_id, target_service_id, counter_id, officer_id)`.
-     - `priority_check(session, clock, token_id, officer_id, verified, note)`: records check, handles strikes on rejection.
-     - `assisted_booking(session, clock, ...)` & `walk_in_booking(session, clock, ...)`: desk & walk-in tokens.
-     - `check_in_token(session, clock, token_id, qr_payload)`: verifies signed HMAC QR payload and records `arrived_at`.
-  2. Implement tests in `api/tests/domain/test_officer_operations.py`:
-     - Parallel `call-next` across counters returns distinct tokens without duplicates (`SKIP LOCKED`).
-     - Priority ratio interleaving (1 priority token every N normal calls).
-     - Arrived-first dispatch and `pass_over_count` tracking.
-     - Priority check strike logic.
-     - Signed QR check-in verification.
-  3. Run `scripts/verify.ps1`, verify gate passes, commit, and tag `m2b-done`.
+  1. Build `DevAuth` authentication & authorization dependencies:
+     - Locally signed JWT tokens (`HS256`) encoding user claims (`user_id`, `phone`, `role`, `office_id`).
+     - Dependency injection for `get_current_user`, `require_role(allowed_roles)`, and office tenancy checks.
+  2. Implement unified API error responses per Spec Section 6.1:
+     - Error format: `{ "error": { "code": "...", "message": "...", "details": {...} } }`.
+     - Standard HTTP status mappings (400, 401, 403, 404, 409, 422).
+  3. Implement API Routers:
+     - **Citizen Router** (`/v1/citizen/*`):
+       - `POST /v1/citizen/tokens` (book token with `Idempotency-Key`).
+       - `GET /v1/citizen/tokens/{token_id}` (get token detail, ETA, position).
+       - `POST /v1/citizen/tokens/{token_id}/cancel`.
+       - `POST /v1/citizen/tokens/{token_id}/check-in` (signed QR check-in).
+       - `GET /v1/citizen/offices/{office_id}/services` (list services).
+     - **Officer Router** (`/v1/officer/*`):
+       - `POST /v1/officer/counter/status` (open/close/pause counter).
+       - `POST /v1/officer/call-next`.
+       - `POST /v1/officer/tokens/{token_id}/start`.
+       - `POST /v1/officer/tokens/{token_id}/complete` (with `outcome_code`).
+       - `POST /v1/officer/tokens/{token_id}/no-show`.
+       - `POST /v1/officer/tokens/{token_id}/release`.
+       - `POST /v1/officer/tokens/{token_id}/transfer`.
+       - `POST /v1/officer/tokens/{token_id}/priority-check`.
+     - **Desk Router** (`/v1/desk/*`):
+       - `POST /v1/desk/tokens` (assisted booking).
+       - `POST /v1/desk/tokens/{token_id}/check-in`.
+     - **Admin Router** (`/v1/admin/*`):
+       - `GET /v1/admin/offices/{office_id}/settings`.
+       - `PATCH /v1/admin/offices/{office_id}/settings`.
+  4. Script / tool to export OpenAPI JSON:
+     - `api/app/main.py` route or script dumping `openapi/openapi.json`.
+  5. Auth and Route Matrix tests in `api/tests/api/test_routes.py`:
+     - Test role-based access control (citizen cannot call officer routes, etc.).
+     - Test cross-office boundary violations (officer cannot act on another office's counter/tokens).
+  6. Run `scripts/verify.ps1`, verify gate passes, commit, and tag `m2c-done`.
+

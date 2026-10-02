@@ -10,6 +10,8 @@ from api.app.models.entities import (
     IdempotencyKey,
     NotificationOutbox,
     Office,
+    OfficeSettings,
+    PriorityCheck,
     QueueState,
     Service,
     Token,
@@ -66,8 +68,33 @@ async def book_token(
     if not service or not service.active:
         raise BookingError("SERVICE_NOT_FOUND_OR_INACTIVE", "Service is not active or found", 404)
 
-    if category == "PRIORITY" and not service.priority_allowed:
-        raise BookingError("PRIORITY_NOT_ALLOWED", "Priority booking not permitted for this service", 400)
+    if category == "PRIORITY":
+        if not service.priority_allowed:
+            raise BookingError("PRIORITY_NOT_ALLOWED", "Priority booking not permitted for this service", 400)
+        # Check strike limit per spec O6: at strike_limit priority claims are blocked for that phone
+        if phone:
+            stmt_strikes = (
+                select(func.count(PriorityCheck.id))
+                .select_from(PriorityCheck)
+                .join(Token, Token.id == PriorityCheck.token_id)
+                .where(
+                    Token.phone == phone,
+                    PriorityCheck.result == "REJECTED",
+                )
+            )
+            res_strikes = await session.execute(stmt_strikes)
+            strike_count = res_strikes.scalar_one()
+
+            stmt_settings = select(OfficeSettings.strike_limit).where(OfficeSettings.office_id == office_id)
+            res_settings = await session.execute(stmt_settings)
+            strike_limit = res_settings.scalar_one_or_none() or 3
+
+            if strike_count >= strike_limit:
+                raise BookingError(
+                    "PRIORITY_BLOCKED_STRIKES",
+                    f"Priority bookings blocked due to {strike_count} rejected priority claims",
+                    403,
+                )
 
     # Check active token limit for phone per service on today's business date
     if phone:
@@ -188,6 +215,8 @@ async def book_token(
 
     response_data = {
         "token_id": token_id,
+        "office_id": office_id,
+        "service_id": service_id,
         "display_code": display_code,
         "seq": new_seq,
         "state": "WAITING",
