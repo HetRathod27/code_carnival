@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app.core.clock import Clock
 from api.app.domain.state_machine import transition
+from api.app.eta.admission import check_admission
+from api.app.eta.engine import LiveAdjustedEngine, NaiveEngine
+from api.app.eta.loader import load_queue_snapshot
 from api.app.models.entities import (
+    EtaLog,
     IdempotencyKey,
     NotificationOutbox,
     Office,
@@ -143,6 +147,27 @@ async def book_token(
     if queue_state.paused:
         raise BookingError("QUEUE_PAUSED", "This queue is temporarily paused by administration", 409)
 
+    # Section 19.1 Admission Control (P0)
+    stmt_office_settings = select(OfficeSettings).where(OfficeSettings.office_id == office_id)
+    res_office_settings = await session.execute(stmt_office_settings)
+    office_settings = res_office_settings.scalar_one_or_none()
+    close_grace = office_settings.close_grace_minutes if office_settings else 15
+    max_waiting = office_settings.max_waiting_per_service if office_settings else 100
+
+    current_snapshot = await load_queue_snapshot(session, clock, office_id, service_id)
+    is_desk_override = created_via in ["ASSISTED", "DESK"]
+    admitted, rejection_reason, _ = check_admission(
+        snapshot=current_snapshot,
+        office_close_time=office.close_time,
+        close_grace_minutes=close_grace,
+        max_waiting_per_service=max_waiting,
+        is_desk_override=is_desk_override,
+    )
+    if not admitted:
+        if rejection_reason == "QUEUE_FULL_CAPACITY":
+            raise BookingError("QUEUE_FULL_CAPACITY", "Queue has reached maximum capacity for this service", 409)
+        raise BookingError("QUEUE_FULL_FOR_TODAY", "Queue full for today. Please try tomorrow.", 409)
+
     # Atomic increment of sequence
     stmt_max = select(func.coalesce(func.max(Token.seq), 0)).where(
         Token.office_id == office_id,
@@ -218,6 +243,38 @@ async def book_token(
     )
     session.add(outbox)
 
+    # 6. Compute ETAs and record in eta_log
+    new_snapshot = await load_queue_snapshot(session, clock, office_id, service_id)
+    live_engine = LiveAdjustedEngine()
+    naive_engine = NaiveEngine()
+
+    live_etas = live_engine.compute_etas(new_snapshot)
+    naive_etas = naive_engine.compute_etas(new_snapshot)
+
+    token_eta = live_etas.get(token_id)
+    naive_eta = naive_etas.get(token_id)
+
+    p50 = token_eta.p50_minutes if token_eta else 0.0
+    low = token_eta.low_minutes if token_eta else 0.0
+    high = token_eta.high_minutes if token_eta else 0.0
+    reason = token_eta.reason if token_eta else None
+    n_p50 = naive_eta.p50_minutes if naive_eta else 0.0
+
+    token.last_eta_minutes = int(p50)
+    token.last_eta_reason = reason
+    token.eta_features = {"low": low, "high": high, "naive_p50": n_p50}
+
+    eta_log_entry = EtaLog(
+        token_id=token_id,
+        at=now_dt,
+        engine="live_adjusted",
+        predicted_p50=p50,
+        low=low,
+        high=high,
+        naive_p50=n_p50,
+    )
+    session.add(eta_log_entry)
+
     response_data = {
         "token_id": token_id,
         "office_id": office_id,
@@ -228,10 +285,14 @@ async def book_token(
         "category": category,
         "sort_key": sort_key,
         "business_date": str(b_date),
+        "last_eta_minutes": int(p50),
+        "eta_low": low,
+        "eta_high": high,
+        "eta_reason": reason,
         "created_at": now_dt.isoformat(),
     }
 
-    # 6. Save Idempotency response if key provided
+    # 7. Save Idempotency response if key provided
     if idempotency_key:
         idem = IdempotencyKey(
             key=idempotency_key,

@@ -39,7 +39,10 @@ def session_factory(test_engine):
 
 @pytest.fixture
 def vclock():
-    return VirtualClock(datetime(2026, 10, 2, 9, 30, 0, tzinfo=timezone.utc))
+    run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
+    run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
+    run_year = 2050 + (int(uuid.uuid4().hex[6:10], 16) % 1000)
+    return VirtualClock(datetime(run_year, run_month, run_day, 9, 30, 0, tzinfo=timezone.utc))
 
 
 @pytest.mark.asyncio
@@ -141,7 +144,8 @@ async def test_200_parallel_bookings_unique_gapless(session_factory, vclock):
     # Unique date to ensure clean slate for this run
     run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
     run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
-    test_clock = VirtualClock(datetime(2036, run_month, run_day, 9, 0, 0, tzinfo=timezone.utc))
+    run_year = 2050 + (int(uuid.uuid4().hex[6:10], 16) % 1000)
+    test_clock = VirtualClock(datetime(run_year, run_month, run_day, 9, 0, 0, tzinfo=timezone.utc))
     b_date = test_clock.business_date()
 
     # Pre-seed queue_state row for this office, service, and date
@@ -170,6 +174,7 @@ async def test_200_parallel_bookings_unique_gapless(session_factory, vclock):
                         service_id=service_id,
                         phone=phone,
                         citizen_id=f"cit-{run_token}-{i}",
+                        created_via="DESK",
                     )
                     return res["seq"]
 

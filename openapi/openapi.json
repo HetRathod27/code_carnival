@@ -2602,6 +2602,28 @@
             ],
             "title": "Last Eta Reason"
           },
+          "eta_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Low"
+          },
+          "eta_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta High"
+          },
           "waiting_ahead": {
             "type": "integer",
             "title": "Waiting Ahead",

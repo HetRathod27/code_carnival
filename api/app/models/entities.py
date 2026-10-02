@@ -327,3 +327,27 @@ class Device(Base):
     language: Mapped[str] = mapped_column(String(8), default="en", nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
+
+class EtaLog(Base):
+    __tablename__ = "eta_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=False), primary_key=True)
+    token_id: Mapped[str] = mapped_column(String(64), ForeignKey("tokens.id", ondelete="CASCADE"), nullable=False)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    engine: Mapped[str] = mapped_column(String(32), nullable=False)
+    predicted_p50: Mapped[float] = mapped_column(Float, nullable=False)
+    low: Mapped[float] = mapped_column(Float, nullable=False)
+    high: Mapped[float] = mapped_column(Float, nullable=False)
+    naive_p50: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class ServiceStats(Base):
+    __tablename__ = "service_stats"
+
+    service_id: Mapped[str] = mapped_column(String(64), ForeignKey("services.id", ondelete="CASCADE"), primary_key=True)
+    hour_bucket: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ewma_minutes: Mapped[float] = mapped_column(Float, nullable=False)
+    ewma_var: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    n: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+

@@ -164,27 +164,54 @@ Running log of milestones, completed tasks, verifications, and status.
 
 ---
 
-## M3: ETA Engine
+### M3: ETA Engine
+- **Date**: 2026-10-02
+- **Built**:
+  - api/app/eta/models.py: Dataclasses for WaitingToken, ServingToken, CounterInfo, ServiceInfo, QueueSnapshot, and EtaResult.
+  - api/app/eta/engine.py:
+    - ETAEngine ABC with pure function signature compute_etas(snapshot).
+    - NaiveEngine: baseline engine (idx * mean) / open_counters.
+    - LiveAdjustedEngine: greedy multi-counter simulation schedule incorporating Section 19.3 overrun rule (remaining_i = max(mean - elapsed, 1.0) when elapsed <= mean, 0.5 * mean when elapsed > mean), SLOW_CASE attribution (> 1.5 * mean), and COUNTER_DOWN pause code.
+  - api/app/eta/admission.py: Section 19.1 admission control pure function predicting tail token wait time vs office close_time - close_grace and max_waiting_per_service, with DESK override support.
+  - api/app/eta/loader.py: load_queue_snapshot async helper reconstructing in-memory queue snapshot from DB state.
+  - api/app/services/token_service.py: Integrated admission control check prior to atomic sequence allocation, and compute/record EtaLog and token ETA interval (p50, low, high, reason) on booking.
+  - api/app/models/entities.py: Added SQLAlchemy declarative models for EtaLog and ServiceStats.
+  - api/app/schemas/citizen.py & api/app/routers/citizen.py: Exposed eta_low and eta_high bounds in citizen token responses.
+  - api/tests/eta/test_eta_engine.py: 9 comprehensive test suites (pure function zero-DB guarantee, Section 19.3 overrun rule, counter-down pause, monotonicity, counter sensitivity, admission control capacity & cutoff, Hypothesis property tests across random distributions, and DB integration tests for eta_log).
+- **Files**:
+  - api/app/eta/models.py, api/app/eta/engine.py, api/app/eta/admission.py, api/app/eta/loader.py
+  - api/app/models/entities.py, api/app/services/token_service.py
+  - api/app/schemas/citizen.py, api/app/routers/citizen.py
+  - openapi/openapi.json
+  - api/tests/eta/test_eta_engine.py, api/tests/domain/test_domain_core.py
+- **Commands & Results**:
+  - scripts/verify.ps1: Exit code 0 (All 34 tests passed in 13.90s, Ruff: OK, OpenAPI export: OK, Mypy: OK on 39 source files, Web typecheck/build: OK).
+- **Assumptions**:
+  - Desk bookings (ASSISTED, DESK) override admission cutoff to allow emergency walk-ins.
+  - Naive p50 logged side-by-side in eta_log for comparative benchmark evaluation per spec Section 8.
+- **Git Commit & Tag**: m3-done.
+
+---
+
+## M4: Scheduler and Notifications
 - **Status**: Starting immediately per Autopilot Rules.
 - **Plan**:
-  1. Build ETA domain module in `api/app/eta/`:
-     - `snapshot.py`: `QueueSnapshot` dataclass representing active counters, serving tokens, waiting tokens, EWMA stats, and calendar status.
-     - `engine.py`:
-       - Abstract `ETAEngine` interface: `compute_etas(snapshot: QueueSnapshot) -> dict[str, ETAResult]` (pure function, zero DB / network calls per Rule 5).
-       - `NaiveEngine`: baseline formula `(position * prior_avg_minutes) / effective_counters`.
-       - `LiveAdjustedEngine`: greedy multi-counter simulation schedule incorporating:
-         - Spec Section 19.3 overrun rule: `remaining_i = max(mean - elapsed, 1.0)` when `elapsed <= mean`, and `remaining_i = 0.5 * mean` when `elapsed > mean`.
-         - Counterfactual reason codes: `SLOW_CASE` when elapsed > 1.5 * mean, `COUNTER_DOWN` / `COUNTER_UP`, `PRIORITY_INSERT`.
-         - Prediction intervals: `low`, `p50`, `high` based on variance in service stats.
-     - `admission.py`: Section 19.1 admission control pure function:
-       - Predicts start time of hypothetical tail token.
-       - Rejects with `QUEUE_FULL_FOR_TODAY` if projected start > `close_time - close_grace` or `waiting_count >= max_waiting_per_service`.
-  2. Implement tests in `api/tests/eta/test_eta_engine.py`:
-     - Monotonicity property: later waiting tokens receive higher or equal ETAs.
-     - More open counters strictly reduce wait times.
-     - Overrun rule test: case exceeding mean produces 0.5 * mean remaining and emits `SLOW_CASE`.
-     - Admission control tests: rejects when queue overflows daily operating capacity.
-     - Zero DB calls validation (pure function assertion).
-  3. Run `scripts/verify.ps1`, verify gate passes, commit, and tag `m3-done`.
-
-
+  1. Scheduler Endpoint (/internal/tick):
+     - Protected by shared internal secret header (X-Internal-Secret).
+     - Guarded by PostgreSQL advisory lock (pg_try_advisory_xact_lock(424242)) to ensure strict single execution and idempotency across multiple simultaneous triggers.
+  2. Sweeps:
+     - No-show sweep: Find CALLED tokens where grace_deadline <= now and serving_started_at IS NULL -> transition to NO_SHOW.
+       - If requeue_count < max_requeues: transition NO_SHOW -> WAITING with bumped requeue_count and new sort_key (requeue_offset positions behind head), append REQUEUED push notification.
+       - Else: transition NO_SHOW -> CANCELLED, append CANCELLED_BY_SYSTEM push notification.
+     - Expiry sweep: Offices past close_time + close_grace_minutes -> transition remaining WAITING tokens to EXPIRED.
+     - ETA sweep & Notification ladder: For active queues, load snapshots, compute ETAs, update last_eta_minutes and evaluate:
+       - GET_READY: ETA p50 <= 15 min.
+       - LEAVE_NOW: now >= leave_at where leave_at = ETA_p50 - travel_minutes - 5.
+       - ETA_CHANGED: when absolute delta >= max(10 min, 25%).
+  3. Outbox delivery:
+     - Process pending rows in notification_outbox with backoff retry and localized message templates (en, gu, hi).
+  4. Tests:
+     - Full idempotency tests when /internal/tick is called concurrently or repeatedly.
+     - Sweeps transition tests and notification ladder deduplication tests.
+  5. Verification & Gate:
+     - Run scripts/verify.ps1 exit code 0, commit, and tag m4-done.

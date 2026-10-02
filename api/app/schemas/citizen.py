@@ -60,6 +60,8 @@ class TokenOut(BaseModel):
     completed_at: datetime | None = None
     last_eta_minutes: float | None = None
     last_eta_reason: str | None = None
+    eta_low: float | None = None
+    eta_high: float | None = None
     waiting_ahead: int = 0
     now_serving: str | None = None
     server_time: datetime = Field(default_factory=datetime.utcnow)
