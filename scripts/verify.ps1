@@ -20,6 +20,14 @@ if (Test-Path ".\venv\Scripts\ruff.exe") {
     Write-Host "Ruff not installed, skipping ruff check." -ForegroundColor Gray
 }
 
+# 1b. Export OpenAPI schema
+Write-Host "`n[1b] Exporting OpenAPI schema..." -ForegroundColor Yellow
+if (Test-Path ".\venv\Scripts\python.exe") {
+    & ".\venv\Scripts\python.exe" scripts/export_openapi.py
+    if ($LASTEXITCODE -ne 0) { $failures += "OpenAPI export failed" }
+}
+
+
 # 2. Python Typecheck / Mypy (if installed)
 Write-Host "`n[2/5] Checking Python typing..." -ForegroundColor Yellow
 if (Test-Path ".\venv\Scripts\mypy.exe") {

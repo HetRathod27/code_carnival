@@ -48,7 +48,9 @@ def session_factory(test_engine):
 def vclock():
     run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
     run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
-    return VirtualClock(datetime(2040, run_month, run_day, 10, 0, 0, tzinfo=timezone.utc))
+    run_year = 2050 + (int(uuid.uuid4().hex[6:10], 16) % 1000)
+    return VirtualClock(datetime(run_year, run_month, run_day, 10, 0, 0, tzinfo=timezone.utc))
+
 
 
 @pytest.mark.asyncio
@@ -117,8 +119,9 @@ async def test_parallel_call_next_distinct_tokens(session_factory, vclock):
 
     # Pre-seed 10 waiting tokens on dedicated test date
     run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
-    test_clock = VirtualClock(datetime(2037, 5, run_day, 9, 0, 0, tzinfo=timezone.utc))
-    test_clock.business_date()
+    run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
+    run_year = 2050 + (int(uuid.uuid4().hex[6:10], 16) % 1000)
+    test_clock = VirtualClock(datetime(run_year, run_month, run_day, 9, 0, 0, tzinfo=timezone.utc))
 
     async with session_factory() as session:
         async with session.begin():
@@ -130,6 +133,8 @@ async def test_parallel_call_next_distinct_tokens(session_factory, vclock):
             await session.execute(
                 text("INSERT INTO counter_services (counter_id, service_id) VALUES ('cnt-3', 'srv-bc') ON CONFLICT DO NOTHING;")
             )
+
+
 
             for i in range(10):
                 await book_token(
@@ -163,10 +168,12 @@ async def test_priority_ratio_interleave(session_factory, vclock):
     office_id = "ward-central-01"
     run_id = uuid.uuid4().hex[:6]
     run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
-    test_clock = VirtualClock(datetime(2038, 6, run_day, 9, 0, 0, tzinfo=timezone.utc))
-    test_clock.business_date()
+    run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
+    run_year = 2050 + (int(uuid.uuid4().hex[6:10], 16) % 1000)
+    test_clock = VirtualClock(datetime(run_year, run_month, run_day, 9, 0, 0, tzinfo=timezone.utc))
     counter_id = "cnt-1"
     officer_id = "off-interleave"
+
 
     async with session_factory() as session:
         async with session.begin():
@@ -223,7 +230,9 @@ async def test_arrived_first_dispatch_and_pass_over(session_factory, vclock):
     office_id = "ward-central-01"
     run_id = uuid.uuid4().hex[:6]
     run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
-    test_clock = VirtualClock(datetime(2039, 7, run_day, 9, 0, 0, tzinfo=timezone.utc))
+    run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
+    run_year = 2050 + (int(uuid.uuid4().hex[6:10], 16) % 1000)
+    test_clock = VirtualClock(datetime(run_year, run_month, run_day, 9, 0, 0, tzinfo=timezone.utc))
     counter_id = "cnt-2"
     officer_id = "off-dispatch"
 
@@ -231,6 +240,8 @@ async def test_arrived_first_dispatch_and_pass_over(session_factory, vclock):
         async with session.begin():
             await set_counter_status(session, test_clock, counter_id, "OPEN", officer_id)
             # Token 1: remote, not arrived
+
+
             t1 = await book_token(
                 session=session,
                 clock=test_clock,

@@ -70,3 +70,11 @@ class VirtualClock(Clock):
             self._current_time = new_time.replace(tzinfo=timezone.utc)
         else:
             self._current_time = new_time
+
+
+_system_clock = SystemClock()
+
+
+def get_clock() -> Clock:
+    return _system_clock
+

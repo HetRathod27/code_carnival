@@ -132,41 +132,59 @@ Running log of milestones, completed tasks, verifications, and status.
 
 ---
 
-## M2c: HTTP Layer & API
+### M2c: HTTP Layer & API
+- **Date**: 2026-10-02
+- **Built**:
+  - `AuthProvider` and `DevAuth` in `api/app/core/auth.py` providing locally signed HS256 JWT creation, verification, `get_current_user`, `require_role`, and cross-office isolation checks.
+  - Unified JSON error handling and machine-readable error codes (`ErrorCode`, `AppException`) in `api/app/core/errors.py`.
+  - Functional API Routers:
+    - Citizen router (`/v1/citizen/*`): browse offices, list services with indicative waits, book token with `Idempotency-Key` and phone limit, get active token, check in with signed HMAC QR, view token details, and cancel token.
+    - Officer router (`/v1/officer/*`): view queue with masked phones, set counter status with O12 guard, call-next with arrived-first and priority interleaving, start serving, complete serving with outcome codes, mark no-show, release token, transfer token, and priority verification.
+    - Desk router (`/v1/desk/*`): assisted and walk-in token issuance (auto-arrived at desk) and manual desk arrival check-in.
+    - Admin router (`/v1/admin/*`): list offices, get and patch `office_settings`, generate entrance QR check-in code, and create staff profiles.
+  - Export OpenAPI schema utility in `scripts/export_openapi.py` generating `openapi/openapi.json`.
+  - Comprehensive API test suite in `api/tests/api/test_routes.py`:
+    - Full role-based authorization matrix and cross-office isolation.
+    - Citizen booking and lifecycle journey.
+    - Officer full lifecycle, O12 guard, and outcome completion.
+    - Desk assisted booking and admin settings management.
+- **Files**:
+  - `api/app/core/auth.py`, `api/app/core/errors.py`
+  - `api/app/schemas/common.py`, `api/app/schemas/citizen.py`, `api/app/schemas/officer.py`, `api/app/schemas/desk.py`, `api/app/schemas/admin.py`
+  - `api/app/routers/citizen.py`, `api/app/routers/officer.py`, `api/app/routers/desk.py`, `api/app/routers/admin.py`
+  - `api/app/main.py`, `scripts/export_openapi.py`, `openapi/openapi.json`
+  - `api/tests/api/test_routes.py`
+  - `scripts/verify.ps1`, `pyproject.toml`
+- **Commands & Results**:
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (25 passed in 8.41s, Ruff: OK, OpenAPI export: OK, Mypy: OK on 34 files, Web typecheck/build: OK).
+- **Assumptions**:
+  - JWT tokens encode `sub` (user_id), `role`, `office_id`, `phone`, `name`, and standard timestamps.
+  - Office settings column `priority_every_n` mapped to API response schema.
+- **Git Commit & Tag**: `m2c-done`.
+
+---
+
+## M3: ETA Engine
 - **Status**: Starting immediately per Autopilot Rules.
 - **Plan**:
-  1. Build `DevAuth` authentication & authorization dependencies:
-     - Locally signed JWT tokens (`HS256`) encoding user claims (`user_id`, `phone`, `role`, `office_id`).
-     - Dependency injection for `get_current_user`, `require_role(allowed_roles)`, and office tenancy checks.
-  2. Implement unified API error responses per Spec Section 6.1:
-     - Error format: `{ "error": { "code": "...", "message": "...", "details": {...} } }`.
-     - Standard HTTP status mappings (400, 401, 403, 404, 409, 422).
-  3. Implement API Routers:
-     - **Citizen Router** (`/v1/citizen/*`):
-       - `POST /v1/citizen/tokens` (book token with `Idempotency-Key`).
-       - `GET /v1/citizen/tokens/{token_id}` (get token detail, ETA, position).
-       - `POST /v1/citizen/tokens/{token_id}/cancel`.
-       - `POST /v1/citizen/tokens/{token_id}/check-in` (signed QR check-in).
-       - `GET /v1/citizen/offices/{office_id}/services` (list services).
-     - **Officer Router** (`/v1/officer/*`):
-       - `POST /v1/officer/counter/status` (open/close/pause counter).
-       - `POST /v1/officer/call-next`.
-       - `POST /v1/officer/tokens/{token_id}/start`.
-       - `POST /v1/officer/tokens/{token_id}/complete` (with `outcome_code`).
-       - `POST /v1/officer/tokens/{token_id}/no-show`.
-       - `POST /v1/officer/tokens/{token_id}/release`.
-       - `POST /v1/officer/tokens/{token_id}/transfer`.
-       - `POST /v1/officer/tokens/{token_id}/priority-check`.
-     - **Desk Router** (`/v1/desk/*`):
-       - `POST /v1/desk/tokens` (assisted booking).
-       - `POST /v1/desk/tokens/{token_id}/check-in`.
-     - **Admin Router** (`/v1/admin/*`):
-       - `GET /v1/admin/offices/{office_id}/settings`.
-       - `PATCH /v1/admin/offices/{office_id}/settings`.
-  4. Script / tool to export OpenAPI JSON:
-     - `api/app/main.py` route or script dumping `openapi/openapi.json`.
-  5. Auth and Route Matrix tests in `api/tests/api/test_routes.py`:
-     - Test role-based access control (citizen cannot call officer routes, etc.).
-     - Test cross-office boundary violations (officer cannot act on another office's counter/tokens).
-  6. Run `scripts/verify.ps1`, verify gate passes, commit, and tag `m2c-done`.
+  1. Build ETA domain module in `api/app/eta/`:
+     - `snapshot.py`: `QueueSnapshot` dataclass representing active counters, serving tokens, waiting tokens, EWMA stats, and calendar status.
+     - `engine.py`:
+       - Abstract `ETAEngine` interface: `compute_etas(snapshot: QueueSnapshot) -> dict[str, ETAResult]` (pure function, zero DB / network calls per Rule 5).
+       - `NaiveEngine`: baseline formula `(position * prior_avg_minutes) / effective_counters`.
+       - `LiveAdjustedEngine`: greedy multi-counter simulation schedule incorporating:
+         - Spec Section 19.3 overrun rule: `remaining_i = max(mean - elapsed, 1.0)` when `elapsed <= mean`, and `remaining_i = 0.5 * mean` when `elapsed > mean`.
+         - Counterfactual reason codes: `SLOW_CASE` when elapsed > 1.5 * mean, `COUNTER_DOWN` / `COUNTER_UP`, `PRIORITY_INSERT`.
+         - Prediction intervals: `low`, `p50`, `high` based on variance in service stats.
+     - `admission.py`: Section 19.1 admission control pure function:
+       - Predicts start time of hypothetical tail token.
+       - Rejects with `QUEUE_FULL_FOR_TODAY` if projected start > `close_time - close_grace` or `waiting_count >= max_waiting_per_service`.
+  2. Implement tests in `api/tests/eta/test_eta_engine.py`:
+     - Monotonicity property: later waiting tokens receive higher or equal ETAs.
+     - More open counters strictly reduce wait times.
+     - Overrun rule test: case exceeding mean produces 0.5 * mean remaining and emits `SLOW_CASE`.
+     - Admission control tests: rejects when queue overflows daily operating capacity.
+     - Zero DB calls validation (pure function assertion).
+  3. Run `scripts/verify.ps1`, verify gate passes, commit, and tag `m3-done`.
+
 

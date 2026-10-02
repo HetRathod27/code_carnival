@@ -51,10 +51,16 @@ async def set_counter_status(
     if not counter:
         raise OfficerOperationError("COUNTER_NOT_FOUND", f"Counter '{counter_id}' not found", 404)
 
-    # 2. O12 Guard: cannot set CLOSED while SERVING a token
+    # 2. O12 Guard: cannot set CLOSED while SERVING a token today
     if status == "CLOSED":
-        stmt_serving = select(Token).where(Token.counter_id == counter_id, Token.state == "SERVING")
+        b_date = clock.business_date()
+        stmt_serving = select(Token).where(
+            Token.counter_id == counter_id,
+            Token.business_date == b_date,
+            Token.state == "SERVING",
+        )
         res_serving = await session.execute(stmt_serving)
+
         if res_serving.first():
             raise OfficerOperationError(
                 "COUNTER_HAS_SERVING_TOKEN",

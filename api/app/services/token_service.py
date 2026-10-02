@@ -39,11 +39,16 @@ async def book_token(
     idempotency_key: str | None = None,
     travel_minutes: int = 15,
     on_behalf_of: str | None = None,
+    beneficiary_name: str | None = None,
+    priority_doc_type: str | None = None,
 ) -> dict[str, Any]:
     """
     Booking (C3, O7) — atomic numbering, one transaction.
     Lock order: queue_state -> counters -> tokens.
     """
+    if beneficiary_name and not on_behalf_of:
+        on_behalf_of = beneficiary_name
+
     # 1. Idempotency Check
     if idempotency_key:
         stmt_idem = select(IdempotencyKey).where(IdempotencyKey.key == idempotency_key)
