@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from datetime import date
 
 import pytest
@@ -17,8 +18,7 @@ assert_test_database(settings.TEST_DATABASE_URL)
 def test_engine():
     engine = create_async_engine(settings.TEST_DATABASE_URL, echo=False)
     yield engine
-    # sync cleanup via loop or dispose
-    asyncio.run(engine.dispose())
+    engine.sync_engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -84,21 +84,22 @@ async def test_state_transition_matrix(test_engine):
         ('SERVING', 'TRANSFERRED'),
     }
 
+    run_uuid = uuid.uuid4().hex[:8]
+    run_year = 2050 + (int(uuid.uuid4().hex[6:10], 16) % 1000)
+    test_b_date = f"{run_year}-02-01"
+
     async with test_engine.connect() as conn:
         for from_s in states:
             for to_s in states:
                 if from_s == to_s:
                     continue
 
-                tok_id = f"tok-{from_s}-{to_s}".lower()
-                # Ensure clean state for this test token
-                await conn.execute(text(f"DELETE FROM tokens WHERE id='{tok_id}'"))
-                await conn.commit()
+                tok_id = f"tok-{run_uuid}-{from_s}-{to_s}".lower()
 
                 # Create fresh token in from_state via insert (allowed by trigger)
                 await conn.execute(text(f"""
                     INSERT INTO tokens (id, office_id, service_id, business_date, seq, display_code, sort_key, state)
-                    VALUES ('{tok_id}', 'ward-central-01', 'srv-bc', '2028-02-01'::date, (SELECT COALESCE(MAX(seq), 0) + 1 FROM tokens WHERE business_date = '2028-02-01'::date), 'T-00', 1.0, '{from_s}');
+                    VALUES ('{tok_id}', 'ward-central-01', 'srv-bc', '{test_b_date}'::date, (SELECT COALESCE(MAX(seq), 0) + 1 FROM tokens WHERE business_date = '{test_b_date}'::date), 'T-00', 1.0, '{from_s}');
                 """))
                 await conn.commit()
 

@@ -1555,6 +1555,58 @@
         }
       }
     },
+    "/internal/tick": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Trigger Tick",
+        "description": "POST /internal/tick \u2014 Scheduler entry point.\nProtected by shared internal secret. Runs sweeps and notification delivery.",
+        "operationId": "trigger_tick_internal_tick_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Secret"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Trigger Tick Internal Tick Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [

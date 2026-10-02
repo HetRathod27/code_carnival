@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from api.app.core.db import check_db_ready
 from api.app.core.errors import register_error_handlers
-from api.app.routers import admin, citizen, desk, officer
+from api.app.routers import admin, citizen, desk, internal, officer
 
 app = FastAPI(
     title="QueueLess API",
@@ -19,6 +19,7 @@ app.include_router(citizen.router)
 app.include_router(officer.router)
 app.include_router(desk.router)
 app.include_router(admin.router)
+app.include_router(internal.router)
 
 
 @app.get("/healthz", status_code=status.HTTP_200_OK, tags=["System"])
