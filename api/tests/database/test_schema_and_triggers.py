@@ -98,7 +98,7 @@ async def test_state_transition_matrix(test_engine):
                 # Create fresh token in from_state via insert (allowed by trigger)
                 await conn.execute(text(f"""
                     INSERT INTO tokens (id, office_id, service_id, business_date, seq, display_code, sort_key, state)
-                    VALUES ('{tok_id}', 'ward-central-01', 'srv-bc', CURRENT_DATE, (SELECT COALESCE(MAX(seq), 0) + 1 FROM tokens), 'T-00', 1.0, '{from_s}');
+                    VALUES ('{tok_id}', 'ward-central-01', 'srv-bc', '2028-02-01'::date, (SELECT COALESCE(MAX(seq), 0) + 1 FROM tokens WHERE business_date = '2028-02-01'::date), 'T-00', 1.0, '{from_s}');
                 """))
                 await conn.commit()
 
@@ -121,19 +121,22 @@ async def test_parallel_50_transactions_numbering(test_engine):
     Proves that 50 concurrent transactions incrementing last_seq on queue_state
     yield unique, gapless sequences without race conditions.
     """
-    b_date = date.today()
+    # Use dedicated test service and date
+    test_date = date(2028, 1, 1)
     service_id = "srv-bc"
     office_id = "ward-central-01"
 
-    # Reset or ensure queue_state row
+    # Reset or ensure queue_state row for this isolated date
     async with test_engine.connect() as conn:
         await conn.execute(text(f"""
             INSERT INTO queue_state (office_id, service_id, business_date, last_seq, waiting_count, version)
-            VALUES ('{office_id}', '{service_id}', '{b_date}', 0, 0, 1)
+            VALUES ('{office_id}', '{service_id}', '{test_date}', 0, 0, 1)
             ON CONFLICT (office_id, service_id, business_date)
             DO UPDATE SET last_seq = 0, version = 1;
         """))
         await conn.commit()
+
+    b_date = test_date
 
     async def book_worker(worker_id: int):
         async with test_engine.connect() as conn:
