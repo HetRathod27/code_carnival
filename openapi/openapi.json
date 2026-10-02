@@ -1947,6 +1947,59 @@
         }
       }
     },
+    "/internal/dev-token": {
+      "post": {
+        "tags": [
+          "Internal",
+          "DevAuth"
+        ],
+        "summary": "Get Dev Token",
+        "description": "POST /internal/dev-token \u2014 Generate a signed JWT for a pre-built dev persona.\nDISABLED in production. Protected by X-Internal-Secret.\n\nReturns tokens for all dev personas in one call \u2014 use for the DevAuth login selector.",
+        "operationId": "get_dev_token_internal_dev_token_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Secret"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Dev Token Internal Dev Token Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [

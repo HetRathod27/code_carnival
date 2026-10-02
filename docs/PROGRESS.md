@@ -253,12 +253,42 @@ Running log of milestones, completed tasks, verifications, and status.
 ---
 
 ## M6a: Web Foundation & Officer Screens
+- **Date**: 2026-10-02
+- **Built**:
+  - `web/src/api/client.ts`: Typed fetch API client connecting to backend endpoints (`/internal/dev-token`, `/v1/officer/counters/{id}/queue`, `/status`, `/call-next`, `/tokens/{id}/start`, `/complete`, `/no-show`, `/release`, `/transfer`, `/priority-check`, `/v1/citizen/offices`, `/services`). Matches backend schemas without modifying backend.
+  - `web/src/context/AuthContext.tsx`: `AuthProvider` fetching DevAuth personas from `/internal/dev-token` with local JWT caching and role assignment.
+  - `web/src/i18n/`: Complete multilingual internationalization dictionary for English, Gujarati, and Hindi (`en.json`, `gu.json`, `hi.json`) with persistent language selection (`ql_lang`).
+  - `web/src/index.css`: Comprehensive design system built directly on Google Stitch Civic Minimalist specifications (light/high-contrast institutional palette, 4px/8px rhythm, Noto Sans typography, tabular nums, accessible buttons and modals).
+  - `web/src/components/AppShell.tsx`: Navigation header with office context, brand logo, user role badges, tab switches, and language picker.
+  - `web/src/pages/LoginPage.tsx`: Dev persona picker card grid with role descriptions and instant login.
+  - `web/src/pages/OfficerQueuePage.tsx`: Officer Live Queue with 5s polling, counter status toggle (OPEN/BREAK/CLOSED), prominent Call Next action, Now Serving card with live timer, outcome modal (SERVED, MISSING_DOCS, etc.), transfer modal, no-show modal, and priority verification.
+  - `web/src/App.tsx`: Top-level app routing based on authentication state.
+- **Files**:
+  - `web/src/api/client.ts`
+  - `web/src/context/AuthContext.tsx`
+  - `web/src/i18n/index.ts`, `web/src/i18n/en.json`, `web/src/i18n/gu.json`, `web/src/i18n/hi.json`
+  - `web/src/index.css`
+  - `web/src/components/AppShell.tsx`
+  - `web/src/pages/LoginPage.tsx`
+  - `web/src/pages/OfficerQueuePage.tsx`
+  - `web/src/App.tsx`, `web/src/main.tsx`, `web/index.html`
+- **Commands & Results**:
+  - `npm --prefix web run build`: Exit code 0 (vite build transformed 51 modules, zero errors).
+  - `scripts/verify.ps1`: Exit code 0 (43 passed in 25.49s, Ruff: OK, OpenAPI: OK, Mypy: OK on 49 files, Web typecheck/build: OK).
+- **Assumptions**:
+  - DevAuth tokens via `/internal/dev-token` are used for frontend development.
+  - Default counter used is `cnt-1` with option to toggle to `cnt-2` and `cnt-3`.
+- **Git Commit & Tag**: `m6a-done`
+
+---
+
+## M5b: Backend Hardening
 - **Status**: Starting immediately per Autopilot Rules.
 - **Plan**:
-  1. Generate TypeScript API client from `openapi/openapi.json` using `openapi-typescript` (types) + hand-written fetch wrappers (spec Rule 1: never hand-write HTTP, but generated clients are allowed).
-  2. DevAuth login selector: role/office picker for rapid local testing.
-  3. App shell with routing, `react-i18next` (en, gu, hi), and a dark-mode design system.
-  4. Officer queue screen: live call-next, start, complete, no-show, release, transfer actions.
-  5. Counter status toggle (OPEN/BREAK/CLOSED).
-  6. Gate: `scripts/verify.ps1` exits 0, commit, tag `m6a-done`.
+  1. Strengthen simulation regression test for a full-day scenario; assert `mae_live < mae_naive` strictly.
+  2. Implement missing spec endpoints: `POST /v1/devices`, `PATCH /v1/me`, admin CRUD for services/counters/counter-services, `GET /v1/display/{office_id}`, pause/resume booking (`/v1/queues/{service_id}/pause`).
+  3. Production startup guard for DevAuth.
+  4. Correctness tests (no-show requeue, desk admission override, queue_state sync test).
+  5. Create `docs/SMOKE_TEST.md`.
+
 
