@@ -108,4 +108,85 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get serviceCompleted => 'सेवा सफलतापूर्वक पूर्ण हुई';
+
+  @override
+  String get officesTitle => 'नागरिक सेवा केंद्र';
+
+  @override
+  String get servicesTitle => 'उपलब्ध सेवाएं';
+
+  @override
+  String get selectOfficePrompt =>
+      'अपना निकटतम नगर पालिका या वार्ड कार्यालय चुनें।';
+
+  @override
+  String get selectServicePrompt =>
+      'वह नागरिक सेवा चुनें जिसकी आपको आवश्यकता है।';
+
+  @override
+  String get noOfficesFound => 'वर्तमान में कोई केंद्र उपलब्ध नहीं है।';
+
+  @override
+  String get noServicesFound => 'इस केंद्र पर कोई सेवा उपलब्ध नहीं है।';
+
+  @override
+  String get documentChecklistTitle => 'आवश्यक दस्तावेज़ सूची';
+
+  @override
+  String get documentChecklistSubtitle =>
+      'कार्यालय जाने से पहले कृपया सुनिश्चित करें कि आपके पास निम्नलिखित मूल दस्तावेज़ और प्रतियां उपलब्ध हैं:';
+
+  @override
+  String get categorySelectionTitle => 'बुकिंग श्रेणी';
+
+  @override
+  String get categoryNormalLabel => 'सामान्य नागरिक';
+
+  @override
+  String get categoryPriorityLabel => 'प्राथमिकता सेवा';
+
+  @override
+  String get categoryPriorityNotice =>
+      'वरिष्ठ नागरिकों (६०+), गर्भवती महिलाओं और दिव्यांगजनों के लिए। आगमन पर मान्य प्रमाण पत्र आवश्यक है।';
+
+  @override
+  String get beneficiaryNameLabel => 'लाभार्थी का नाम (वैकल्पिक)';
+
+  @override
+  String get beneficiaryNameHint => 'सेवा प्राप्त करने वाले व्यक्ति का नाम';
+
+  @override
+  String get bookAppointmentAction => 'निश्चित अपॉइंटमेंट बुक करें';
+
+  @override
+  String get bookingConfirmationTitle => 'अपॉइंटमेंट सफलतापूर्वक दर्ज हुआ!';
+
+  @override
+  String get bookingSuccessMessage =>
+      'आपका टोकन तैयार है। त्वरित सेवा सुनिश्चित करने के लिए समय पर पहुंचे।';
+
+  @override
+  String get viewTokenAction => 'मेरा टोकन देखें';
+
+  @override
+  String get onlineAlternativeNotice =>
+      'यह सेवा कार्यालय आए बिना ऑनलाइन भी उपलब्ध है! आप सीधे आधिकारिक पोर्टल का उपयोग कर सकते हैं।';
+
+  @override
+  String get openOnlineLink => 'ऑनलाइन पोर्टल खोलें';
+
+  @override
+  String get avgServiceDuration => 'औसत सेवा समय';
+
+  @override
+  String get currentQueueWait => 'वर्तमान कतार प्रतीक्षा';
+
+  @override
+  String get minutesUnit => 'मिनट';
+
+  @override
+  String get retryAction => 'पुनः प्रयास करें';
+
+  @override
+  String get officeHoursLabel => 'कार्यालय समय';
 }

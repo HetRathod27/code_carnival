@@ -186,8 +186,10 @@ class ApiClient {
     required String officeId,
     required String serviceId,
     required String category,
-    String? phone,
+    required String phone,
     String? beneficiaryName,
+    String? priorityDocType,
+    int travelMinutes = 0,
     required String idempotencyKey,
   }) async {
     final res = await _client.post(
@@ -202,6 +204,8 @@ class ApiClient {
         'category': category,
         'phone': phone,
         'beneficiary_name': beneficiaryName,
+        'priority_doc_type': priorityDocType,
+        'travel_minutes': travelMinutes,
       }),
     );
     if (res.statusCode != 201) {
@@ -213,14 +217,16 @@ class ApiClient {
 
   Future<TokenModel?> getActiveToken(String token) async {
     final res = await _client.get(
-      Uri.parse('$baseUrl/v1/citizen/tokens/active'),
+      Uri.parse('$baseUrl/v1/citizen/tokens/me/active'),
       headers: _headers(token),
     );
     if (res.statusCode == 404) return null;
     if (res.statusCode != 200) {
       throw Exception('Failed to fetch active token: ${res.statusCode}');
     }
-    return TokenModel.fromJson(jsonDecode(res.body));
+    final body = jsonDecode(res.body);
+    if (body == null) return null;
+    return TokenModel.fromJson(body);
   }
 
   Future<TokenModel> checkIn({

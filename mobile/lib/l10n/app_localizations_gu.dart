@@ -107,4 +107,85 @@ class AppLocalizationsGu extends AppLocalizations {
 
   @override
   String get serviceCompleted => 'સેવા સફળતાપૂર્વક પૂર્ણ થઈ';
+
+  @override
+  String get officesTitle => 'નાગરિક સેવા કેન્દ્રો';
+
+  @override
+  String get servicesTitle => 'ઉપલબ્ધ સેવાઓ';
+
+  @override
+  String get selectOfficePrompt =>
+      'તમારું સૌથી નજીકનું નગરપાલિકા કે વૉર્ડ કચેરી પસંદ કરો.';
+
+  @override
+  String get selectServicePrompt =>
+      'તમને જે સરકારી સેવાની જરૂર હોય તે પસંદ કરો.';
+
+  @override
+  String get noOfficesFound => 'હાલમાં કોઈ કેન્દ્ર ઉપલબ્ધ નથી.';
+
+  @override
+  String get noServicesFound => 'આ કેન્દ્ર પર કોઈ સેવા ઉપલબ્ધ નથી.';
+
+  @override
+  String get documentChecklistTitle => 'જરૂરી દસ્તાવેજોની યાદી';
+
+  @override
+  String get documentChecklistSubtitle =>
+      'કચેરીની મુલાકાત લેતા પહેલા નીચે જણાવેલ તમામ અસલ અને નકલો સાથે રાખવાની ખાતરી કરો:';
+
+  @override
+  String get categorySelectionTitle => 'બુકિંગ શ્રેણી';
+
+  @override
+  String get categoryNormalLabel => 'સામાન્ય નાગરિક';
+
+  @override
+  String get categoryPriorityLabel => 'પ્રાથમિકતા સેવા';
+
+  @override
+  String get categoryPriorityNotice =>
+      'વરિષ્ઠ નાગરિકો (૬૦+), સગર્ભા બહેનો અને દિવ્યાંગ નાગરિકો માટે. પહોંચતી વખતે માન્ય ઓળખપત્ર જરૂરી છે.';
+
+  @override
+  String get beneficiaryNameLabel => 'લાભાર્થીનું નામ (વૈકલ્પિક)';
+
+  @override
+  String get beneficiaryNameHint => 'જે નાગરિક સેવા લઈ રહ્યા છે તેમનું નામ';
+
+  @override
+  String get bookAppointmentAction => 'નિશ્ચિત મુલાકાત બુક કરો';
+
+  @override
+  String get bookingConfirmationTitle => 'મુલાકાત સફળતાપૂર્વક નોંધાઈ ગઈ!';
+
+  @override
+  String get bookingSuccessMessage =>
+      'તમારો ટોકન તૈયાર છે. સમયસર પહોંચવા વિનંતી જેથી ત્વરિત સેવા મળી શકે.';
+
+  @override
+  String get viewTokenAction => 'મારો ટોકન જુઓ';
+
+  @override
+  String get onlineAlternativeNotice =>
+      'આ સેવા કચેરી આવ્યા વગર ઓનલાઇન પણ ઉપલબ્ધ છે! તમે સીધા પોર્ટલનો ઉપયોગ કરી શકો છો.';
+
+  @override
+  String get openOnlineLink => 'ઓનલાઇન પોર્ટલ ખોલો';
+
+  @override
+  String get avgServiceDuration => 'સરેરાશ સેવા સમય';
+
+  @override
+  String get currentQueueWait => 'વર્તમાન લાઇન પ્રતીક્ષા';
+
+  @override
+  String get minutesUnit => 'મિનિટ';
+
+  @override
+  String get retryAction => 'ફરી પ્રયાસ કરો';
+
+  @override
+  String get officeHoursLabel => 'કચેરી સમય';
 }

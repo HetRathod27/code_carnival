@@ -291,6 +291,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Service Successfully Completed'**
   String get serviceCompleted;
+
+  /// No description provided for @officesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Civic Centres'**
+  String get officesTitle;
+
+  /// No description provided for @servicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Services'**
+  String get servicesTitle;
+
+  /// No description provided for @selectOfficePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your nearest municipal or ward office.'**
+  String get selectOfficePrompt;
+
+  /// No description provided for @selectServicePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the civic service you need assistance with.'**
+  String get selectServicePrompt;
+
+  /// No description provided for @noOfficesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No civic centres currently available.'**
+  String get noOfficesFound;
+
+  /// No description provided for @noServicesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No services available at this centre.'**
+  String get noServicesFound;
+
+  /// No description provided for @documentChecklistTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Required Document Checklist'**
+  String get documentChecklistTitle;
+
+  /// No description provided for @documentChecklistSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Please ensure you have originals and copies of the following documents before visiting the office:'**
+  String get documentChecklistSubtitle;
+
+  /// No description provided for @categorySelectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking Category'**
+  String get categorySelectionTitle;
+
+  /// No description provided for @categoryNormalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'General / Normal'**
+  String get categoryNormalLabel;
+
+  /// No description provided for @categoryPriorityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority Access'**
+  String get categoryPriorityLabel;
+
+  /// No description provided for @categoryPriorityNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Reserved for senior citizens (60+), pregnant women, and persons with disabilities. Valid ID/proof required upon arrival.'**
+  String get categoryPriorityNotice;
+
+  /// No description provided for @beneficiaryNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Beneficiary Name (Optional)'**
+  String get beneficiaryNameLabel;
+
+  /// No description provided for @beneficiaryNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name of the person being served'**
+  String get beneficiaryNameHint;
+
+  /// No description provided for @bookAppointmentAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Book Fixed Appointment'**
+  String get bookAppointmentAction;
+
+  /// No description provided for @bookingConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Confirmed!'**
+  String get bookingConfirmationTitle;
+
+  /// No description provided for @bookingSuccessMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your appointment has been registered. Arrive on time to ensure prompt service.'**
+  String get bookingSuccessMessage;
+
+  /// No description provided for @viewTokenAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View My Token'**
+  String get viewTokenAction;
+
+  /// No description provided for @onlineAlternativeNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This service is also available online! You can save a visit by using the official online portal.'**
+  String get onlineAlternativeNotice;
+
+  /// No description provided for @openOnlineLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Online Portal'**
+  String get openOnlineLink;
+
+  /// No description provided for @avgServiceDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Average Service Duration'**
+  String get avgServiceDuration;
+
+  /// No description provided for @currentQueueWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Queue Wait'**
+  String get currentQueueWait;
+
+  /// No description provided for @minutesUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'minutes'**
+  String get minutesUnit;
+
+  /// No description provided for @retryAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retryAction;
+
+  /// No description provided for @officeHoursLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Operating Hours'**
+  String get officeHoursLabel;
 }
 
 class _AppLocalizationsDelegate

@@ -391,3 +391,42 @@ Running log of milestones, completed tasks, verifications, and status.
 - **Assumptions**:
   - Mobile citizen app runs against local FastAPI API with DevAuth persona credentials in development.
 - **Git Commit & Tag**: `f0-done`
+
+---
+
+## F1: Citizen App A
+- **Date**: 2026-10-05
+- **Built**:
+  - `mobile/lib/l10n/app_en.arb`, `app_gu.arb`, `app_hi.arb`: Added full localization support for civic centre browsing, service directory, document checklist, mandatory confirmation prompt, booking category selection (Normal vs Priority), and booking confirmation.
+  - `mobile/lib/api/client.dart`:
+    - Updated active token endpoint to `GET /v1/citizen/tokens/me/active`.
+    - Added `priorityDocType`, `travelMinutes`, and `beneficiaryName` parameters to `bookToken`.
+    - Added dependency injection support for test execution.
+  - `mobile/lib/features/browse/offices_screen.dart`: Implemented civic centres listing screen with operating hours, full address, pull-to-refresh, error recovery, and forward navigation to services.
+  - `mobile/lib/features/browse/services_screen.dart`: Implemented service browsing screen with localized titles, average duration chips, indicative queue wait estimates, priority eligibility tags, and online alternative alerts with links to official government portals.
+  - `mobile/lib/features/book/book_screen.dart`:
+    - Document checklist rendered per Spec Section 2.1 Principle 14 (`service.required_docs`).
+    - Mandatory Confirmation Gating: Checkbox with prompt *"I confirm that I have all required original documents ready for this visit."* strictly gates the "Book Fixed Appointment" button (disabled until confirmed).
+    - Booking Category Switcher: General vs Priority Access (senior citizens 60+, pregnant mothers, persons with disabilities) with eligibility document selector.
+    - Token booking submission with client-generated RFC 4122 v4 UUID idempotency key, confirmation dialog, and redirection to home screen.
+  - `mobile/lib/features/home/home_screen.dart`: Added "Book Appointment" CTA button when no active appointment exists, localized UI strings, and navigation.
+  - `mobile/lib/main.dart`: Wired all citizen browsing and booking routes (`/offices`, `/offices/:officeId/services`, `/book/:officeId/:serviceId`).
+  - `mobile/test/f1_citizen_test.dart`: 7 automated widget tests verifying office listing, service listing, Gujarati translations, document checklist, mandatory confirmation gating, priority mode switching, and Rule 11 touch target dimensions (>= 56px height).
+- **Files**:
+  - `mobile/lib/l10n/app_en.arb`, `mobile/lib/l10n/app_gu.arb`, `mobile/lib/l10n/app_hi.arb`
+  - `mobile/lib/l10n/app_localizations.dart`, `app_localizations_en.dart`, `app_localizations_gu.dart`, `app_localizations_hi.dart`
+  - `mobile/lib/api/client.dart`
+  - `mobile/lib/features/browse/offices_screen.dart`, `mobile/lib/features/browse/services_screen.dart`
+  - `mobile/lib/features/book/book_screen.dart`, `mobile/lib/features/home/home_screen.dart`, `mobile/lib/main.dart`
+  - `mobile/test/f1_citizen_test.dart`
+  - `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `flutter analyze` in `mobile/`: No issues found!
+  - `flutter test` in `mobile/`: All 7 tests passed!
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 57 pytest tests passed in 45.03s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 52 source files, Web typecheck & build: OK, Flutter analyze: OK).
+- **Assumptions**:
+  - Offline/Dev testing utilizes DevAuth credentials with fallback to citizen persona dev token.
+  - Booking is gated until citizen explicitly confirms document readiness per Spec v3.
+- **Git Commit & Tag**: `f1-done`
+
+

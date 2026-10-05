@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
@@ -62,16 +63,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('QueueLess'),
+        title: Text(l10n.appName),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: l10n.retryAction,
             onPressed: _loadActiveToken,
           ),
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Sign Out',
             onPressed: _logout,
           ),
         ],
@@ -86,26 +91,27 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error_outline, size: 48, color: CivicTheme.error),
-                          const SizedBox(height: 12),
-                          Text(_error!, textAlign: TextAlign.center),
+                          const Icon(Icons.error_outline, size: 56, color: CivicTheme.error),
                           const SizedBox(height: 16),
-                          ElevatedButton(
+                          Text(_error!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.refresh),
+                            label: Text(l10n.retryAction),
                             onPressed: _loadActiveToken,
-                            child: const Text('Retry'),
                           ),
                         ],
                       ),
                     )
                   : _activeToken != null
-                      ? _buildActiveTokenCard(_activeToken!)
-                      : _buildNoActiveTokenView(),
+                      ? _buildActiveTokenCard(_activeToken!, l10n)
+                      : _buildNoActiveTokenView(l10n),
         ),
       ),
     );
   }
 
-  Widget _buildActiveTokenCard(TokenModel token) {
+  Widget _buildActiveTokenCard(TokenModel token, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -126,8 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             children: [
               Text(
-                'YOUR ACTIVE TOKEN',
-                style: TextStyle(
+                l10n.myToken.toUpperCase(),
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.5,
@@ -166,10 +172,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Citizens Ahead:'),
+                  Text(l10n.waitingAhead, style: const TextStyle(fontSize: 16)),
                   Text(
                     '${token.waitingAhead}',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -177,40 +183,61 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Estimated Turn:'),
+                  Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16)),
                   Text(
                     token.lastEtaMinutes != null
-                        ? '~${token.lastEtaMinutes!.round()} min'
+                        ? '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}'
                         : 'Calculating…',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
             ],
           ),
         ),
+        const Spacer(),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.add_circle_outline),
+          label: Text(l10n.bookSlot),
+          onPressed: () => context.push('/offices'),
+        ),
       ],
     );
   }
 
-  Widget _buildNoActiveTokenView() {
+  Widget _buildNoActiveTokenView(AppLocalizations l10n) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.confirmation_number_outlined, size: 72, color: CivicTheme.border),
-          const SizedBox(height: 16),
-          const Text(
-            'No Active Appointment',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Book an appointment at your local civic centre to avoid waiting in queues.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: CivicTheme.textSecondary),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.confirmation_number_outlined, size: 80, color: CivicTheme.border),
+            const SizedBox(height: 20),
+            const Text(
+              'No Active Appointment',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: CivicTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l10n.welcomeSubtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, color: CivicTheme.textSecondary, height: 1.4),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.calendar_month, size: 24),
+              label: Text(l10n.bookSlot),
+              onPressed: () {
+                context.push('/offices');
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

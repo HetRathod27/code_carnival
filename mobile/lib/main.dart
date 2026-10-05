@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:mobile/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme.dart';
 import 'features/language/language_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/browse/offices_screen.dart';
+import 'features/browse/services_screen.dart';
+import 'features/book/book_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +25,22 @@ class QueueLessCitizenApp extends StatefulWidget {
 
 class _QueueLessCitizenAppState extends State<QueueLessCitizenApp> {
   Locale _currentLocale = const Locale('en');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedLocale();
+  }
+
+  Future<void> _loadSavedLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCode = prefs.getString('ql_language');
+    if (savedCode != null && mounted) {
+      setState(() {
+        _currentLocale = Locale(savedCode);
+      });
+    }
+  }
 
   void _setLocale(Locale locale) {
     setState(() {
@@ -43,6 +63,25 @@ class _QueueLessCitizenAppState extends State<QueueLessCitizenApp> {
         path: '/home',
         builder: (context, state) => const HomeScreen(),
       ),
+      GoRoute(
+        path: '/offices',
+        builder: (context, state) => const OfficesScreen(),
+      ),
+      GoRoute(
+        path: '/offices/:officeId/services',
+        builder: (context, state) {
+          final officeId = state.pathParameters['officeId'] ?? '';
+          return ServicesScreen(officeId: officeId);
+        },
+      ),
+      GoRoute(
+        path: '/book/:officeId/:serviceId',
+        builder: (context, state) {
+          final officeId = state.pathParameters['officeId'] ?? '';
+          final serviceId = state.pathParameters['serviceId'] ?? '';
+          return BookScreen(officeId: officeId, serviceId: serviceId);
+        },
+      ),
     ],
   );
 
@@ -53,16 +92,8 @@ class _QueueLessCitizenAppState extends State<QueueLessCitizenApp> {
       debugShowCheckedModeBanner: false,
       theme: CivicTheme.lightTheme,
       locale: _currentLocale,
-      supportedLocales: const [
-        Locale('en'),
-        Locale('gu'),
-        Locale('hi'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: _router,
     );
   }
