@@ -56,5 +56,14 @@
   "currentQueueWait": "Current Queue Wait",
   "minutesUnit": "minutes",
   "retryAction": "Retry",
-  "officeHoursLabel": "Operating Hours"
+  "officeHoursLabel": "Operating Hours",
+  "onMyWayAction": "I'm on My Way (+5 min)",
+  "onMyWaySuccess": "Extra 5 minutes grace period granted!",
+  "onMyWayClaimed": "Extension Claimed",
+  "presenceVerified": "Arrival Verified at Centre",
+  "enterQrCodePrompt": "Enter or Scan Entrance QR Code",
+  "confirmCancelPrompt": "Are you sure you want to cancel this appointment?",
+  "cancelReasonLabel": "Reason for cancellation (optional)",
+  "etaRangePrefix": "Estimated Turn Window:",
+  "nowServingAt": "Currently Serving:"
 }

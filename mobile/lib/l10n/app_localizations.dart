@@ -441,6 +441,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Operating Hours'**
   String get officeHoursLabel;
+
+  /// No description provided for @onMyWayAction.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m on My Way (+5 min)'**
+  String get onMyWayAction;
+
+  /// No description provided for @onMyWaySuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra 5 minutes grace period granted!'**
+  String get onMyWaySuccess;
+
+  /// No description provided for @onMyWayClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Extension Claimed'**
+  String get onMyWayClaimed;
+
+  /// No description provided for @presenceVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrival Verified at Centre'**
+  String get presenceVerified;
+
+  /// No description provided for @enterQrCodePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter or Scan Entrance QR Code'**
+  String get enterQrCodePrompt;
+
+  /// No description provided for @confirmCancelPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to cancel this appointment?'**
+  String get confirmCancelPrompt;
+
+  /// No description provided for @cancelReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for cancellation (optional)'**
+  String get cancelReasonLabel;
+
+  /// No description provided for @etaRangePrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated Turn Window:'**
+  String get etaRangePrefix;
+
+  /// No description provided for @nowServingAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently Serving:'**
+  String get nowServingAt;
 }
 
 class _AppLocalizationsDelegate

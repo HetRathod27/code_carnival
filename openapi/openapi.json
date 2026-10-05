@@ -393,6 +393,64 @@
         }
       }
     },
+    "/v1/citizen/tokens/{token_id}/on-my-way": {
+      "post": {
+        "tags": [
+          "Citizen"
+        ],
+        "summary": "Citizen On My Way",
+        "operationId": "citizen_on_my_way_v1_citizen_tokens__token_id__on_my_way_post",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/citizen/devices": {
       "post": {
         "tags": [
@@ -4432,6 +4490,18 @@
               }
             ],
             "title": "Arrived At"
+          },
+          "on_my_way_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On My Way At"
           },
           "called_at": {
             "anyOf": [

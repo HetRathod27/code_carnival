@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, status
@@ -9,7 +10,17 @@ from api.app.core.auth import UserClaims, get_current_user, require_role
 from api.app.core.clock import Clock, get_clock
 from api.app.core.db import get_db
 from api.app.core.errors import AppException, ErrorCode
-from api.app.models.entities import Counter, Device, Office, Profile, QueueState, Service, Token
+from api.app.models.entities import (
+    Counter,
+    Device,
+    Office,
+    OfficeSettings,
+    Profile,
+    QueueState,
+    Service,
+    Token,
+    TokenEvent,
+)
 from api.app.schemas.citizen import (
     CheckInIn,
     DeviceRegisterIn,
@@ -71,6 +82,7 @@ async def build_token_out(token: Token, session: AsyncSession, clock: Clock) -> 
         counter_id=token.counter_id,
         counter_label=counter_label,
         arrived_at=token.arrived_at,
+        on_my_way_at=token.on_my_way_at,
         called_at=token.called_at,
         grace_deadline=token.grace_deadline,
         serving_started_at=token.serving_started_at,
@@ -277,6 +289,63 @@ async def citizen_check_in(
     )
     await session.commit()
     return await build_token_out(checked, session, clock)
+
+
+@router.post("/tokens/{token_id}/on-my-way", response_model=TokenOut)
+async def citizen_on_my_way(
+    token_id: str,
+    user: UserClaims = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> TokenOut:
+    result = await session.execute(select(Token).where(Token.id == token_id))
+    token = result.scalar_one_or_none()
+    if not token:
+        raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    if user.role == "CITIZEN":
+        is_owner = (token.citizen_id and token.citizen_id == user.user_id) or (
+            token.phone and user.phone and token.phone == user.phone
+        )
+        if not is_owner:
+            raise AppException(ErrorCode.FORBIDDEN, "Access denied to token", status.HTTP_403_FORBIDDEN)
+
+    if token.state not in ("CALLED", "WAITING"):
+        raise AppException(
+            ErrorCode.INVALID_TRANSITION,
+            f"Cannot request extension for token in state {token.state}",
+            status.HTTP_409_CONFLICT,
+        )
+
+    if token.on_my_way_at is not None:
+        raise AppException(
+            ErrorCode.INVALID_TRANSITION,
+            "On-my-way extension has already been claimed for this token",
+            status.HTTP_409_CONFLICT,
+        )
+
+    s_stmt = select(OfficeSettings).where(OfficeSettings.office_id == token.office_id)
+    s_res = await session.execute(s_stmt)
+    settings_obj = s_res.scalar_one_or_none()
+    ext_min = settings_obj.on_my_way_extension_minutes if settings_obj else 5
+
+    now = clock.now()
+    token.on_my_way_at = now
+    if token.grace_deadline is not None:
+        token.grace_deadline = token.grace_deadline + timedelta(minutes=ext_min)
+
+    event = TokenEvent(
+        token_id=token.id,
+        from_state=token.state,
+        to_state=token.state,
+        actor_type="CITIZEN",
+        actor_id=user.user_id,
+        at=now,
+        meta={"action": "ON_MY_WAY", "extension_minutes": ext_min},
+    )
+    session.add(event)
+    await session.commit()
+    return await build_token_out(token, session, clock)
 
 
 @router.post("/devices", response_model=SuccessResponse)

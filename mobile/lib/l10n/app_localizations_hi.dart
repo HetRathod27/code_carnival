@@ -189,4 +189,32 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get officeHoursLabel => 'कार्यालय समय';
+
+  @override
+  String get onMyWayAction => 'मैं रास्ते में हूँ (+५ मिनट)';
+
+  @override
+  String get onMyWaySuccess => 'अतिरिक्त ५ मिनट की छूट मिल गई है!';
+
+  @override
+  String get onMyWayClaimed => 'समय विस्तार लिया जा चुका है';
+
+  @override
+  String get presenceVerified => 'कार्यालय में उपस्थिति सत्यापित';
+
+  @override
+  String get enterQrCodePrompt => 'प्रवेश द्वार QR कोड दर्ज करें या स्कैन करें';
+
+  @override
+  String get confirmCancelPrompt =>
+      'क्या आप वाकई इस अपॉइंटमेंट को रद्द करना चाहते हैं?';
+
+  @override
+  String get cancelReasonLabel => 'रद्द करने का कारण (वैकल्पिक)';
+
+  @override
+  String get etaRangePrefix => 'अनुमानित बारी विंडो:';
+
+  @override
+  String get nowServingAt => 'वर्तमान में सेवा:';
 }

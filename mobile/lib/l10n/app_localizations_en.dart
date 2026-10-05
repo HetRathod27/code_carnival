@@ -188,4 +188,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get officeHoursLabel => 'Operating Hours';
+
+  @override
+  String get onMyWayAction => 'I\'m on My Way (+5 min)';
+
+  @override
+  String get onMyWaySuccess => 'Extra 5 minutes grace period granted!';
+
+  @override
+  String get onMyWayClaimed => 'Extension Claimed';
+
+  @override
+  String get presenceVerified => 'Arrival Verified at Centre';
+
+  @override
+  String get enterQrCodePrompt => 'Enter or Scan Entrance QR Code';
+
+  @override
+  String get confirmCancelPrompt =>
+      'Are you sure you want to cancel this appointment?';
+
+  @override
+  String get cancelReasonLabel => 'Reason for cancellation (optional)';
+
+  @override
+  String get etaRangePrefix => 'Estimated Turn Window:';
+
+  @override
+  String get nowServingAt => 'Currently Serving:';
 }

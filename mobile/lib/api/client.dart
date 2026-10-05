@@ -93,8 +93,11 @@ class TokenModel {
   final String? servingStartedAt;
   final String? completedAt;
   final double? lastEtaMinutes;
+  final String? lastEtaReason;
   final double? etaLow;
   final double? etaHigh;
+  final String? onMyWayAt;
+  final String? graceDeadline;
   final int waitingAhead;
   final String? nowServing;
 
@@ -116,8 +119,11 @@ class TokenModel {
     this.servingStartedAt,
     this.completedAt,
     this.lastEtaMinutes,
+    this.lastEtaReason,
     this.etaLow,
     this.etaHigh,
+    this.onMyWayAt,
+    this.graceDeadline,
     required this.waitingAhead,
     this.nowServing,
   });
@@ -141,8 +147,11 @@ class TokenModel {
       servingStartedAt: json['serving_started_at'] as String?,
       completedAt: json['completed_at'] as String?,
       lastEtaMinutes: (json['last_eta_minutes'] as num?)?.toDouble(),
+      lastEtaReason: json['last_eta_reason'] as String?,
       etaLow: (json['eta_low'] as num?)?.toDouble(),
       etaHigh: (json['eta_high'] as num?)?.toDouble(),
+      onMyWayAt: json['on_my_way_at'] as String?,
+      graceDeadline: json['grace_deadline'] as String?,
       waitingAhead: json['waiting_ahead'] as int? ?? 0,
       nowServing: json['now_serving'] as String?,
     );
@@ -259,6 +268,21 @@ class ApiClient {
     if (res.statusCode != 200) {
       final err = jsonDecode(res.body);
       throw Exception(err['error']?['message'] ?? 'Cancellation failed');
+    }
+    return TokenModel.fromJson(jsonDecode(res.body));
+  }
+
+  Future<TokenModel> onMyWay({
+    required String token,
+    required String tokenId,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/v1/citizen/tokens/$tokenId/on-my-way'),
+      headers: _headers(token),
+    );
+    if (res.statusCode != 200) {
+      final err = jsonDecode(res.body);
+      throw Exception(err['error']?['message'] ?? 'On-my-way request failed');
     }
     return TokenModel.fromJson(jsonDecode(res.body));
   }

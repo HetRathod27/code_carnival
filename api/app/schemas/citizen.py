@@ -54,6 +54,7 @@ class TokenOut(BaseModel):
     counter_id: str | None = None
     counter_label: str | None = None
     arrived_at: datetime | None = None
+    on_my_way_at: datetime | None = None
     called_at: datetime | None = None
     grace_deadline: datetime | None = None
     serving_started_at: datetime | None = None

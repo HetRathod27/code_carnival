@@ -56,5 +56,14 @@
   "currentQueueWait": "वर्तमान कतार प्रतीक्षा",
   "minutesUnit": "मिनट",
   "retryAction": "पुनः प्रयास करें",
-  "officeHoursLabel": "कार्यालय समय"
+  "officeHoursLabel": "कार्यालय समय",
+  "onMyWayAction": "मैं रास्ते में हूँ (+५ मिनट)",
+  "onMyWaySuccess": "अतिरिक्त ५ मिनट की छूट मिल गई है!",
+  "onMyWayClaimed": "समय विस्तार लिया जा चुका है",
+  "presenceVerified": "कार्यालय में उपस्थिति सत्यापित",
+  "enterQrCodePrompt": "प्रवेश द्वार QR कोड दर्ज करें या स्कैन करें",
+  "confirmCancelPrompt": "क्या आप वाकई इस अपॉइंटमेंट को रद्द करना चाहते हैं?",
+  "cancelReasonLabel": "रद्द करने का कारण (वैकल्पिक)",
+  "etaRangePrefix": "अनुमानित बारी विंडो:",
+  "nowServingAt": "वर्तमान में सेवा:"
 }

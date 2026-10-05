@@ -56,5 +56,14 @@
   "currentQueueWait": "વર્તમાન લાઇન પ્રતીક્ષા",
   "minutesUnit": "મિનિટ",
   "retryAction": "ફરી પ્રયાસ કરો",
-  "officeHoursLabel": "કચેરી સમય"
+  "officeHoursLabel": "કચેરી સમય",
+  "onMyWayAction": "હું રસ્તામાં છું (+૫ મિનિટ)",
+  "onMyWaySuccess": "વધારાની ૫ મિનિટ મંજૂર કરવામાં આવી છે!",
+  "onMyWayClaimed": "સમય વધારો મેળવી લીધો છે",
+  "presenceVerified": "કચેરી પર હાજરી ચકાસાયેલ છે",
+  "enterQrCodePrompt": "પ્રવેશ QR કોડ દાખલ કરો અથવા સ્કેન કરો",
+  "confirmCancelPrompt": "શું તમે ખરેખર આ મુલાકાત રદ કરવા માંગો છો?",
+  "cancelReasonLabel": "રદ કરવાનું કારણ (વૈકલ્પિક)",
+  "etaRangePrefix": "અંદાજિત વારા વિન્ડો:",
+  "nowServingAt": "હાલમાં સેવા:"
 }

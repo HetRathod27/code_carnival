@@ -429,4 +429,39 @@ Running log of milestones, completed tasks, verifications, and status.
   - Booking is gated until citizen explicitly confirms document readiness per Spec v3.
 - **Git Commit & Tag**: `f1-done`
 
+---
+
+## F2: Citizen App B
+- **Date**: 2026-10-05
+- **Built**:
+  - `mobile/lib/features/home/home_screen.dart`:
+    - Full Active Token View: Displays 54px display code, status chip, queue metrics (citizens ahead, now serving token & counter), ETA estimate (`~18 minutes`), live ETA range (`14 – 22 minutes`), and live adjustment reason (`last_eta_reason`).
+    - Presence Check-In: Interactive QR modal allowing entrance QR scan/entry and calling `POST /v1/citizen/tokens/{id}/check-in`, updating status to verified.
+    - "I'm on My Way" (+5 min) extension: Prominent action button calling `POST /v1/citizen/tokens/{id}/on-my-way`, granting a 5-minute extension on the grace deadline (Spec Section 24), updating status pill to "Extension Claimed", and disabling repeated clicks.
+    - Cancellation flow: Outlined cancel button with confirmation dialog calling `POST /v1/citizen/tokens/{id}/cancel` and clearing active view.
+    - 20-second automatic polling fallback timer (`Timer.periodic`) per Spec Rule 8.
+  - `api/app/routers/citizen.py` & `api/app/schemas/citizen.py`:
+    - Added `POST /v1/citizen/tokens/{token_id}/on-my-way` endpoint with role/ownership check, state guard (CALLED/WAITING), single-claim enforcement, `on_my_way_extension_minutes` lookup from `office_settings`, `token_events` audit row logging, and `on_my_way_at` timestamp.
+    - Updated `TokenOut` schema and `build_token_out` to include `on_my_way_at`.
+  - `mobile/lib/api/client.dart`: Added `onMyWayAt`, `graceDeadline`, and `lastEtaReason` to `TokenModel`, and implemented `onMyWay(...)` client method.
+  - `mobile/lib/l10n/app_en.arb`, `app_gu.arb`, `app_hi.arb`: Added localized strings for on-my-way action, extension claimed, arrival verification, cancel confirmation, and ETA window prefixes.
+  - `mobile/test/f2_citizen_test.dart`: 4 comprehensive automated widget tests verifying active token metrics rendering, presence check-in lifecycle, on-my-way extension claim and disablement, and appointment cancellation.
+  - `api/tests/api/test_routes.py`: Added unit tests for `POST /v1/citizen/tokens/{token_id}/on-my-way` (successful extension, duplicate claim rejection 409).
+- **Files**:
+  - `mobile/lib/features/home/home_screen.dart`, `mobile/lib/api/client.dart`
+  - `mobile/lib/l10n/app_en.arb`, `mobile/lib/l10n/app_gu.arb`, `mobile/lib/l10n/app_hi.arb`
+  - `mobile/lib/l10n/app_localizations.dart`, `app_localizations_en.dart`, `app_localizations_gu.dart`, `app_localizations_hi.dart`
+  - `api/app/routers/citizen.py`, `api/app/schemas/citizen.py`, `api/tests/api/test_routes.py`
+  - `openapi/openapi.json`
+  - `mobile/test/f2_citizen_test.dart`
+  - `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `flutter analyze` in `mobile/`: No issues found!
+  - `flutter test` in `mobile/`: All 11 tests passed!
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 57 pytest tests passed in 63.46s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 52 source files, Web typecheck & build: OK, Flutter analyze: OK).
+- **Assumptions**:
+  - "I'm on my way" extension is claimable once per token and extends `grace_deadline` by `on_my_way_extension_minutes` (default 5 min).
+- **Git Commit & Tag**: `f2-done`
+
+
 

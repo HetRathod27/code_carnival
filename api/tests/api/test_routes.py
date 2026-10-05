@@ -199,6 +199,15 @@ async def test_citizen_booking_and_lifecycle(client, dev_auth, vclock):
     )
     assert resp_forbidden.status_code == 403
 
+    # 8b. On-my-way extension
+    resp_omw = await client.post(f"/v1/citizen/tokens/{token_id}/on-my-way", headers=auth_headers)
+    assert resp_omw.status_code == 200
+    assert resp_omw.json()["on_my_way_at"] is not None
+
+    # Cannot claim on-my-way twice
+    resp_omw2 = await client.post(f"/v1/citizen/tokens/{token_id}/on-my-way", headers=auth_headers)
+    assert resp_omw2.status_code == 409
+
     # 9. Cancel token
     resp_cancel = await client.post(f"/v1/citizen/tokens/{token_id}/cancel", headers=auth_headers)
     assert resp_cancel.status_code == 200
