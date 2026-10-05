@@ -61,11 +61,21 @@ async def test_domain_transition_matrix(session_factory, vclock):
     # Unique business date per test run to prevent any collision across runs
     run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
     run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
-    matrix_clock = VirtualClock(datetime(2035, run_month, run_day, 9, 30, 0, tzinfo=timezone.utc))
+    run_year = 2050 + (int(uuid.uuid4().hex[6:12], 16) % 7000)
+    matrix_clock = VirtualClock(datetime(run_year, run_month, run_day, 9, 30, 0, tzinfo=timezone.utc))
     b_date = matrix_clock.business_date()
 
     async with session_factory() as session:
         async with session.begin():
+            # Clean up in case of any prior collision
+            await session.execute(
+                text("DELETE FROM token_events WHERE token_id IN (SELECT id FROM tokens WHERE office_id = 'ward-central-01' AND service_id = 'srv-bc' AND business_date = :b_date)"),
+                {"b_date": b_date},
+            )
+            await session.execute(
+                text("DELETE FROM tokens WHERE office_id = 'ward-central-01' AND service_id = 'srv-bc' AND business_date = :b_date"),
+                {"b_date": b_date},
+            )
             # Setup base queue_state
             existing_qs = await session.get(QueueState, ("ward-central-01", "srv-bc", b_date))
             if not existing_qs:

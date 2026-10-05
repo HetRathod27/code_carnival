@@ -358,3 +358,36 @@ Running log of milestones, completed tasks, verifications, and status.
   - `AUTH_PROVIDER="dev"` remains default for local development and offline test execution.
   - Setting `AUTH_PROVIDER="supabase"` enables live Supabase JWT verification.
 - **Git Commit & Tag**: `d1-done`
+
+---
+
+## F0: Flutter Skeleton (Human Gate)
+- **Date**: 2026-10-05
+- **Built**:
+  - `mobile/`: Complete Flutter mobile application skeleton initialized with package id `in.gov.queueless.mobile` (Flutter 3.44.8, Dart 3.12.2).
+  - `mobile/lib/core/theme.dart`: Civic High-Legibility design system faithfully implementing the Google Stitch Mobile project (`projects/16142927226197796836`): Deep Civic Blue (`#0E5A8A`), Primary Soft (`#E3F0F8`), Saffron Accent (`#F4A21F`), Neutral Canvas (`#F6F8FA`), Surface (`#FFFFFF`), solid structural borders (`#D3DCE4`), elevated 18px body typography, and 56px minimum touch targets.
+  - `mobile/lib/core/router.dart` & `mobile/lib/main.dart`: Declarative navigation using `go_router` (`/` language selection, `/auth` phone OTP sign-in, `/home` active token screen), wrapped in Riverpod `ProviderScope`.
+  - `mobile/lib/api/client.dart`: Typed Dart HTTP client wrapping backend endpoints (`fetchOffices`, `fetchServices`, `bookToken`, `getActiveToken`, `checkIn`, `cancelToken`, `updateLanguage`, `getDevToken`).
+  - `mobile/lib/l10n/`: Multilingual localization infrastructure supporting English (`app_en.arb`), Gujarati (`app_gu.arb`), and Hindi (`app_hi.arb`) configured with `l10n.yaml` and `flutter_localizations`.
+  - Screens:
+    - `LanguageScreen`: First-run language picker with persistent language preference storage in `SharedPreferences`.
+    - `LoginScreen`: Phone number input and 6-digit OTP verification.
+    - `HomeScreen`: Real-time display of active appointment token with queue position, estimated turn, and empty state.
+  - `mobile/test/widget_test.dart`: Automated smoke test verifying application launch, civic branding, and multilingual language options.
+  - Concurrency & DB hardening: Fixed date collision in `test_domain_transition_matrix` (`api/tests/domain/test_domain_core.py`) with per-run unique years and pre-cleanup.
+- **Files**:
+  - `mobile/pubspec.yaml`, `mobile/l10n.yaml`, `mobile/lib/main.dart`
+  - `mobile/lib/core/theme.dart`, `mobile/lib/api/client.dart`
+  - `mobile/lib/l10n/app_en.arb`, `mobile/lib/l10n/app_gu.arb`, `mobile/lib/l10n/app_hi.arb`
+  - `mobile/lib/features/language/language_screen.dart`
+  - `mobile/lib/features/auth/login_screen.dart`
+  - `mobile/lib/features/home/home_screen.dart`
+  - `mobile/test/widget_test.dart`
+  - `api/tests/domain/test_domain_core.py`, `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `flutter analyze` in `mobile/`: No issues found!
+  - `flutter test` in `mobile/`: All tests passed!
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 57 pytest tests passed in 42.04s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 52 source files, Web typecheck & build: OK, Flutter analyze: OK).
+- **Assumptions**:
+  - Mobile citizen app runs against local FastAPI API with DevAuth persona credentials in development.
+- **Git Commit & Tag**: `f0-done`
