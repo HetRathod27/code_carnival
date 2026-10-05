@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.app.core.config import settings
@@ -26,6 +27,15 @@ app = FastAPI(
 
 # Register uniform error format
 register_error_handlers(app)
+
+# Allow CORS for web and mobile clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include functional routers
 app.include_router(citizen.router)
