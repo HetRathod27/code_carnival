@@ -100,12 +100,101 @@ class DevAuth(AuthProvider):
             raise AppException(ErrorCode.UNAUTHORIZED, f"Token verification failed: {e}", status.HTTP_401_UNAUTHORIZED) from e
 
 
+class SupabaseAuth(AuthProvider):
+    """
+    Verifies Supabase Auth JWTs.
+    Extracts user_id from 'sub', role and office_id from app_metadata / user_metadata.
+    Uses settings.SUPABASE_JWT_SECRET.
+    """
+    def __init__(self, secret: str | None = None):
+        self.secret: str = str(
+            secret
+            or getattr(settings, "SUPABASE_JWT_SECRET", "")
+            or getattr(settings, "JWT_SECRET", "dev-jwt-secret-queueless-123456")
+        )
+
+    def create_token(self, claims: UserClaims, expires_in_seconds: int = 86400) -> str:
+        header = {"alg": "HS256", "typ": "JWT"}
+        now = int(time.time())
+        payload: dict[str, Any] = {
+            "sub": claims.user_id,
+            "aud": "authenticated",
+            "role": "authenticated",
+            "phone": claims.phone,
+            "app_metadata": {
+                "provider": "phone",
+                "role": claims.role,
+                "office_id": claims.office_id,
+            },
+            "user_metadata": {
+                "name": claims.name,
+                "phone": claims.phone,
+                "role": claims.role,
+                "office_id": claims.office_id,
+            },
+            "iat": now,
+            "exp": now + expires_in_seconds,
+        }
+
+        header_b64 = b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+        payload_b64 = b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+        signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
+        sig = hmac.new(self.secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+        sig_b64 = b64url_encode(sig)
+        return f"{header_b64}.{payload_b64}.{sig_b64}"
+
+    def verify_token(self, token: str) -> UserClaims:
+        try:
+            parts = token.split(".")
+            if len(parts) != 3:
+                raise AppException(ErrorCode.UNAUTHORIZED, "Invalid token structure", status.HTTP_401_UNAUTHORIZED)
+            header_b64, payload_b64, sig_b64 = parts
+            signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
+            expected_sig = hmac.new(self.secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+            actual_sig = b64url_decode(sig_b64)
+            if not hmac.compare_digest(expected_sig, actual_sig):
+                raise AppException(ErrorCode.UNAUTHORIZED, "Invalid Supabase token signature", status.HTTP_401_UNAUTHORIZED)
+
+            payload_raw = b64url_decode(payload_b64).decode("utf-8")
+            payload = json.loads(payload_raw)
+
+            exp = payload.get("exp")
+            if exp and time.time() > exp:
+                raise AppException(ErrorCode.UNAUTHORIZED, "Token has expired", status.HTTP_401_UNAUTHORIZED)
+
+            app_meta = payload.get("app_metadata") or {}
+            user_meta = payload.get("user_metadata") or {}
+
+            role = app_meta.get("role") or user_meta.get("role") or "CITIZEN"
+            office_id = app_meta.get("office_id") or user_meta.get("office_id")
+            phone = payload.get("phone") or user_meta.get("phone")
+            name = user_meta.get("name") or user_meta.get("full_name")
+
+            return UserClaims(
+                user_id=payload["sub"],
+                role=role,
+                phone=phone,
+                office_id=office_id,
+                name=name,
+            )
+        except AppException:
+            raise
+        except Exception as e:
+            raise AppException(ErrorCode.UNAUTHORIZED, f"Supabase token verification failed: {e}", status.HTTP_401_UNAUTHORIZED) from e
+
 
 _dev_auth_instance = DevAuth()
+_supabase_auth_instance: SupabaseAuth | None = None
 
 
 def get_auth_provider() -> AuthProvider:
+    global _supabase_auth_instance
+    if getattr(settings, "AUTH_PROVIDER", "dev").lower() == "supabase":
+        if _supabase_auth_instance is None:
+            _supabase_auth_instance = SupabaseAuth()
+        return _supabase_auth_instance
     return _dev_auth_instance
+
 
 
 def get_current_user(

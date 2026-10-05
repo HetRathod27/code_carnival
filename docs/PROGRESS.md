@@ -332,3 +332,29 @@ Running log of milestones, completed tasks, verifications, and status.
 - **Assumptions**:
   - Public display board at `/display/:officeId` operates without requiring login so it can run directly on lobby TV screens or browser monitors.
 - **Git Commit & Tag**: `m6b-done`
+
+---
+
+## D1: Supabase & Deploy Prep (Human Gate)
+- **Date**: 2026-10-05
+- **Built**:
+  - `api/app/core/auth.py`: Implemented `SupabaseAuth(AuthProvider)` capable of decoding and verifying Supabase JWT tokens via HMAC SHA256 (`SUPABASE_JWT_SECRET`), extracting `sub`, `role` (from `app_metadata`/`user_metadata`), `office_id`, `phone`, and `name`. Updated `get_auth_provider()` to dynamically switch between `DevAuth` and `SupabaseAuth` based on `settings.AUTH_PROVIDER`.
+  - `api/app/core/config.py`: Added configuration attributes `AUTH_PROVIDER`, `JWT_SECRET`, `SUPABASE_URL`, and `SUPABASE_JWT_SECRET`.
+  - `api/tests/unit/test_supabase_auth.py`: 6 comprehensive unit tests verifying valid token decoding, expired token rejection (401), tampered signature rejection (401), malformed token rejection, default role assignment, and provider switching.
+  - `supabase/setup.sql`: Complete Supabase project configuration SQL:
+    - Realtime publication on `queue_state` ONLY (Spec Rule 3 Realtime Exception).
+    - RLS enabled across all tables with read-only public access to `queue_state`, `offices`, and `services`. Strict rejection of direct client inserts/updates/deletes on tokens or appointments (API owns all business logic).
+    - `pg_cron` + `pg_net` background job executing `/internal/tick` every minute.
+  - `api/Dockerfile`: Multi-stage production container build with non-root unprivileged `queueless` user, libpq runtime, healthcheck on `/healthz`, and uvicorn runner.
+  - `deploy/k8s-deployment.yaml`: Kubernetes Deployment (2 replicas) and ClusterIP Service manifest with health probes and secret environment references.
+  - `docs/HUMAN_TODO.md`: Exact step-by-step guidance for Supabase project creation, key retrieval, phone OTP setup, and SQL execution.
+- **Files**:
+  - `api/app/core/auth.py`, `api/app/core/config.py`, `api/tests/unit/test_supabase_auth.py`
+  - `supabase/setup.sql`, `api/Dockerfile`, `deploy/k8s-deployment.yaml`
+  - `docs/HUMAN_TODO.md`, `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 57 pytest tests passed in 42.05s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 52 source files, Web typecheck: OK, Vite build: OK).
+- **Assumptions**:
+  - `AUTH_PROVIDER="dev"` remains default for local development and offline test execution.
+  - Setting `AUTH_PROVIDER="supabase"` enables live Supabase JWT verification.
+- **Git Commit & Tag**: `d1-done`
