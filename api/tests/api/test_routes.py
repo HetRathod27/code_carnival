@@ -316,6 +316,12 @@ async def test_desk_assisted_booking_and_admin_settings(client, dev_auth):
     assert "qr_data" in slip
     assert slip["token"]["arrived_at"] is not None
 
+    # Verify GET /v1/desk/tokens/{id}/slip reprint
+    tok_id = slip["token"]["id"]
+    resp_get_slip = await client.get(f"/v1/desk/tokens/{tok_id}/slip", headers=desk_headers)
+    assert resp_get_slip.status_code == 200
+    assert resp_get_slip.json()["printable_code"] == slip["printable_code"]
+
     # 2. Admin settings
     admin_token = dev_auth.create_token(UserClaims(user_id="admin-user-1", role="ADMIN", office_id=office_id))
     admin_headers = {"Authorization": f"Bearer {admin_token}"}

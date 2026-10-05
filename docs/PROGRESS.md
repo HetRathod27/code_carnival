@@ -308,5 +308,27 @@ Running log of milestones, completed tasks, verifications, and status.
   - `scripts/verify.ps1`: Exit code 0 (51 passed in 40.74s, Ruff: OK, OpenAPI export: OK, Mypy: OK on 51 files, Web typecheck & build: OK).
 - **Git Commit & Tag**: `m5b-done`
 
+---
 
-
+## M6b: Web Remainder & Polish
+- **Date**: 2026-10-05
+- **Built**:
+  - `web/src/api/client.ts`: Typed API client methods and data types for Desk (`deskCreateToken`, `deskManualCheckIn`, `deskGetTokenSlip`), Display Board (`fetchDisplayBoard`), Admin (`fetchAdminOffices`, `fetchOfficeSettings`, `updateOfficeSettings`, `createAdminService`, `updateAdminService`, `deleteAdminService`, `pauseQueueBooking`, `resumeQueueBooking`, `createAdminCounter`, `updateAdminCounter`, `deleteAdminCounter`, `mapCounterService`, `unmapCounterService`, `generateEntranceQr`), Reports (`fetchReportSummary`, `fetchReportLoadByHour`, `fetchReportEtaAccuracy`), and Simulator (`startSimulation`, `getSimulationStatus`).
+  - `web/src/pages/DeskPage.tsx`: Help Desk Assisted & Walk-in Booking with category/priority selection, capacity override checkbox + mandatory reason, quick manual arrival check-in tab, and Printable Physical Turn Slip preview modal formatted with estimated turn times, queue ahead count, and TV lobby guidance per Spec v3.
+  - `web/src/pages/DisplayPage.tsx`: Public Lobby Display Board route `/display/:officeId` with live digital clock, high-contrast dark civic theme, auto-polling every 3s, fullscreen toggle, displaying counter labels and active `now_serving` token codes only with zero citizen personal data (Spec 14.2 & 35.9).
+  - `web/src/pages/AdminPage.tsx`: Office Settings editor, Services manager with pause/resume booking controls and mandatory reason logging (O10), and Daily Entrance Signed QR generator.
+  - `web/src/pages/ReportsPage.tsx`: Analytics dashboard with date picker, KPI summary metrics (served, cancelled, no-show, expired, avg/p90 wait), responsive SVG hourly load chart (booked vs served), and ETA Accuracy Benchmark panel confirming Live-Adjusted Engine superiority over Naive baseline.
+  - `web/src/pages/SimPage.tsx`: Simulation control panel to trigger full-day 8-hour virtual runs (`POST /v1/admin/sim/{office_id}/start`), poll progress, and inspect final metrics and MAE accuracy.
+  - `web/src/components/AppShell.tsx` & `web/src/App.tsx`: Role-based navigation for Officer, Desk, Admin, Reports, and Sim tabs, unauthenticated public routing for `/display/:officeId`, and multilingual localization dictionary support across English, Gujarati, and Hindi (`en.json`, `gu.json`, `hi.json`).
+  - Backend Enhancement: Added `GET /v1/desk/tokens/{id}/slip` in `api/app/routers/desk.py` and test in `api/tests/api/test_routes.py` allowing physical turn slip retrieval and reprints per Spec Section 31.
+- **Files**:
+  - `web/src/api/client.ts`, `web/src/App.tsx`, `web/src/components/AppShell.tsx`
+  - `web/src/pages/DeskPage.tsx`, `web/src/pages/DisplayPage.tsx`, `web/src/pages/AdminPage.tsx`, `web/src/pages/ReportsPage.tsx`, `web/src/pages/SimPage.tsx`
+  - `web/src/i18n/en.json`, `web/src/i18n/gu.json`, `web/src/i18n/hi.json`
+  - `api/app/routers/desk.py`, `api/tests/api/test_routes.py`, `openapi/openapi.json`
+  - `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 51 pytest tests passed in 45.01s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 51 source files, Web typecheck: OK, Vite build: OK).
+- **Assumptions**:
+  - Public display board at `/display/:officeId` operates without requiring login so it can run directly on lobby TV screens or browser monitors.
+- **Git Commit & Tag**: `m6b-done`

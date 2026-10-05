@@ -76,3 +76,25 @@ async def desk_manual_check_in(
     token.arrived_at = clock.now()
     await session.commit()
     return await build_token_out(token, session, clock)
+
+
+@router.get("/tokens/{token_id}/slip", response_model=DeskSlipOut)
+async def desk_get_token_slip(
+    token_id: str,
+    user: UserClaims = Depends(require_role(["DESK", "ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> DeskSlipOut:
+    result = await session.execute(select(Token).where(Token.id == token_id))
+    token = result.scalar_one_or_none()
+    if not token:
+        raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    require_office_access(user, token.office_id)
+    token_out = await build_token_out(token, session, clock)
+    return DeskSlipOut(
+        token=token_out,
+        printable_code=token.display_code,
+        qr_data=f"TOKEN:{token.id}:{token.display_code}",
+    )
+
