@@ -1,14 +1,27 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 
+from api.app.core.config import settings
 from api.app.core.db import check_db_ready
 from api.app.core.errors import register_error_handlers
-from api.app.routers import admin, citizen, desk, internal, officer
+from api.app.routers import admin, citizen, desk, internal, officer, v1_core
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Production security guard: DevAuth is strictly forbidden in production
+    if settings.ENVIRONMENT == "production":
+        raise RuntimeError("CRITICAL SECURITY ERROR: DevAuth and dev endpoints cannot run in ENVIRONMENT=production")
+    yield
+
 
 app = FastAPI(
     title="QueueLess API",
     version="1.0.0",
     description="Predict waiting time at government offices + remote virtual tokens",
+    lifespan=lifespan,
 )
 
 # Register uniform error format
@@ -20,6 +33,7 @@ app.include_router(officer.router)
 app.include_router(desk.router)
 app.include_router(admin.router)
 app.include_router(internal.router)
+app.include_router(v1_core.router)
 
 
 @app.get("/healthz", status_code=status.HTTP_200_OK, tags=["System"])

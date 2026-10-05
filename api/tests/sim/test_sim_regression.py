@@ -58,7 +58,7 @@ async def test_sim_regression_live_beats_naive(session_factory):
                 service_id="srv-bc",
                 # 8 tokens per virtual hour for 1 hour
                 arrivals_per_hour=[8.0] + [0.0] * 7,
-                mean_service_minutes=5.0,
+                mean_service_minutes=10.0,
                 priority_fraction=0.10,
                 cancel_fraction=0.05,
                 no_show_fraction=0.05,
@@ -95,6 +95,42 @@ async def test_sim_regression_live_beats_naive(session_factory):
     assert stats.tokens_cancelled >= 0
     assert stats.tick_count > 0
     assert 0.0 <= stats.within_range_pct <= 100.0
+
+
+@pytest.mark.asyncio
+async def test_full_day_sim_regression_strict_mae(session_factory):
+    """
+    M5b Requirement 1: Full-day simulation regression (open to close, breaks,
+    priority share, and rush event).
+    Asserts live-adjusted MAE is STRICTLY lower than naive (mae_live < mae_naive).
+    """
+    scenario = default_ward_scenario(OFFICE_ID)
+    scenario.random_seed = 42
+
+    async with session_factory() as session:
+        stats: SimStats = await run_simulation(
+            session=session,
+            scenario=scenario,
+            start_dt=SIM_START_UTC,
+            allow_real_office=True,
+        )
+        await session.commit()
+
+    print(
+        f"\n[SIM RESULT] Booked={stats.tokens_booked}, Served={stats.tokens_served}, "
+        f"Evaluated Records={len(stats.records)}, MAE_Live={stats.mae_live:.3f}m, "
+        f"MAE_Naive={stats.mae_naive:.3f}m"
+    )
+
+    assert stats.tokens_served >= 10, f"Expected at least 10 served tokens, got {stats.tokens_served}"
+    assert len(stats.records) >= 10, f"Expected at least 10 evaluated records, got {len(stats.records)}"
+
+    # Strict assertion: live-adjusted MAE must be strictly lower than naive
+    assert stats.mae_live < stats.mae_naive, (
+        f"STRICT ACCURACY PROOF FAILED: live-adjusted MAE ({stats.mae_live:.3f} min) "
+        f"is NOT strictly lower than naive MAE ({stats.mae_naive:.3f} min)."
+    )
+
 
 
 @pytest.mark.asyncio

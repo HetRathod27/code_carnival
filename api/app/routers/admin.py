@@ -10,15 +10,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.app.core.auth import UserClaims, require_office_access, require_role
 from api.app.core.clock import Clock, get_clock
 from api.app.core.config import settings
-from api.app.core.db import get_db
+from api.app.core.db import async_session_maker, get_db
 from api.app.core.errors import AppException, ErrorCode
-from api.app.models.entities import Office, OfficeSettings, Profile
+from api.app.models.entities import (
+    Counter,
+    CounterService,
+    Office,
+    OfficeSettings,
+    Profile,
+    QueueState,
+    Service,
+    Token,
+)
 from api.app.schemas.admin import (
+    CounterCreateIn,
+    CounterOut,
+    CounterServiceIn,
+    CounterUpdateIn,
+    DisplayBoardOut,
+    DisplayCounterOut,
     OfficeDetailOut,
     OfficeSettingsOut,
     OfficeSettingsUpdate,
+    ServiceCreateIn,
+    ServiceUpdateIn,
     StaffCreateIn,
 )
+from api.app.schemas.citizen import ServiceOut
 from api.app.schemas.common import SuccessResponse
 from api.app.services.officer_service import generate_qr_payload
 from api.app.services.report_service import (
@@ -178,6 +196,432 @@ async def create_staff(
     return SuccessResponse(message=f"Staff account '{payload.user_id}' created with role '{payload.role}'")
 
 
+# ─── Service CRUD (A1) ────────────────────────────────────────────────────────
+
+@router.post("/services", response_model=ServiceOut, status_code=status.HTTP_201_CREATED)
+async def create_service(
+    payload: ServiceCreateIn,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> ServiceOut:
+    require_office_access(user, payload.office_id)
+    if payload.prior_avg_minutes <= 0:
+        raise AppException(ErrorCode.VALIDATION_ERROR, "prior_avg_minutes must be positive", 400)
+
+    stmt_exists = select(Service).where(Service.id == payload.id)
+    res_exists = await session.execute(stmt_exists)
+    if res_exists.scalar_one_or_none():
+        raise AppException(ErrorCode.VALIDATION_ERROR, f"Service '{payload.id}' already exists", 409)
+
+    service = Service(
+        id=payload.id,
+        office_id=payload.office_id,
+        code=payload.code,
+        names=payload.names,
+        prior_avg_minutes=payload.prior_avg_minutes,
+        required_docs=payload.required_docs,
+        priority_allowed=payload.priority_allowed,
+        active=True,
+        requires_physical_visit=payload.requires_physical_visit,
+        online_alternative_url=payload.online_alternative_url,
+        location_hint=payload.location_hint,
+    )
+    session.add(service)
+    await session.commit()
+    return ServiceOut(
+        id=service.id,
+        office_id=service.office_id,
+        code=service.code,
+        names=service.names,
+        prior_avg_minutes=float(service.prior_avg_minutes),
+        required_docs=service.required_docs,
+        priority_allowed=service.priority_allowed,
+        requires_physical_visit=service.requires_physical_visit,
+        online_alternative_url=service.online_alternative_url,
+        location_hint=service.location_hint,
+    )
+
+
+@router.get("/services/{service_id}", response_model=ServiceOut)
+async def get_service(
+    service_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> ServiceOut:
+    res = await session.execute(select(Service).where(Service.id == service_id))
+    service = res.scalar_one_or_none()
+    if not service:
+        raise AppException(ErrorCode.NOT_FOUND, f"Service '{service_id}' not found", 404)
+    require_office_access(user, service.office_id)
+    return ServiceOut(
+        id=service.id,
+        office_id=service.office_id,
+        code=service.code,
+        names=service.names,
+        prior_avg_minutes=float(service.prior_avg_minutes),
+        required_docs=service.required_docs,
+        priority_allowed=service.priority_allowed,
+        requires_physical_visit=service.requires_physical_visit,
+        online_alternative_url=service.online_alternative_url,
+        location_hint=service.location_hint,
+    )
+
+
+@router.patch("/services/{service_id}", response_model=ServiceOut)
+async def update_service(
+    service_id: str,
+    payload: ServiceUpdateIn,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> ServiceOut:
+    res = await session.execute(select(Service).where(Service.id == service_id))
+    service = res.scalar_one_or_none()
+    if not service:
+        raise AppException(ErrorCode.NOT_FOUND, f"Service '{service_id}' not found", 404)
+    require_office_access(user, service.office_id)
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field == "prior_avg_minutes" and value is not None and value <= 0:
+            raise AppException(ErrorCode.VALIDATION_ERROR, "prior_avg_minutes must be positive", 400)
+        setattr(service, field, value)
+
+    await session.commit()
+    return ServiceOut(
+        id=service.id,
+        office_id=service.office_id,
+        code=service.code,
+        names=service.names,
+        prior_avg_minutes=float(service.prior_avg_minutes),
+        required_docs=service.required_docs,
+        priority_allowed=service.priority_allowed,
+        requires_physical_visit=service.requires_physical_visit,
+        online_alternative_url=service.online_alternative_url,
+        location_hint=service.location_hint,
+    )
+
+
+@router.delete("/services/{service_id}", response_model=SuccessResponse)
+async def delete_service(
+    service_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> SuccessResponse:
+    res = await session.execute(select(Service).where(Service.id == service_id))
+    service = res.scalar_one_or_none()
+    if not service:
+        raise AppException(ErrorCode.NOT_FOUND, f"Service '{service_id}' not found", 404)
+    require_office_access(user, service.office_id)
+
+    # Check if there are active tokens
+    stmt_tok = select(Token).where(
+        Token.service_id == service_id,
+        Token.state.in_(["WAITING", "CALLED", "SERVING"]),
+    )
+    if (await session.execute(stmt_tok)).first():
+        raise AppException(ErrorCode.VALIDATION_ERROR, "Cannot delete service with active tokens", 409)
+
+    service.active = False
+    await session.commit()
+    return SuccessResponse(message=f"Service '{service_id}' deactivated")
+
+
+# ─── Counter CRUD (A1) ────────────────────────────────────────────────────────
+
+@router.post("/counters", response_model=CounterOut, status_code=status.HTTP_201_CREATED)
+async def create_counter(
+    payload: CounterCreateIn,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> CounterOut:
+    require_office_access(user, payload.office_id)
+    stmt_exists = select(Counter).where(Counter.id == payload.id)
+    if (await session.execute(stmt_exists)).scalar_one_or_none():
+        raise AppException(ErrorCode.VALIDATION_ERROR, f"Counter '{payload.id}' already exists", 409)
+
+    counter = Counter(
+        id=payload.id,
+        office_id=payload.office_id,
+        label=payload.label,
+        status="CLOSED",
+    )
+    session.add(counter)
+    await session.commit()
+    return CounterOut(
+        id=counter.id,
+        office_id=counter.office_id,
+        label=counter.label,
+        status=counter.status,
+        officer_id=counter.officer_id,
+    )
+
+
+@router.get("/counters/{counter_id}", response_model=CounterOut)
+async def get_counter(
+    counter_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN", "OFFICER"])),
+    session: AsyncSession = Depends(get_db),
+) -> CounterOut:
+    res = await session.execute(select(Counter).where(Counter.id == counter_id))
+    counter = res.scalar_one_or_none()
+    if not counter:
+        raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", 404)
+    require_office_access(user, counter.office_id)
+    return CounterOut(
+        id=counter.id,
+        office_id=counter.office_id,
+        label=counter.label,
+        status=counter.status,
+        officer_id=counter.officer_id,
+    )
+
+
+@router.patch("/counters/{counter_id}", response_model=CounterOut)
+async def update_counter(
+    counter_id: str,
+    payload: CounterUpdateIn,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> CounterOut:
+    res = await session.execute(select(Counter).where(Counter.id == counter_id))
+    counter = res.scalar_one_or_none()
+    if not counter:
+        raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", 404)
+    require_office_access(user, counter.office_id)
+
+    if payload.label is not None:
+        counter.label = payload.label
+    if payload.status is not None:
+        if payload.status not in ["OPEN", "BREAK", "CLOSED"]:
+            raise AppException(ErrorCode.VALIDATION_ERROR, f"Invalid status: {payload.status}", 400)
+        counter.status = payload.status
+
+    await session.commit()
+    return CounterOut(
+        id=counter.id,
+        office_id=counter.office_id,
+        label=counter.label,
+        status=counter.status,
+        officer_id=counter.officer_id,
+    )
+
+
+@router.delete("/counters/{counter_id}", response_model=SuccessResponse)
+async def delete_counter(
+    counter_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> SuccessResponse:
+    res = await session.execute(select(Counter).where(Counter.id == counter_id))
+    counter = res.scalar_one_or_none()
+    if not counter:
+        raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", 404)
+    require_office_access(user, counter.office_id)
+
+    stmt_serving = select(Token).where(
+        Token.counter_id == counter_id,
+        Token.state.in_(["CALLED", "SERVING"]),
+    )
+    if (await session.execute(stmt_serving)).first():
+        raise AppException(ErrorCode.VALIDATION_ERROR, "Cannot delete counter with active token", 409)
+
+    await session.delete(counter)
+    await session.commit()
+    return SuccessResponse(message=f"Counter '{counter_id}' deleted")
+
+
+# ─── Counter Service Mapping (A1) ───────────────────────────────────────────
+
+@router.post("/counter-services", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED)
+async def map_counter_service(
+    payload: CounterServiceIn,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> SuccessResponse:
+    c_res = await session.execute(select(Counter).where(Counter.id == payload.counter_id))
+    counter = c_res.scalar_one_or_none()
+    if not counter:
+        raise AppException(ErrorCode.NOT_FOUND, f"Counter '{payload.counter_id}' not found", 404)
+    require_office_access(user, counter.office_id)
+
+    s_res = await session.execute(select(Service).where(Service.id == payload.service_id))
+    service = s_res.scalar_one_or_none()
+    if not service:
+        raise AppException(ErrorCode.NOT_FOUND, f"Service '{payload.service_id}' not found", 404)
+
+    if counter.office_id != service.office_id:
+        raise AppException(ErrorCode.CROSS_OFFICE_ACCESS_DENIED, "Counter and Service must belong to the same office", 400)
+
+    stmt = (
+        pg_insert(CounterService)
+        .values(counter_id=payload.counter_id, service_id=payload.service_id)
+        .on_conflict_do_nothing()
+    )
+    await session.execute(stmt)
+    await session.commit()
+    return SuccessResponse(message=f"Mapped counter '{payload.counter_id}' to service '{payload.service_id}'")
+
+
+@router.delete("/counter-services", response_model=SuccessResponse)
+async def unmap_counter_service(
+    payload: CounterServiceIn,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+) -> SuccessResponse:
+    c_res = await session.execute(select(Counter).where(Counter.id == payload.counter_id))
+    counter = c_res.scalar_one_or_none()
+    if not counter:
+        raise AppException(ErrorCode.NOT_FOUND, f"Counter '{payload.counter_id}' not found", 404)
+    require_office_access(user, counter.office_id)
+
+    res = await session.execute(
+        select(CounterService).where(
+            CounterService.counter_id == payload.counter_id,
+            CounterService.service_id == payload.service_id,
+        )
+    )
+    mapping = res.scalar_one_or_none()
+    if not mapping:
+        raise AppException(ErrorCode.NOT_FOUND, "Mapping not found", 404)
+
+    await session.delete(mapping)
+    await session.commit()
+    return SuccessResponse(message=f"Unmapped counter '{payload.counter_id}' from service '{payload.service_id}'")
+
+
+# ─── Public Lobby Display Board (D1, P1) ─────────────────────────────────────
+
+@router.get("/display/{office_id}", response_model=DisplayBoardOut)
+async def get_lobby_display(
+    office_id: str,
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> DisplayBoardOut:
+    """
+    Public lobby board: counter label and now-serving display code ONLY.
+    No personal data, no names, no phones.
+    """
+    off_res = await session.execute(select(Office).where(Office.id == office_id))
+    office = off_res.scalar_one_or_none()
+    if not office:
+        raise AppException(ErrorCode.NOT_FOUND, f"Office '{office_id}' not found", 404)
+
+    b_date = clock.business_date(office.timezone)
+    counters_res = await session.execute(
+        select(Counter).where(Counter.office_id == office_id).order_by(Counter.id.asc())
+    )
+    counters = counters_res.scalars().all()
+
+    display_counters: list[DisplayCounterOut] = []
+    for c in counters:
+        # Find active token in SERVING (or CALLED) for this counter today
+        t_res = await session.execute(
+            select(Token.display_code)
+            .where(
+                Token.counter_id == c.id,
+                Token.business_date == b_date,
+                Token.state.in_(["SERVING", "CALLED"]),
+            )
+            .order_by(Token.called_at.desc().nullslast())
+            .limit(1)
+        )
+        now_serving = t_res.scalar_one_or_none()
+        display_counters.append(
+            DisplayCounterOut(
+                counter_label=c.label,
+                now_serving=now_serving,
+            )
+        )
+
+    return DisplayBoardOut(
+        office_id=office.id,
+        office_name=office.name,
+        counters=display_counters,
+    )
+
+
+# ─── Service Queue Pause / Resume (O10) ──────────────────────────────────────
+
+@router.post("/queues/{service_id}/pause", response_model=SuccessResponse)
+async def pause_queue_booking(
+    service_id: str,
+    reason: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN", "OFFICER"])),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> SuccessResponse:
+    if not reason or not reason.strip():
+        raise AppException(ErrorCode.VALIDATION_ERROR, "A reason is required to pause booking", 400)
+
+    s_res = await session.execute(select(Service).where(Service.id == service_id))
+    service = s_res.scalar_one_or_none()
+    if not service:
+        raise AppException(ErrorCode.NOT_FOUND, f"Service '{service_id}' not found", 404)
+    require_office_access(user, service.office_id)
+
+    b_date = clock.business_date()
+    qs_res = await session.execute(
+        select(QueueState).where(
+            QueueState.office_id == service.office_id,
+            QueueState.service_id == service_id,
+            QueueState.business_date == b_date,
+        ).with_for_update()
+    )
+    qs = qs_res.scalar_one_or_none()
+    if not qs:
+        # Insert queue_state if not exists yet today
+        qs = QueueState(
+            office_id=service.office_id,
+            service_id=service_id,
+            business_date=b_date,
+            last_seq=0,
+            calls_since_priority=0,
+            waiting_count=0,
+            version=1,
+            paused=True,
+            updated_at=clock.now(),
+        )
+        session.add(qs)
+    else:
+        qs.paused = True
+        qs.version += 1
+        qs.updated_at = clock.now()
+
+    await session.commit()
+    return SuccessResponse(message=f"Booking for service '{service_id}' paused: {reason}")
+
+
+@router.delete("/queues/{service_id}/pause", response_model=SuccessResponse)
+async def resume_queue_booking(
+    service_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN", "OFFICER"])),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> SuccessResponse:
+    s_res = await session.execute(select(Service).where(Service.id == service_id))
+    service = s_res.scalar_one_or_none()
+    if not service:
+        raise AppException(ErrorCode.NOT_FOUND, f"Service '{service_id}' not found", 404)
+    require_office_access(user, service.office_id)
+
+    b_date = clock.business_date()
+    qs_res = await session.execute(
+        select(QueueState).where(
+            QueueState.office_id == service.office_id,
+            QueueState.service_id == service_id,
+            QueueState.business_date == b_date,
+        ).with_for_update()
+    )
+    qs = qs_res.scalar_one_or_none()
+    if qs:
+        qs.paused = False
+        qs.version += 1
+        qs.updated_at = clock.now()
+
+    await session.commit()
+    return SuccessResponse(message=f"Booking for service '{service_id}' resumed")
+
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Simulator endpoints (disabled in production per Spec Section 9)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -217,12 +661,14 @@ async def start_simulation(
 
     async def _run() -> None:
         try:
-            result = await run_simulation(
-                session=session,
-                scenario=scenario,
-                start_dt=start_dt,
-                allow_real_office=True,
-            )
+            async with async_session_maker() as sim_session:
+                result = await run_simulation(
+                    session=sim_session,
+                    scenario=scenario,
+                    start_dt=start_dt,
+                    allow_real_office=True,
+                )
+                await sim_session.commit()
             _sim_state[office_id] = {
                 "status": "COMPLETED",
                 "tokens_booked": result.tokens_booked,

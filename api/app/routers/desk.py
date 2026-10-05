@@ -38,6 +38,7 @@ async def desk_create_token(
         citizen_id=None,
         beneficiary_name=payload.citizen_name,
         created_via=payload.created_via,
+        override_reason=payload.override_reason,
     )
     t_stmt = select(Token).where(Token.id == book_res["token_id"])
     res_t = await session.execute(t_stmt)

@@ -1,507 +1,924 @@
-# QueueLess — Technical Specification v1
-PS-02: predict waiting time at government offices + remote virtual tokens.
-Purpose of this file: (1) the architecture to show mentors, (2) the spec you feed your AI coding tool. Phases: **P0** = needed for the ~70% prototype, **P1** = after prototype, **P2** = stretch / post-funding.
+# QueueLess — Technical Specification v3
+
+PS-02: Government service appointment + queue management with fixed online slots, physical walk-ins, printed physical turn slips, tokens, QR verification, live operations, deadline controls, and ETA support.
+
+> **Superseding rule:** This version replaces earlier conflicting appointment/physical-user rules. The QueueLess token and QR system remain core. Online users receive fixed appointment slots. Physical users can enter through the help desk and receive a physical token with an estimated turn time based on the current queue. Officers may serve available physical users whenever an online appointment holder has not arrived and the officer has usable capacity; there is **no requirement to wait for three missed online users**.
 
 ---
 
-## 1. Design principles (the rules everything else follows)
+## 1. Product goal and design principles
 
-1. **One API owns all business rules.** Flutter app and web dashboard are thin clients. No queue logic in any UI.
-2. **Postgres is the source of truth and the backstop.** The API enforces rules; the database also refuses invalid data (constraints, transition table), so a bug cannot corrupt the queue.
-3. **Every state change goes through one function** (`transition()`), which validates the move, writes an event row, and bumps the queue version. Nothing updates `tokens.state` directly.
-4. **AI never sits in the critical path.** ETA ML, voice, document check are optional modules with timeouts and fallbacks. If all AI is down, the queue still works on the baseline ETA.
-5. **Time is injected, never read directly.** All code uses a `Clock` object; SQL business logic never uses `now()`. This makes the fast-forward simulation use the *real* code.
-6. **ETA is a pure function of a snapshot.** `compute_etas(snapshot) → results`. Testable, replayable, shared by production and simulation.
-7. **Signal + refetch for live updates.** Realtime only says "queue X changed". Clients then fetch their own authoritative state from the API. No personal data travels over realtime.
-8. **Config over code.** Grace minutes, priority ratio, requeue offset, etc. live in settings tables.
+### 1.1 Product goal
+QueueLess is a government-service operating system that:
+- gives citizens fixed appointment times through the mobile app;
+- gives online bookings a token and QR/check-in mechanism;
+- tells citizens which documents are required before visiting;
+- lets citizens see appointment status and department updates;
+- prevents officers from sitting idle when booked citizens are not present;
+- supports physical citizens, including citizens without smartphones;
+- gives physical citizens a printed token slip and estimated turn time;
+- lets officers manage real-time service flow;
+- lets department/admin staff control booking rules, deadlines, closures, and service configuration;
+- records completion from both sides for online appointments;
+- balances convenience for online users with continued access for physical users.
+
+### 1.2 Core principles
+1. **One API owns all business rules.** Flutter and web clients are thin clients. No appointment, queue, cancellation, priority, or fee logic is duplicated in UI code.
+2. **Postgres is the source of truth.** The API enforces business rules and the database enforces uniqueness, constraints, and integrity.
+3. **Every state change goes through one transition function.** Never update appointment/token state directly.
+4. **Online appointments are fixed.** Once booked, the citizen receives a defined slot. The system does not continuously move the appointment because another citizen failed to arrive.
+5. **An officer must not remain idle because an online user is absent.** If an online appointment holder has not arrived and a physical citizen is waiting, the officer can serve an eligible physical citizen according to the current dispatch rules.
+6. **Three missed online users is NOT a prerequisite.** The officer may serve physical users after even one absent online appointment when the officer has usable capacity. A consecutive-missed count may still be recorded for analytics, but it does not gate physical service.
+7. **Physical users remain supported.** No smartphone must never mean no access to government services.
+8. **Physical users receive a printed turn slip.** The help desk creates a physical token and the system calculates an estimated turn time from the current queue and service conditions.
+9. **Physical turn time is an estimate, not a fixed appointment.** The printed time can change because the queue, counters, service durations, or delays can change.
+10. **Government-side failures are a separate class of event.** Server failure, department closure, or government-side technical problems are not treated as citizen cancellation.
+11. **Payments do not guarantee protection from government-side failure.** A higher-priced custom slot remains subject to government/server availability. This condition must be shown before payment.
+12. **QR/token remains core.** Online citizens receive a digital token/QR. Physical citizens receive a physical token and printed slip.
+13. **Public display shows token numbers, not citizen names.** The public TV/display must never display names, phone numbers, Aadhaar numbers, or other personal identifiers.
+14. **Document readiness is part of booking.** Citizens see the service document checklist and confirm readiness before completing an online booking.
+15. **Server time is authoritative.** Client clocks cannot change appointment validity.
+16. **Configuration over code.** Appointment duration, grace period, booking horizon, deadline cutoff, pricing, and other tunables live in settings.
+17. **AI never sits in the critical path.** ETA/ML/document AI may improve the product but must never be required for booking, calling, cancellation, or completion.
+18. **The system must be honest about uncertainty.** An online slot is a reserved appointment according to configured centre capacity; a physical turn time is an estimate.
 
 ---
 
-## 2. Architecture
+## 2. High-level architecture
 
+```text
+ ┌──────────────────────────┐
+ │ Flutter Citizen App      │
+ │ Fixed booking + QR       │
+ │ Token + status + alerts  │
+ └─────────────┬────────────┘
+               │ REST
+               ▼
+ ┌─────────────────────────────────────────┐
+ │ FastAPI API                             │
+ │                                         │
+ │ Auth → Booking → Slot Engine            │
+ │ Token/QR → Dispatch → ETA → Notify      │
+ │ Cancellation → Closure → Completion     │
+ │ Physical Slip → Display                 │
+ │                                         │
+ │ /internal/tick                          │
+ └──────────────────┬──────────────────────┘
+                    │ SQL transactions
+                    ▼
+ ┌─────────────────────────────────────────┐
+ │ PostgreSQL / Supabase                   │
+ │                                         │
+ │ appointments, tokens, slots, queues     │
+ │ events, users, services, counters       │
+ │ notifications, closures, payments       │
+ └─────────────────────────────────────────┘
+                    ▲
+                    │
+ ┌──────────────────┴──────────────────────┐
+ │ React + TypeScript Web Dashboard         │
+ │                                          │
+ │ Officer / Desk / Department Admin        │
+ │ Queue + counter + closure + reports      │
+ └──────────────────────────────────────────┘
+
+ External:
+ - Firebase FCM → mobile push notifications
+ - Payment provider → optional paid/custom booking
 ```
- ┌──────────────────┐   ┌──────────────────────┐
- │ Flutter app      │   │ Web dashboard         │
- │ (citizens)       │   │ (officer / desk/admin)│
- └───────┬──────────┘   └──────────┬────────────┘
-         │ REST (generated clients)│
-         │  + realtime signal      │
-         ▼                         ▼
- ┌────────────────────────────────────────────┐        ┌──────────────┐
- │ API service (FastAPI)                       │───────▶│ Firebase FCM │ push
- │  routers → services → domain (state machine,│        └──────────────┘
- │  dispatch, priority) → ETA engine → notifier│
- │  /internal/tick  (scheduler entry point)    │
- └───────────────┬────────────────────────────┘
-                 │ SQL (transactions, row locks)
-                 ▼
- ┌────────────────────────────────────────────┐
- │ Supabase: Postgres + Auth + Realtime + cron │
- │ tables: tokens, token_events, queue_state…  │
- └────────────────────────────────────────────┘
-        ▲                 ▲
-        │ pg_cron+pg_net  │ writes via same API functions
-   every minute → tick    simulator (virtual clock)
+
+### 2.1 Core online flow
+```text
+Citizen selects service
+        ↓
+Checks documents
+        ↓
+Selects number of people
+        ↓
+Selects normal/custom appointment
+        ↓
+System checks slot capacity
+        ↓
+Payment, if required
+        ↓
+Appointment + token + QR created atomically
+        ↓
+Citizen receives confirmation
+        ↓
+Citizen arrives within fixed appointment window
+        ↓
+QR check-in
+        ↓
+Officer verifies identity/documents
+        ↓
+Officer serves citizen
+        ↓
+Officer confirms completion
+        ↓
+Citizen confirms completion
+        ↓
+Appointment completed
 ```
 
-Feedback loop to explain to mentors: **counter events → event log → service-time stats → ETA engine → notifications → citizen arrival behaviour → queue.**
-
----
-
-## 3. Final tech stack, per component
-
-### 3.1 Citizen app — Flutter (Dart 3)
-| Concern | Choice | Why |
-|---|---|---|
-| UI framework | Flutter, Android first (APK) + Flutter web build as demo fallback | One codebase; judges can open the web build if they can't install the APK |
-| State mgmt | Riverpod | Predictable, AI generates it reliably |
-| Navigation | go_router | Declarative, deep links from push notifications |
-| API client | Generated from the API's OpenAPI spec (`openapi-generator`, dart-dio) | Contract-first; no hand-written HTTP |
-| Auth + realtime | `supabase_flutter` (phone OTP session, subscribe to `queue_state`) | Session persistence, one SDK |
-| Push | `firebase_messaging` + `flutter_local_notifications` | Reliable background delivery on Android; free |
-| QR check-in | `mobile_scanner` | Camera scan of office QR |
-| Local storage | `flutter_secure_storage`, `shared_preferences` | Session + language + last token cache |
-| Languages | `intl` + gen-l10n (ARB files: en, gu, hi); bundle Noto Sans Gujarati / Devanagari fonts | Correct script rendering on low-end phones |
-| Connectivity | `connectivity_plus` | Show "last updated X min ago" offline |
-
-UX rules for this audience: language picker on first launch; ≥18sp body text; icon + word on every button; max 3 taps from app open to token; token screen is the home screen when a token is active; login by phone OTP only (no Google/email); stay logged in.
-
-### 3.2 Officer / Desk / Admin dashboard — React + TypeScript (Vite SPA)
-| Concern | Choice | Why |
-|---|---|---|
-| Framework | React 18 + TypeScript + Vite (SPA, not Next.js) | Internal tool behind login; no SEO or SSR needed; simplest to deploy as static files |
-| UI | Tailwind + shadcn/ui | Fast, consistent, AI-friendly |
-| Data fetching | TanStack Query | Caching, refetch-on-signal, retries |
-| API client | `openapi-typescript` + `openapi-fetch` (generated types) | Contract-first |
-| Auth + realtime | `supabase-js` (email/password for staff, subscribe to `queue_state`) | Same signal mechanism as the app |
-| Charts | Recharts | Wait-time and accuracy charts |
-| i18n | react-i18next (en, gu, hi) | Officers may prefer Gujarati |
-| Hosting | Any static host (Cloudflare Pages / Vercel / Netlify free tiers — verify current limits) | |
-
-### 3.3 API service — Python 3.12 + FastAPI
-| Concern | Choice | Why |
-|---|---|---|
-| Framework | FastAPI + Pydantic v2 | Auto OpenAPI → generated typed clients for Dart and TS |
-| DB access | SQLAlchemy 2.x (async) + asyncpg; raw SQL allowed for the hot queries | `FOR UPDATE SKIP LOCKED`, explicit transactions |
-| Migrations | Alembic (includes RLS, triggers, constraints) | One versioned source of truth for schema |
-| Auth | Verify Supabase JWT in a dependency; role + office_id read from `app_metadata` claims | Roles can't be edited by users |
-| Push | `firebase-admin` (FCM) | Free |
-| ML | scikit-learn / LightGBM, model file loaded at startup | Python-native, small artifact |
-| Tests | pytest, pytest-asyncio, httpx; Hypothesis for ETA properties | Concurrency + transition-matrix tests |
-| Lint/types | ruff, mypy | Keeps AI-generated code consistent |
-| Packaging | Docker image | Host is swappable (Cloud Run / Render / etc.; verify free limits and cold-start behaviour before the demo) |
-
-Connection gotcha: use Supabase's pooler connection string (direct connections are IPv6-only on many hosts). If you use the transaction-mode pooler, disable asyncpg's prepared-statement cache (`statement_cache_size=0`).
-
-### 3.4 Database + auth + realtime + scheduler — Supabase (Postgres)
-- **Postgres:** all data, constraints, triggers.
-- **Auth:** citizens = phone OTP; staff = email + password created by admin through the API (service role). Roles: `CITIZEN`, `OFFICER`, `DESK`, `ADMIN` stored in `app_metadata`.
-- **OTP in demo:** use Supabase's configured test phone numbers with a fixed OTP. Real SMS needs a paid provider (in India, DLT sender/template registration applies) → P2. **Plan B** if phone auth blocks you: own `otp_codes` table + API-issued JWT.
-- **Realtime:** only the `queue_state` table is published (aggregate numbers, no personal data).
-- **Scheduler:** `pg_cron` every minute calls the API's `/internal/tick` via `pg_net` with a shared secret. This also wakes a sleeping free-tier API. Fallback: external free pinger hitting `/internal/tick`.
-- **Free plan facts (checked 2026 sources):** 500 MB DB, 200 concurrent realtime connections, 2M realtime messages/month, **projects pause after 7 days of inactivity** → open the dashboard before every demo and keep the tick running. Scale path: Pro plan ($25/mo, no pausing, 500 realtime connections), later bigger managed Postgres.
-
-### 3.5 Push notifications — Firebase Cloud Messaging only
-Firebase is used **only** for push. Device tokens stored in `devices`. Android OEM battery-saver can delay push → in-app prompt to allow background activity, plus the in-app inbox and 20-second polling fallback while the app is open. SMS fallback = P2.
-
-### 3.6 ETA / ML — module inside the API (`app/eta/`), splittable later
-Three engines behind one interface (see §8). Offline training script in `ml/` using simulator + logged data.
-
-### 3.7 Simulator — module inside the API (`app/sim/`)
-Runs against the real service layer with a virtual clock, in a flagged simulation office. See §9.
-
-### 3.8 DevOps
-Monorepo, GitHub Actions (ruff, mypy, pytest, export OpenAPI, fail if generated clients are stale), `.env` files never committed, Supabase service-role key only on the API server.
-
----
-
-## 4. Data model
-
-All times are `timestamptz`; `business_date` is the date in the office's timezone (default Asia/Kolkata).
-
-| Table | Key columns | Notes |
-|---|---|---|
-| `offices` | id, name, address, timezone, open_time, close_time, qr_secret, is_simulation, active | `qr_secret` signs check-in QR |
-| `office_settings` | office_id, grace_minutes (5), priority_every_n (3), requeue_offset (5), max_requeues (1), close_grace_minutes, max_active_tokens_per_phone (1), strike_limit (3) | All tunables here |
-| `services` | id, office_id, code ("BC"), names jsonb {en,gu,hi}, prior_avg_minutes, required_docs jsonb, priority_allowed, active | `prior_avg_minutes` seeds stats |
-| `counters` | id, office_id, label, status (`OPEN`/`BREAK`/`CLOSED`), officer_id | |
-| `counter_services` | counter_id, service_id | many-to-many |
-| `profiles` | id (= auth user), role, office_id (staff), phone, name?, language, priority_strikes, priority_blocked_until | Created by DB trigger on signup (role CITIZEN) |
-| `queue_state` | office_id, service_id, business_date, last_seq, calls_since_priority, now_serving, waiting_count, version, updated_at | **One row per queue per day.** Lock row for numbering/dispatch + realtime signal. PK (office, service, date) |
-| `tokens` | id, office_id, service_id, business_date, seq, display_code, citizen_id?, phone?, category, priority_status, created_via, state, sort_key, travel_minutes, counter_id, arrived_at, called_at, grace_deadline, serving_started_at, completed_at, requeue_count, parent_token_id, last_eta_minutes, last_eta_reason, eta_features jsonb | See constraints below |
-| `token_events` | id, token_id, from_state, to_state, actor_type, actor_id, counter_id, at, meta jsonb | Append-only (trigger blocks UPDATE/DELETE). Audit trail + ML training data |
-| `allowed_transitions` | from_state, to_state, actor_type | Backstop; trigger on `tokens` rejects moves not listed |
-| `service_stats` | service_id, hour_bucket, ewma_minutes, ewma_var, n | Updated on every COMPLETED |
-| `eta_log` | token_id, at, engine, predicted_p50, low, high, naive_p50 | For accuracy report (predicted vs actual) |
-| `priority_checks` | token_id, officer_id, doc_type, result (`VERIFIED`/`REJECTED`), at | |
-| `devices` | user_id, fcm_token, platform, language | |
-| `notification_outbox` | id, token_id, user_id, kind, payload, dedupe_key UNIQUE, status, attempts, send_after | Reliable, de-duplicated sending |
-| `idempotency_keys` | key, user_id, endpoint, response jsonb, created_at | Double-tap protection |
-| `counter_events` | counter_id, status, at, actor | Feeds ETA reasons + analytics |
-
-**Constraints that carry the guarantees**
-- `UNIQUE (office_id, service_id, business_date, seq)` → no duplicate token numbers.
-- Partial unique index `(phone, service_id) WHERE state IN ('WAITING','CALLED','SERVING')` → one active token per phone per service.
-- `state`, `category`, `priority_status` are Postgres ENUMs.
-- Trigger on `tokens`: `(OLD.state, NEW.state)` must exist in `allowed_transitions`.
-- Index `(office_id, service_id, business_date, state, sort_key)` for fast "next waiting" queries.
-- RLS enabled on every table; **no policies** except `SELECT` on `queue_state` for `authenticated`. The API uses a server-side connection, so *authorization lives in the API* and is covered by tests.
-
-**`sort_key`** = creation time as epoch seconds (numeric). Normal order = ascending `sort_key`. Requeue/postpone assign a value between two neighbours. Rejected priority claims keep their original `sort_key` (they land where they'd have been as a normal booking).
-
-Display code = `service.code + zero-padded seq` (e.g. `BC-047`). Priority tokens look identical to the citizen and others; officers see a flag.
-
----
-
-## 5. Token state machine
-
-States: `WAITING, CALLED, SERVING, COMPLETED, CANCELLED, EXPIRED, NO_SHOW, TRANSFERRED`.
-`arrived_at` is a timestamp, **not** a state (a remote citizen can be called before arriving). "Approaching" is a notification flag, not a state.
-
-| From → To | Trigger | Actor | Side effects |
-|---|---|---|---|
-| (new) → WAITING | Book token | CITIZEN / DESK | seq assigned, ETA stored, `TOKEN_CONFIRMED` push |
-| WAITING → CALLED | Call next | OFFICER | counter set, `grace_deadline = now + grace`, `YOUR_TURN` push |
-| CALLED → SERVING | Start | OFFICER | `serving_started_at` |
-| SERVING → COMPLETED | Complete | OFFICER | `completed_at`, update `service_stats`, close event |
-| WAITING → CANCELLED | Cancel | CITIZEN / DESK | waiting_count−1, ETAs refresh |
-| CALLED → CANCELLED | Cancel | CITIZEN / OFFICER | same |
-| WAITING → EXPIRED | Office closed | SYSTEM (tick) | `EXPIRED` push ("please book again") |
-| CALLED → NO_SHOW | Grace passed or officer marks | SYSTEM / OFFICER | logged |
-| NO_SHOW → WAITING | Requeue (if `requeue_count < max_requeues`) | SYSTEM | `requeue_count+1`, `sort_key` = `requeue_offset` positions behind head, `REQUEUED` push |
-| NO_SHOW → CANCELLED | Requeue limit reached | SYSTEM | `CANCELLED` push |
-| CALLED → WAITING | Release (counter problem) | OFFICER | keeps `sort_key` (no penalty) |
-| CALLED/SERVING → TRANSFERRED | Wrong counter/service/docs | OFFICER | creates new token in target service (`parent_token_id`), optionally carrying the original `sort_key` |
-
-Any other move is rejected by `transition()` and by the DB trigger.
-
----
-
-## 6. Function catalogue — how every function is managed
-
-Conventions: every mutating endpoint runs in **one DB transaction**. **Lock order (always): `queue_state` row → `counters` row → `tokens` rows**, to avoid deadlocks. Time comes from `Clock`. All POST bodies are Pydantic-validated; all errors use one error schema with a machine-readable `code`.
-
-### 6.1 Citizen functions
-| # | Function | Endpoint | How it is managed | Phase |
-|---|---|---|---|---|
-| C1 | Login | Supabase phone OTP | JWT → API verifies; first login creates profile | P0 |
-| C2 | Browse offices/services | `GET /v1/offices`, `/offices/{id}/services` | Returns each service with an *indicative* wait (engine run for a hypothetical tail token) and the document checklist | P0 |
-| C3 | Book token | `POST /v1/tokens` (+ `Idempotency-Key` header) | See §6.4 | P0 |
-| C4 | View live token | `GET /v1/tokens/{id}`, `/tokens/me/active` | Returns state, position, ETA {low,p50,high}, reason, leave_at, now_serving, counter, `server_time`. Realtime signal triggers refetch (debounced ~1 s); poll every 20 s as fallback | P0 |
-| C5 | Cancel token | `POST /v1/tokens/{id}/cancel` | Owner check → lock queue_state, token → `transition()` → waiting_count−1, version+1 | P0 |
-| C6 | Check in | `POST /v1/tokens/{id}/check-in` | Verifies signed office QR; sets `arrived_at`; no state change; officer sees "arrived" flag | P0 |
-| C7 | Register device for push | `POST /v1/devices` | Upserts FCM token + language | P0 |
-| C8 | Postpone ("let others go first") | `POST /v1/tokens/{id}/postpone {positions}` | New `sort_key` behind N tokens; max 2 times | P1 |
-| C9 | History | `GET /v1/tokens/me/history` | Paginated | P1 |
-| C10 | Book on behalf of family | `POST /v1/tokens` with `on_behalf_of` | Notifications go to booker; beneficiary name on token | P1 |
-| C11 | Change language | `PATCH /v1/me` | Server notification templates follow it | P0 |
-
-### 6.2 Officer / desk functions
-| # | Function | Endpoint | How it is managed | Phase |
-|---|---|---|---|---|
-| O1 | View my queue | `GET /v1/counters/{id}/queue` | Scoped to officer's office; shows category, priority status, arrived flag, wait so far | P0 |
-| O2 | Set counter status | `POST /v1/counters/{id}/status` | Writes `counter_events`; changes `effective_counters` → ETAs recalc with reason `COUNTER_DOWN/UP` | P0 |
-| O3 | Call next | `POST /v1/counters/{id}/call-next` | See §6.5 | P0 |
-| O4 | Start / Complete | `POST /v1/tokens/{id}/start`, `/complete` | `transition()`; complete feeds `service_stats` | P0 |
-| O5 | No-show / Release | `POST /v1/tokens/{id}/no-show`, `/release` | Manual version of the tick sweep | P0 |
-| O6 | Priority check | `POST /v1/tokens/{id}/priority-check {doc_type, result}` | `VERIFIED` stays priority. `REJECTED` → category NORMAL, strike added; at `strike_limit` priority claims are blocked for that phone for a period | P0 |
-| O7 | Assisted / walk-in booking | `POST /v1/desk/tokens {name?, phone?, service_id, category}` | Same booking path with `created_via=ASSISTED/WALKIN`; phone optional; returns printable slip data (code + QR). Covers no-smartphone citizens | P0 |
-| O8 | Transfer | `POST /v1/tokens/{id}/transfer {to_service_id, carry_over}` | Old → TRANSFERRED, new token created in same transaction | P1 |
-| O9 | Re-announce | `POST /v1/tokens/{id}/recall` | Resend `YOUR_TURN`, extend grace once | P1 |
-
-### 6.3 Admin functions
-| # | Function | Endpoint | How it is managed | Phase |
-|---|---|---|---|---|
-| A1 | Office / service / counter CRUD, counter↔service mapping | `/v1/admin/...` | Validated; services need `prior_avg_minutes`; audit log | P0 |
-| A2 | Create officer/desk accounts | `POST /v1/admin/staff` | Service-role call creates auth user, sets `app_metadata {role, office_id}` | P0 |
-| A3 | Office settings | `PUT /v1/admin/offices/{id}/settings` | Grace, priority ratio, requeue offset, close rules | P0 |
-| A4 | Reports | `GET /v1/admin/reports/summary`, `/eta-accuracy`, `/load-by-hour` | SQL aggregates over `token_events` and `eta_log` (see §10) | P0 |
-| A5 | Doc checklists | in service CRUD | Shown in app at booking | P1 |
-
-### 6.4 Booking (C3, O7) — atomic numbering, one transaction
-```
-BEGIN
-  if Idempotency-Key seen -> return stored response
-  validate: office open?, service active?, category allowed?,
-            priority not blocked?, phone under active-token limit?
-  INSERT queue_state ... ON CONFLICT DO NOTHING;          -- ensure row exists
-  SELECT ... FROM queue_state WHERE (office,service,date) FOR UPDATE;
-  seq = last_seq + 1
-  INSERT tokens (..., seq, display_code, sort_key = clock.now_epoch, state='WAITING')
-        -- partial unique index -> 409 if phone already has an active token here
-  UPDATE queue_state SET last_seq=seq, waiting_count+=1, version+=1
-  INSERT token_events; INSERT notification_outbox(TOKEN_CONFIRMED);
-  snapshot = load_snapshot(); eta = compute_etas(snapshot)[token]; INSERT eta_log
-  INSERT idempotency_keys(response)
-COMMIT
-```
-Two people booking at the same moment serialize on the `queue_state` row → different numbers, always. Double tap → same stored response, one token.
-
-### 6.5 Call next (O3) — no double-assignment, priority interleave
-```
-BEGIN
-  svc = chosen service (officer param, else the mapped service whose head token has waited longest)
-  SELECT ... FROM queue_state WHERE ... FOR UPDATE;
-  SELECT counter FOR UPDATE;
-  require counter.status = OPEN and no token CALLED/SERVING at this counter else 409
-  pool = PRIORITY if (calls_since_priority >= priority_every_n - 1 and priority waiting)
-         or (no normal waiting and priority waiting)
-         else NORMAL
-  token = SELECT ... WHERE state='WAITING' AND pool matches
-          ORDER BY sort_key LIMIT 1 FOR UPDATE SKIP LOCKED
-  transition(token, CALLED, counter, grace_deadline = now + grace)
-  calls_since_priority = 0 if pool=PRIORITY else +1
-  UPDATE queue_state SET now_serving, waiting_count-=1, version+=1
-  INSERT outbox(YOUR_TURN)
-COMMIT
--- after commit: re-evaluate notification ladder for the next 15 waiting tokens
-```
-Priority claim counts as priority *immediately* (so a pregnant woman is not delayed waiting for a check); the document is verified at arrival/counter (O6). "Priority first" vs "1 in N" is a setting; an optional reserved priority counter is P1.
-
-### 6.6 Scheduler tick (`POST /internal/tick`, every minute, idempotent)
-Guarded by a Postgres advisory lock so only one tick runs. Uses `SKIP LOCKED` in sweeps.
-1. **No-show sweep:** CALLED tokens with `grace_deadline <= now` and no `serving_started_at` → NO_SHOW → requeue or cancel (two logged transitions in one transaction).
-2. **Expiry sweep:** offices past `close_time + close_grace` → WAITING → EXPIRED.
-3. **Counter schedule:** apply scheduled breaks.
-4. **ETA pass:** per active queue, one snapshot → `compute_etas` for all waiting tokens → notification ladder (§7) → write `last_eta_*`.
-5. **Flush outbox:** send via FCM; mark sent/failed; retry up to 3 times with backoff.
-6. **Stats housekeeping.**
-Resolution is one minute, which is fine for 5-minute grace periods.
-
-### 6.7 Check-in QR
-Payload = `{office_id, window, hmac}` where `hmac = HMAC(office.qr_secret, office_id + window)`. MVP: static window. P1: window rotates every 5 minutes and the QR is shown on a lobby/officer screen, so a photo of the QR can't be used from home. P2: optional geofence.
-
----
-
-## 7. Notifications
-
-| Kind | When | Dedupe key |
-|---|---|---|
-| `TOKEN_CONFIRMED` | on booking | token+kind |
-| `GET_READY` | ETA p50 ≤ 15 min | token+kind |
-| `LEAVE_NOW` | `now ≥ leave_at`, where `leave_at = ETA_p50 − travel_minutes − 5` | token+kind |
-| `YOUR_TURN` | on call | token+kind+call_count |
-| `ETA_CHANGED` | `|Δ| ≥ max(10 min, 25%)`; at most one per 10 min per token | token+kind+10-min bucket |
-| `NO_SHOW_WARNING` | grace running out | token+kind |
-| `REQUEUED` / `CANCELLED_BY_SYSTEM` / `EXPIRED` | on those transitions | token+kind |
-
-- Written to `notification_outbox` inside the same transaction as the state change (no lost or duplicate messages).
-- Text comes from server-side templates in en/gu/hi chosen by `devices.language`; no hardcoded strings anywhere.
-- `travel_minutes` is picked in the app as a bucket (<10, 10–20, 20–40, 40+). Location-based travel time = P2.
-- In-app inbox shows the same messages so nothing is lost if push is delayed.
-
----
-
-## 8. ETA engine (`app/eta/`)
-
-**Interface:** `compute_etas(snapshot) -> {token_id: EtaResult(p50, low, high, reason, engine_version)}`. Pure function, no DB calls inside.
-
-**Snapshot:** `now`, waiting tokens in dispatch order (category, arrived, requeue_count), tokens in service (elapsed time), counters (effective open count per service), service stats (EWMA mean/variance for this hour bucket), settings (`priority_every_n`), historical priority arrival rate.
-
-**Engines (fallback chain):**
-1. **Naive (always computed, for benchmarking and fallback):** `p50 = tokens_ahead × avg_service_minutes ÷ open_counters`.
-2. **Live-adjusted (P0 default):** an exact version of "workload ahead ÷ counters":
-   - Build the *dispatch order* using the priority rule (so priority jumpers are accounted for).
-   - Each effective counter becomes free at `remaining_i = max(mean − elapsed, 1 min)`; others at `now`.
-   - Greedy schedule: assign each next token to the earliest-free counter with expected service time = EWMA mean for (service, hour bucket). The start time of your token is your ETA.
-   - If no counter is effectively open: ETA = `PAUSED` with reason `COUNTER_DOWN`.
-   - Range: P0 fixed ±20%; P1 band from the rolling relative error (P80) of the last 50 completions, clamped to 15–50%.
-   - P1 adds expected future priority arrivals (from historical rate) to the dispatch order.
-3. **ML (P1/P2):** LightGBM quantile models (P20/P50/P80) on: tokens ahead by category, effective counters, hour, weekday, EWMA mean, throughput in last 15 min, position. Used only if it beats engine 2 on a held-out simulated day; output clamped to [0.5×, 2×] of engine 2; 300 ms timeout; any error → engine 2.
-
-**Service-time learning:** on every COMPLETED, update `service_stats` with an EWMA (alpha ≈ 0.2), starting from `prior_avg_minutes`.
-
-**Reason codes** (counterfactual attribution): when ETA changes by the notification threshold, recompute the ETA with each factor reverted to its previous value (open counters, priority tokens ahead, service-time mean, tokens ahead). The factor with the largest effect is the reason: `COUNTER_DOWN`, `COUNTER_UP`, `PRIORITY_AHEAD`, `SLOWER_SERVICE`, `FASTER_SERVICE`, `CANCELLATIONS_AHEAD`, `NO_SHOWS_SKIPPED`. Shown as: "Your wait went up by 12 min — Counter 2 is on break." Previous factors are stored in `tokens.eta_features`.
-
-**Evaluation (the number that wins the demo):** for every token, `eta_log` holds the booking-time prediction from the chosen engine and from the naive formula. After the token is called: `actual_wait = called_at − created_at`. Report MAE, % within the predicted range, and improvement over naive. All ETA numbers shown to judges are labelled as simulated data.
-
----
-
-## 9. Simulator (`app/sim/`)
-
-- **Virtual clock:** the sim calls the same `token_service` / `officer` functions with a fake `Clock` advanced in steps (e.g. 1 virtual minute per 100 ms), and calls `tick()` each virtual minute.
-- **Separate simulation office** (`is_simulation=true`) so real data is untouched; the dashboard watches it through the same realtime path.
-- **Scenario config:** arrival rate by hour (peak late morning, lunch dip, end-of-day taper), service-time distribution per service (log-normal), priority share (~10–15%), cancel rate (~5%), no-show rate (~8%), random counter breaks, number of counters.
-- **Controls (admin UI):** start / pause / speed ×1–×600 / inject "Counter 2 breaks" / inject "rush of 30 citizens". The last two are your live demo moments.
-- **Outputs:** full `token_events` log, exportable as CSV for ML training and for the accuracy report.
-- Endpoints `/v1/admin/sim/*` are disabled in production configuration.
-
----
-
-## 10. Reports and analytics (SQL over `token_events` / `eta_log`)
-Average and P90 wait, service time per service, tokens served / cancelled / expired / no-show, counter utilization, load by hour, priority share and rejection rate, and the ETA accuracy panel (MAE, within-range %, vs naive). Dashboard calls three aggregate endpoints; heavy aggregates may become materialized views (P1).
-
----
-
-## 11. Security, privacy, abuse control
-- JWT verified on every request; role + office from `app_metadata`; per-route role guards; officers see only their own office; citizens only their own tokens (checked in API and covered by tests, since the API connection bypasses RLS).
-- Realtime exposes only `queue_state` aggregates.
-- Rate limits: bookings per phone per day, OTP limits via Supabase, per-IP limits on public endpoints.
-- Abuse: one active token per phone per service; priority strikes (O6); idempotency keys.
-- Privacy by minimization: store phone (and optional name) only; **no Aadhaar numbers**; consent text on first launch; document photos (P2 AI check) processed and not stored.
-- Server is the only time authority; apps display `server_time` offsets.
-- `/internal/*` requires the shared secret; never exposed in client code.
-
----
-
-## 12. AI modules (all optional, behind interfaces, off the critical path)
-| Module | What it does | Fallback | Phase |
-|---|---|---|---|
-| ETA ML | Better wait predictions | Live-adjusted engine | P1 |
-| Voice/chat booking in Gujarati/Hindi | LLM + speech turns "mane birth certificate no token joiye chhe" into an API call | Normal app screens | P2 |
-| Document pre-check | Photo of documents → vision model flags missing items against the checklist | Static checklist | P2 |
-| Admin forecast | Predicts peak hours, suggests counters to open | Historical averages | P2 |
-Rule: each module has a timeout, never raises into the request path, and is feature-flagged.
-
----
-
-## 13. Repository layout
-```
-queueless/
-  docs/            spec.md (this file), architecture.png, demo-script.md
-  openapi/         openapi.json (exported, committed)
-  api/
-    app/
-      main.py
-      core/        config.py security.py clock.py db.py errors.py idempotency.py
-      domain/      state_machine.py dispatch.py priority.py
-      services/    token_service.py queue_service.py counter_service.py admin_service.py
-                   checkin_service.py notification_service.py tick_service.py report_service.py
-      eta/         engine.py naive.py live.py ml.py reasons.py snapshot.py
-      sim/         scenario.py runner.py generators.py
-      api/v1/      citizen.py officer.py desk.py admin.py internal.py
-      models/ schemas/ i18n/ (en.json gu.json hi.json)
-    migrations/    (alembic)
-    tests/         unit/ concurrency/ api/ eta/
-    Dockerfile pyproject.toml
-  web/             src/{api(generated), features/{officer,desk,admin,sim}, components, i18n}
-  mobile/          lib/{api(generated), features/{auth,book,token,history,settings}, l10n, core}
-  ml/              train_eta.py, notebooks/, models/
+### 2.2 Core physical flow
+```text
+Citizen reaches office
+        ↓
+Help desk
+        ↓
+System checks current queue/capacity
+        ↓
+Physical token created
+        ↓
+Estimated turn time calculated
+        ↓
+Printed slip issued
+        ↓
+Citizen waits according to estimated time
+        ↓
+TV shows physical token when called
+        ↓
+Officer serves citizen
+        ↓
+Officer confirms completion
 ```
 
 ---
 
-## 14. Testing (written before the UIs)
-1. **Concurrency:** 200 parallel `POST /tokens` → all seq unique and gapless. 2–5 officers calling next in parallel → all get different tokens. Same Idempotency-Key twice → one token.
-2. **Transition matrix:** enumerate every (from, to, actor); only the allowed ones succeed, in both the API and the DB trigger.
-3. **Priority/dispatch:** with N normal + M priority waiting, the call order matches the rule; rejected priority returns to its original position.
-4. **Authorization:** citizen cannot read or modify another citizen's token; officer cannot act outside their office.
-5. **ETA properties (Hypothesis):** adding tokens ahead never lowers ETA; adding an open counter never raises it; closed counters give `PAUSED`.
-6. **Simulation regression:** a seeded simulated day must give live-adjusted MAE lower than naive; CI fails if not.
-7. **Tick idempotency:** running tick twice produces no duplicate transitions or notifications.
+## 3. Technology stack
+
+### 3.1 Citizen app
+- Flutter
+- Dart 3
+- Riverpod
+- go_router
+- Generated API client from OpenAPI
+- Supabase Auth / phone OTP
+- Firebase Cloud Messaging
+- flutter_local_notifications
+- mobile_scanner
+- flutter_secure_storage
+- shared_preferences
+- intl + en/gu/hi localization
+- connectivity_plus
+
+### 3.2 Officer/admin web
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui
+- TanStack Query
+- OpenAPI-generated TypeScript client
+- react-i18next
+- Recharts
+
+### 3.3 Backend
+- Python
+- FastAPI
+- Pydantic v2
+- SQLAlchemy 2.x
+- asyncpg
+- Alembic
+- pytest / pytest-asyncio / httpx
+- Ruff
+- Mypy
+- Hypothesis for property tests
+
+### 3.4 Database/auth/realtime
+- PostgreSQL / Supabase
+- Supabase Auth
+- Supabase Realtime
+- pg_cron + pg_net for periodic tick
+- RLS enabled
+- API remains the authorization boundary
+
+### 3.5 Push
+- Firebase Cloud Messaging for the MVP.
+
+### 3.6 AI/ML
+Optional:
+- ETA prediction
+- demand/peak forecasting
+- document pre-check
+- voice booking
+All must have deterministic fallbacks.
 
 ---
 
-## 15. Build order and "done" definitions (70% prototype = M1–M6)
-| Milestone | Contents | Done when |
-|---|---|---|
-| M1 | Schema, constraints, triggers, seed office (3–4 services, 3 counters) | Migrations run; transition trigger test passes |
-| M2 | API: auth, booking, cancel, call-next, start/complete, no-show, check-in + generated OpenAPI | Concurrency + transition tests green |
-| M3 | ETA: naive + live-adjusted, `eta_log`, reasons | Property tests green; ETA returned on booking |
-| M4 | Tick: no-show, expiry, ladder, outbox (log sender first, FCM next) | Tick idempotency test green |
-| M5 | Web: login, officer queue + actions, counter status, desk booking, priority check, basic admin | A full token life runs through the browser |
-| M6 | Simulator + admin sim controls + accuracy report | One-button simulated day; accuracy panel shows vs naive |
-| M7 | Flutter app: language, OTP login, book, live token, cancel, check-in, push | Real phone receives LEAVE_NOW |
-| M8 | P1 items + AI modules | — |
+## 4. User roles
 
-If time is short: M7 can demo as the Flutter web build, and M1–M6 alone still tell the full story. Do not start M8 before M1–M6 are stable.
-
----
-
-## 16. Rules to paste into your AI coding tool (system instruction)
-1. The API owns all business logic. Flutter and web only call generated API clients; never hand-write HTTP calls and never duplicate rules in a client.
-2. Never update `tokens.state` directly. Use `transition(token, to_state, actor, ...)`, which validates against `ALLOWED_TRANSITIONS`, writes a `token_events` row, and bumps `queue_state.version`.
-3. Every mutating endpoint is one DB transaction. Lock order: `queue_state` → `counters` → `tokens`. Use `FOR UPDATE SKIP LOCKED` for picking the next token.
-4. No `datetime.now()` and no SQL `now()` in business logic. Inject `Clock`.
-5. `compute_etas(snapshot)` is a pure function. No DB or network calls inside it.
-6. AI/ML calls must have a 300 ms timeout and fall back to the live-adjusted engine. They must never raise into a request.
-7. Every user-visible string comes from i18n files (en, gu, hi). Push text comes from server templates by the user's language.
-8. Realtime carries only `queue_state` aggregates. Clients refetch their own state from the API.
-9. All tunables come from `office_settings`; no magic numbers in code.
-10. Write the state-machine, concurrency, and authorization tests before building any UI. After any API change, regenerate OpenAPI and both clients.
-11. Citizen UI: big text, icon + label on every button, phone-OTP login only, stay logged in, language picker on first run.
-12. Collect minimum data. No Aadhaar numbers anywhere.
-
----
-
-## 17. Decisions log
-| Decision | Rejected | Reason |
-|---|---|---|
-| Flutter for citizens | PWA/website | One-icon access, persistent login, native-language UX for seniors/village users, reliable background push |
-| React SPA for staff | Next.js | No SSR/SEO need; simpler hosting |
-| API owns logic, DB enforces integrity | Logic in Postgres functions | Two clients in two languages + AI modules need one testable, typed contract |
-| Supabase (Postgres + Auth + Realtime + cron) | Self-hosted Node/Mongo/Socket.io | Fewer moving parts, free tier, scale path to Pro |
-| Signal + refetch | Pushing ETAs over realtime | Avoids N updates per event; no personal data over realtime |
-| pg_cron → `/internal/tick` | In-process scheduler | Free API hosts sleep; the cron call wakes them and logic stays in one place |
-| Greedy multi-counter schedule for ETA | Plain average formula only | Handles priority jumps, breaks, in-progress service; formula kept as benchmark |
-| Redis | — | Not needed at this scale; add only if measurements show a bottleneck |
-
-## 18. Open decisions (fill in before M1)
-- Office type for the demo (ward office / RTO / other) and its services, counters, average times.
-- Defaults: `grace_minutes`, `priority_every_n`, `requeue_offset`.
-- API hosting choice (verify free limits and cold-start time).
-- Which AI module, if any, you ship in the hackathon version.
-
----
-
-## 19. v1.1 patches (these OVERRIDE earlier sections wherever they conflict)
-Found by auditing the spec against a 38-point problem list (lifecycle, abuse, ETA, access, ops).
-
-### 19.1 Admission control (P0) — replaces the "office open?" check in §6.4
-Booking is rejected with `409 QUEUE_FULL_FOR_TODAY` when the predicted start time of the new token is later than `close_time − close_grace`, or when `waiting_count >= max_waiting_per_service`. The error tells the citizen to try tomorrow. DESK may override with a mandatory reason (logged). This stops the system issuing tokens that can never be served.
-
-### 19.2 Arrived-first dispatch (P0) — replaces token selection in §6.5
-Problem: calling a remote citizen who has not arrived leaves the counter idle for the whole grace period while arrived people wait.
-Rule: within the first `dispatch_window` (default 3) WAITING tokens of the chosen pool (by `sort_key`), pick the first one with `arrived_at` set. If none has arrived, pick the head (they were alerted; grace applies). Passed-over tokens keep their `sort_key`; `pass_over_count` is incremented and a token can be passed over at most `max_pass_overs` (default 2) times. Walk-in and assisted tokens get `arrived_at = created_at`. The ETA engine keeps assuming `sort_key` order (small, documented approximation).
-
-### 19.3 ETA overrun rule (P0) — replaces the `remaining_i` formula in §8
-`remaining_i = max(mean − elapsed, 1 min)` while `elapsed <= mean`; if `elapsed > mean` (case is overrunning) use `remaining_i = 0.5 × mean`. Add reason code `SLOW_CASE` when an in-service token exceeds 1.5 × mean. Before this, a 45-minute case made everyone's ETA think it would end next minute.
-
-### 19.4 Family / on-behalf booking (P1) — replaces the one-active-token rule for C10
-The unique index becomes `(beneficiary_key, service_id)` where `beneficiary_key` = beneficiary phone if given, else `booker_id + normalized beneficiary name`. One booker may hold up to `max_on_behalf_tokens` (default 3) active tokens per service. Until C10 ships, the rule stays one active token per phone per service.
-
-### 19.5 Schema additions
-- `tokens`: `pass_over_count`, `outcome_code`, `on_my_way_at`, `beneficiary_name`, `beneficiary_key`.
-- `token_events.meta.reason_code` is **mandatory** for: no-show, release, transfer, priority rejection, manual reorder, desk override.
-- Outcome codes: `SERVED, MISSING_DOCS, WRONG_SERVICE, WRONG_OFFICE, CITIZEN_LEFT, OTHER`.
-- `services`: `requires_physical_visit bool`, `online_alternative_url`, `location_hint jsonb {en,gu,hi}` (floor/hall shown at booking).
-- `office_settings`: `dispatch_window`, `max_pass_overs`, `max_waiting_per_service`, `max_on_behalf_tokens`, `on_my_way_extension_minutes` (5), `retention_days` (90).
-- `queue_state`: `paused bool`.
-- New `office_calendar(office_id, date, status CLOSED|CUSTOM_HOURS, open_time, close_time, note)` for holidays and special days.
-- New `counter_service_stats(counter_id, service_id, hour_bucket, ewma_minutes, n)` — per COUNTER, never per person.
-
-### 19.6 New or changed functions
-| # | Function | How | Phase |
-|---|---|---|---|
-| C12 | "I'm on my way" | `POST /v1/tokens/{id}/on-my-way` extends grace once by `on_my_way_extension_minutes` | P1 |
-| O1 | Identity check at counter | Officer view shows name + masked phone (last 4 digits) | P0 |
-| O4 | Complete with outcome | `outcome_code` on complete; transfer/send-back requires `MISSING_DOCS` or `WRONG_SERVICE` | P1 |
-| O10 | Pause / resume booking for a service | `POST /v1/queues/{service}/pause`, reason required, sets `queue_state.paused` | P1 |
-| O11 | Manual reorder (move token) | ADMIN only, reason mandatory, logged as event | P1 |
-| O12 | Close counter guard | A counter cannot be set CLOSED while it has a SERVING token; complete, transfer, or release first | P0 |
-| D1 | Lobby display board | `GET /v1/display/{office_id}` public, read-only: per-counter now-serving display codes only (no personal data); web route `/display/:officeId`; refresh on `queue_state` signal, 10 s poll fallback | P1 |
-| P1 | Per-counter service time | ETA uses `counter_service_stats` when `n >= 20`, else service-level stats | P1 |
-
-Booking UI additions (P0): show `location_hint`, `requires_physical_visit` (+ online alternative link), the document checklist, and a required "I have these documents" tick before the token is issued.
-
-### 19.7 Ops and privacy additions
-- `/healthz` (process alive) and `/readyz` (database reachable); structured JSON logs with request id; log and alert on tick failures.
-- Backups: confirm what backup or point-in-time recovery your database plan includes before relying on it (not verified here).
-- Retention job: null out phone numbers on tokens older than `retention_days`; keep anonymized events for analytics.
-- ML guard: online monitor compares rolling MAE of ML vs the live-adjusted engine on the last 100 completed tokens; auto-disable ML if it is worse. Calendar flags (holiday, month-end, deadline) from `office_calendar` become ML features.
-- Role `SUPER_ADMIN` (organisation level) added for multi-office use (P2).
-
----
-
-## 20. Known limitations of this version (be explicit about these in the pitch)
-| Not solved now | Planned direction |
+| Role | Main responsibility |
 |---|---|
-| Multi-step services in one journey (verify → pay → approve) | `journey_id` linking tokens, one queue per stage; transfers already link via `parent_token_id` |
-| Office-side offline mode (office internet or server down) | Not built. Interim fallback: paper tokens during an outage. Later: staff app with local cache and sync |
-| Advance appointments / time slots | Same-day virtual tokens only. Hybrid slots + live queue later |
-| SMS, IVR, WhatsApp, missed-call booking, voice | Phase 2; assisted desk booking covers no-smartphone users now |
-| Strong identity verification | Not attempted (no Aadhaar numbers stored). Abuse limited by OTP, per-phone limits, strikes, desk checks |
-| Cross-office token transfer, district/department hierarchy | Cancel and rebook; hierarchy tables later (schema is already office-scoped) |
-| Payments | Out of scope |
-| Geofencing | Optional later, never the only security control |
-| High availability / failover | Single-region free tier; no failover |
+| **CITIZEN** | Book, pay where applicable, check in, cancel, confirm completion |
+| **PHYSICAL CITIZEN** | Receive physical token/slip and use office service |
+| **OFFICER** | Manage counter, call/serve citizens, handle missed appointments, verify documents, complete service, control display |
+| **DESK** | Create assisted/physical bookings and help citizens without smartphones |
+| **DEPARTMENT_ADMIN** | Configure services, slots, deadlines, counters, staff, closure rules, pricing |
+| **ADMIN** | Higher-level office/department management and reports |
+| **SYSTEM** | Automatic expiry, no-show, notifications, slot locking, scheduled tasks |
+
+---
+
+## 5. Online appointment model
+
+### 5.1 Online appointment
+Every online booking has:
+- appointment ID;
+- citizen/booker ID;
+- service ID;
+- office ID;
+- date;
+- fixed start time;
+- configured slot duration;
+- number of people;
+- appointment type;
+- token;
+- QR;
+- booking price;
+- document confirmation;
+- appointment status.
+
+### 5.2 Fixed appointment rule
+Online appointments are non-flexible by default.
+Example:
+```text
+Appointment: 4:00 PM
+Buffer: 5 minutes
+Expected arrival window: 4:00–4:05 PM
+```
+The system must not automatically change the citizen's appointment time because another user is absent.
+
+### 5.3 No automatic "come early"
+The system must not send:
+> "Come early because the queue is empty."
+The user's selected appointment remains the authoritative expected service time.
+
+### 5.4 Appointment is not a government-server guarantee
+Before booking/payment, show a clear disclosure:
+> Government-side technical failures, official closures, or other department-side problems may affect service availability even when an appointment has been booked or paid for.
+
+---
+
+## 6. Slot types and pricing
+
+### 6.1 Normal booking
+Normal booking uses the standard configured booking horizon and fee.
+Example: standard near-term slot; configured normal fee.
+
+### 6.2 Custom/future booking
+The department may allow citizens to choose a preferred time farther in the future.
+Example:
+```text
+Normal booking → normal fee
+Custom booking after 2+ days → higher configured fee
+```
+Exact amounts are configuration, not hardcoded.
+
+### 6.3 Premium/custom slot limitation
+A higher payment does not guarantee protection against:
+- government server failure;
+- official department closure;
+- emergency shutdown;
+- other government-side operational problems.
+The booking/payment screen must disclose this.
+
+---
+
+## 7. Slot capacity and concurrency
+
+### 7.1 No double booking
+Two citizens must never consume the same protected capacity. Use database transactions and locking.
+
+### 7.2 Family/group capacity
+Booking must ask:
+> **How many people are coming with you?** (1, 2, 3, 4, 5+)
+The selected group size affects service capacity and estimated service duration.
+
+### 7.3 Service duration
+Each service can configure:
+- expected service duration;
+- minimum slot duration;
+- maximum group size;
+- optional group multiplier.
+Example: Base = 10 min; 1 person = 10 min; 2 people = 15 min; 4 people = 30 min.
+
+### 7.4 Atomic booking
+The server must atomically:
+1. validate user;
+2. validate office/service;
+3. validate booking window;
+4. validate online cutoff;
+5. validate service active;
+6. validate group size;
+7. validate document confirmation;
+8. validate priority if applicable;
+9. calculate capacity;
+10. lock capacity;
+11. calculate fee;
+12. verify payment if required;
+13. create appointment;
+14. create token;
+15. generate QR;
+16. create audit event;
+17. create notification outbox event;
+18. commit.
+
+---
+
+## 8. Document checklist
+Each service has a configured document checklist.
+Example:
+```text
+Aadhaar Update
+Required:
+✓ Identity proof
+✓ Existing Aadhaar-related document
+✓ Address proof, if required
+
+[ I have the required documents ]
+```
+The citizen must confirm document readiness before completing an online booking where the service requires it. The officer can still physically verify the documents.
+
+---
+
+## 9. Family/group booking
+
+### 9.1 Booking field
+Required: "How many people are coming for this booking?"
+
+### 9.2 Optional details
+Where necessary, collect: beneficiary name, relationship, beneficiary phone if available. Do not store Aadhaar numbers unnecessarily.
+
+### 9.3 Group service
+The officer must be able to record whether: all people were served, only some were served, service failed because of missing documents, or another configured outcome occurred. Do not mark an entire group as successfully completed if only part of the requested work was completed.
+
+---
+
+## 10. Token and QR system
+
+### 10.1 Online user
+Online booking generates:
+```text
+Appointment: 4:00 PM
+Token: A-047
+People: 3
+QR: signed QR
+```
+
+### 10.2 Physical user
+The help desk generates:
+```text
+Physical Token: P-024
+Service: Aadhaar Update
+Estimated Turn: 3:40 PM
+```
+A printed slip is given to the citizen.
+
+### 10.3 QR check-in
+The citizen scans the office QR to prove physical presence. The QR must not be accepted as an indication that the citizen is physically present if scanned remotely. P0 may use a signed daily QR; P1 may rotate the QR periodically.
+
+---
+
+## 11. Physical user system
+This is a core QueueLess feature.
+
+### 11.1 Physical user entry
+A physical citizen:
+1. comes to the office;
+2. goes to the help desk;
+3. requests the required service;
+4. help desk creates a physical token;
+5. system checks the current queue;
+6. system calculates an estimated turn time;
+7. help desk prints the slip;
+8. citizen waits according to the estimated time.
+
+### 11.2 Printed slip
+The slip should contain at least:
+```text
+QueueLess
+Service: Aadhaar Update
+
+Token: P-024
+
+Estimated Turn:
+3:40 PM
+
+Please wait for your token to be displayed.
+```
+It should not expose unnecessary personal information.
+
+### 11.3 Physical turn time
+The physical user's printed time is not a fixed appointment. It is an estimate based on: current waiting queue, online appointments, physical tokens ahead, active counters, average service duration, group size, priority rules, and current delays. A single displayed time may be printed if the product UX requires it, but internally the system should retain an ETA range.
+
+### 11.4 Queue changes
+If the queue changes substantially: physical ETA can be recalculated, dashboard can show the updated estimate, and optional notification can be sent if a phone number is available. The printed slip is therefore an estimated turn, not a guaranteed appointment.
+
+---
+
+## 12. Physical users and online users
+
+### 12.1 Online user absent
+Suppose:
+```text
+4:00 PM online appointment
+User has not arrived
+Buffer expires
+```
+The officer does not have to remain idle. If a physical user is waiting and the officer has usable capacity, the officer can serve the physical user. **There is no requirement to wait for three missed online users.**
+
+### 12.2 Three missed users
+The system may still count `consecutive_missed_online_appointments = 3` for analytics, staffing decisions, reports, and detecting high no-show periods. But it is not a prerequisite for physical service.
+
+### 12.3 Later online user
+Suppose:
+```text
+4:00 online A → absent
+4:05 physical P-024 → served
+4:15 online B → arrives on time
+```
+B's valid appointment remains valid. The officer should finish an already-started service and then serve B according to the dispatch rules. Physical users must not permanently cancel or consume another valid online user's appointment.
+
+---
+
+## 13. Dispatch rules
+The backend owns dispatch.
+```text
+Is a valid online appointment holder present?
+        │
+       YES
+        ↓
+Serve valid online appointment according to appointment rules
+        │
+       NO
+        ↓
+Is a physical user waiting?
+        │
+       YES
+        ↓
+Serve eligible physical user
+        │
+       NO
+        ↓
+Wait / perform other officer work
+```
+Additional rules may apply for: priority categories, service-specific constraints, already-started service, multiple counters, group bookings, official emergency rules. The system must never require an officer to sit idle solely because an absent online appointment exists.
+
+---
+
+## 14. Public TV/display
+
+### 14.1 Token only
+The public TV must display the token number, not the citizen's name.
+```text
+━━━━━━━━━━━━━━━━━━━━
+       NOW SERVING
+━━━━━━━━━━━━━━━━━━━━
+
+         P-024
+
+       COUNTER 2
+━━━━━━━━━━━━━━━━━━━━
+```
+
+### 14.2 Privacy rule
+The public display must never expose: citizen name, phone number, Aadhaar number, PAN number, address, or private document information.
+
+### 14.3 Display content
+Allowed: token number, counter number, service category where useful, queue status, general announcements.
+
+### 14.4 Officer control
+The officer can select which eligible token is currently being served. The display must reflect the actual serving token.
+
+### 14.5 Display endpoint
+`GET /v1/display/{office_id}`: public/read-only, returns only safe display information.
+
+---
+
+## 15. Officer workflow
+
+### 15.1 Dashboard
+Officer sees: current counter, service, valid online appointments, arrived online users, missed appointments, physical waiting tokens, estimated physical turn times, current serving token, priority verification, document verification, closure controls, display controls.
+
+### 15.2 Normal operation
+```text
+Check current appointment/queue
+        ↓
+Check whether valid online user is present
+        ↓
+If present → serve according to appointment rules
+If absent → serve eligible physical user if available
+        ↓
+Complete
+        ↓
+Move to next eligible citizen
+```
+
+### 15.3 Officer must not wait unnecessarily
+An absent online appointment does not automatically make the officer idle. The officer may serve an eligible physical user whenever operationally possible.
+
+---
+
+## 16. Completion confirmation
+
+### 16.1 Online user
+Double confirmation:
+```text
+Officer completes service → Officer confirms completion → User receives confirmation request → User confirms → Appointment = COMPLETED
+```
+
+### 16.2 Physical user
+Single verification:
+```text
+Officer completes service → Officer confirms completion → Token = COMPLETED
+```
+
+---
+
+## 17. Cancellation rules
+
+### 17.1 User cancellation
+Normal voluntary cancellation is controlled by the citizen. The officer/admin cannot casually cancel a citizen's appointment.
+
+### 17.2 Automatic cancellation
+Fixed appointment + 5-minute buffer expires + citizen absent → MISSED → AUTO_CANCELLED.
+
+### 17.3 Exceptional department/system cancellation
+May occur for official closure, government/server outage, emergency, officer/service unavailability, or government instruction. Requires authorized role, reason, audit event, and citizen notification where possible.
+
+### 17.4 No silent cancellation
+Every cancellation/invalidation must record who/what caused it, reason, timestamp, affected appointment, and notification status.
+
+---
+
+## 18. Government/server delay
+Government-side delay is not citizen fault, normal officer fault, or normal admin fault. When a government-side issue occurs, mark service/office as delayed, identify affected appointments, notify mobile users, provide rescheduling instructions, and preserve the original reason in the audit trail. A citizen who paid more for a custom slot is subject to the same government-side failure rule.
+
+---
+
+## 19. Sudden department closure
+If the department/service suddenly closes:
+```text
+Officer/Admin selects SERVICE CLOSED → Reason required → New online bookings stop → Affected future appointments identified → Mobile users notified → Rescheduling workflow started → Closure event stored
+```
+For physical citizens already present: informed at the office; help desk handles what is operationally possible; staff may call later if a phone number exists.
+
+---
+
+## 20. Rescheduling
+- **User-caused missed appointment:** Does not automatically get a flexible appointment. Must make a new booking if another slot is available.
+- **Government-caused disruption:** Notify mobile users, provide rescheduling instructions/options, preserve reason, do not mark as user cancellation.
+- **No-phone physical user:** Office announcement, help-desk communication, phone call when a number exists.
+
+---
+
+## 21. Advance booking cutoff and government deadlines
+- **Deadline configuration:** Example: Government deadline = 10 September; Online booking cutoff = 3 September.
+- **After cutoff:** New online booking is disabled. App shows: *"Online booking for this service is closed due to the configured government deadline policy. Please visit the centre physically."* Physical/help-desk service remains available.
+- **Existing appointments:** Existing valid bookings remain valid unless an exceptional closure affects them.
+
+---
+
+## 22. Notifications
+- **Online booking:** APPOINTMENT_CONFIRMED, TOKEN_CREATED, PAYMENT_CONFIRMED (if applicable), DOCUMENT_REMINDER.
+- **Appointment reminder:** *"Your appointment is at 4:00 PM. Please arrive within the allowed 5-minute buffer."* (Do not send automatic "come early" messages).
+- **Missed appointment:** *"You did not arrive within the allowed appointment window. Your appointment has been automatically cancelled."*
+- **Government delay / Closure:** Notifications with rescheduling instructions.
+- **Physical ETA:** Optional/configurable if phone provided: *"Your estimated turn is approaching. Please be ready for token P-024."*
+- **Localization:** English, Gujarati, Hindi.
+
+---
+
+## 23. ETA and queue engine
+Fixed appointments do not remove ETA. ETA is used for physical-user turn estimates, active queue monitoring, service delay estimation, and officer capacity planning.
+- **Physical ETA baseline:** Workload ahead / effective open counters. Range represented as `~3:35–3:45 PM` internally, printed as `Estimated turn: 3:40 PM` on slip.
+- **Online user:** Fixed appointment is authoritative. ETA supplements with expected delay / current progress.
+
+---
+
+## 24. Priority users
+Categories: senior citizens, pregnant citizens, persons with disabilities, etc.
+- **Verification:** *"Trust at booking, verify at the office."*
+- **Fairness:** Reserved capacity, interleaving, auditable server-side rules.
+
+---
+
+## 25. Department/admin controls
+- **Office:** name, address, timezone, opening/closing hours, holidays, special closures.
+- **Services:** service name, documents, average duration, group rules, online availability, physical availability, priority eligibility, location, online alternative.
+- **Appointment:** slot duration, booking horizon, custom-slot horizon, pricing, buffer, maximum group size, capacity.
+- **Physical queue:** physical token numbering, physical capacity, ETA settings, help-desk settings, display settings.
+- **Deadline:** government deadline, online booking cutoff, deadline note.
+- **Closure:** closure reason, notification policy, rescheduling policy.
+
+---
+
+## 26. Booking transaction
+```text
+BEGIN
+if idempotency key already exists: return previous response
+validate user, office, service, calendar, booking horizon, booking cutoff, service active, group size, document confirmation, priority
+lock appointment capacity
+if capacity unavailable: return SLOT_UNAVAILABLE
+calculate price; verify payment if required
+create appointment; create token; create signed QR reference
+write appointment event; write notification outbox; write idempotency response
+COMMIT
+```
+
+---
+
+## 27. Physical token creation transaction
+```text
+BEGIN
+validate office/service, service physical availability, current office time
+calculate physical queue position, workload ahead, ETA range
+assign unique physical token
+create token event
+create printed-slip data
+write notification if applicable
+COMMIT
+```
+
+---
+
+## 28. Token state machines
+
+### 28.1 Online appointment
+```text
+BOOKED → CHECKED_IN → CALLED → SERVING → OFFICER_COMPLETED → USER_CONFIRMED → COMPLETED
+```
+Missed:
+```text
+BOOKED → MISSED → AUTO_CANCELLED
+```
+Government closure:
+```text
+BOOKED → AFFECTED_BY_CLOSURE → RESCHEDULE_REQUIRED
+```
+
+### 28.2 Physical token
+```text
+WAITING → CALLED → SERVING → COMPLETED
+(optional: WAITING → CANCELLED)
+```
+
+---
+
+## 29. Database model
+Core tables:
+- `offices`: Government office
+- `office_settings`: Appointment/queue rules
+- `office_calendar`: holidays, deadlines, closures
+- `services`: Government services
+- `counters`: Physical counters
+- `counter_services`: Counter/service mapping
+- `profiles`: Users/staff
+- `appointment_slots`: Available online capacity
+- `appointments`: Online appointments
+- `tokens`: Online + physical service tokens
+- `token_events`: Immutable audit trail
+- `allowed_transitions`: State-machine protection
+- `service_stats`: Service-time statistics
+- `counter_service_stats`: Counter-specific statistics
+- `eta_log`: ETA predictions
+- `priority_checks`: Priority verification
+- `devices`: FCM device tokens
+- `notification_outbox`: Reliable notifications
+- `idempotency_keys`: Double-tap protection
+- `counter_events`: Counter status history
+- `closure_events`: Department/service closure history
+- `payment_records`: Payment state
+- `completion_confirmations`: Online double confirmation
+
+---
+
+## 30. Database constraints
+- **Token uniqueness:** `UNIQUE(office_id, service_id, business_date, seq)`
+- **Online capacity:** Protected through database locking/constraints.
+- **One active appointment:** Prevent conflicting active appointments per citizen/service.
+- **Idempotency:** Same booking idempotency key = same booking result.
+- **State integrity:** All transitions validated.
+- **Audit:** Immutable event logs for cancellation, closure, rescheduling, no-show, priority rejection, physical token creation, manual dispatch, display changes, officer overrides.
+
+---
+
+## 31. API catalogue
+
+### Citizen
+| Function | Endpoint |
+|---|---|
+| Browse offices | `GET /v1/offices` |
+| Browse services | `GET /v1/offices/{id}/services` |
+| Get slots | `GET /v1/services/{id}/slots` |
+| Create appointment | `POST /v1/appointments` |
+| View appointment | `GET /v1/appointments/{id}` |
+| Cancel appointment | `POST /v1/appointments/{id}/cancel` |
+| Check-in | `POST /v1/appointments/{id}/check-in` |
+| Confirm completion | `POST /v1/appointments/{id}/confirm-completion` |
+| Register device | `POST /v1/devices` |
+| Change language | `PATCH /v1/me` |
+| History | `GET /v1/appointments/me/history` |
+
+### Officer
+| Function | Endpoint |
+|---|---|
+| View queue | `GET /v1/counters/{id}/queue` |
+| Set counter status | `POST /v1/counters/{id}/status` |
+| Call next | `POST /v1/counters/{id}/call-next` |
+| Start | `POST /v1/tokens/{id}/start` |
+| Complete | `POST /v1/tokens/{id}/complete` |
+| Mark missed | `POST /v1/appointments/{id}/missed` |
+| Priority check | `POST /v1/tokens/{id}/priority-check` |
+| Display current token | `POST /v1/counters/{id}/display` |
+| Close service | `POST /v1/services/{id}/close` |
+| Reopen service | `POST /v1/services/{id}/reopen` |
+
+### Desk
+| Function | Endpoint |
+|---|---|
+| Create physical token | `POST /v1/desk/tokens` |
+| Get physical queue | `GET /v1/desk/queue` |
+| Print slip data | `GET /v1/desk/tokens/{id}/slip` |
+
+### Admin
+| Function | Endpoint |
+|---|---|
+| Office CRUD | `/v1/admin/offices/...` |
+| Service CRUD | `/v1/admin/services/...` |
+| Counter CRUD | `/v1/admin/counters/...` |
+| Staff | `/v1/admin/staff/...` |
+| Settings | `/v1/admin/offices/{id}/settings` |
+| Calendar | `/v1/admin/offices/{id}/calendar` |
+| Deadline | `/v1/admin/services/{id}/deadline` |
+| Booking cutoff | `/v1/admin/services/{id}/booking-cutoff` |
+| Pricing | `/v1/admin/services/{id}/pricing` |
+| Reports | `/v1/admin/reports/...` |
+| Closure | `/v1/admin/services/{id}/closure` |
+
+### Public display
+`GET /v1/display/{office_id}`:
+```json
+{
+  "now_serving": {
+    "token": "P-024",
+    "counter": 2
+  }
+}
+```
+Never returns citizen name or private identifiers.
+
+---
+
+## 32. Automatic tick
+The scheduler runs periodically to:
+- detect expired appointment buffers;
+- mark missed appointments;
+- auto-cancel missed appointments;
+- release unused appointment capacity;
+- detect planned closures;
+- send reminders;
+- send government-delay notifications;
+- send closure notifications;
+- update ETA;
+- update physical turn estimates;
+- flush notification outbox;
+- maintain statistics.
+Idempotent execution.
+
+---
+
+## 33. Reports and analytics
+Admin reports include: online bookings, physical users, completed appointments, missed appointments, user cancellations, government-side affected appointments, department closures, average wait, P90 wait, service duration, counter utilization, physical utilization, online utilization, physical-mode usage, online no-show rate, deadline-period demand, booking cutoff impact, custom-slot bookings, revenue where payments are enabled, completion confirmation rate, ETA accuracy, document-related failures, physical ETA accuracy, average physical waiting time.
+
+Distinguish:
+- `USER_CANCELLED`
+- `AUTO_CANCELLED_MISSED`
+- `GOVERNMENT_SIDE_AFFECTED`
+- `DEPARTMENT_CLOSED`
+- `COMPLETED`
+
+---
+
+## 34. Simulator
+Supports:
+- fixed online appointments;
+- online no-shows;
+- physical arrivals;
+- physical ETA;
+- officer serving physical users during online idle capacity;
+- group bookings;
+- multiple counters;
+- priority;
+- government delay;
+- sudden closure;
+- deadline rush.
+
+---
+
+## 35. Testing requirements
+1. **Online slot concurrency:** Concurrent requests must never overbook capacity.
+2. **Double tap:** Same idempotency key yields 1 appointment only.
+3. **Fixed appointment:** A valid online appointment cannot be silently moved.
+4. **Five-minute buffer:** Tested before, at, inside, and after buffer.
+5. **Automatic missed cancellation:** After buffer: `BOOKED → MISSED → AUTO_CANCELLED`.
+6. **Physical user after one absent online user:** Tested: absent online user + physical user waiting → officer may serve physical user (no requirement for three missed users).
+7. **Later online appointment:** A later valid online appointment remains valid after physical mode is used.
+8. **Physical slip ETA:** Token created, current queue considered, ETA range calculated, slip data contains token + estimated time.
+9. **TV privacy:** Public display must show token number, never name/phone/Aadhaar.
+10. **Deadline cutoff:** After cutoff, online booking rejected; physical service allowed if configured.
+11. **Closure:** Service closes → new bookings blocked, affected appointments identified, audit event written, notifications queued.
+12. **Completion:** Online: `OFFICER_COMPLETED → USER_CONFIRMED → COMPLETED`; Physical: `OFFICER_COMPLETED → COMPLETED`.
+13. **Cancellation authorization:** Citizen can cancel own booking; officer cannot casually cancel; exceptional closure requires authorized role + reason.
+14. **Government failure:** Never classified as user cancellation.
+15. **Tick idempotency:** Repeated ticks must not create duplicate cancellation or notification events.
+
+---
+
+## 36. Security and privacy
+- JWT verification on every request.
+- Role + office scope enforced server-side.
+- Citizens access only their own appointments.
+- Officers access only authorized office/service data.
+- Admin actions audited.
+- QR signed.
+- Server time authoritative.
+- No Aadhaar numbers stored unnecessarily.
+- No unnecessary document images.
+- Public TV never displays personal names or phone numbers.
+- Rate limits on booking/OTP.
+- Idempotency keys on booking.
+- Payment webhooks verified cryptographically if enabled.
+
+---
+
+## 37. Build order
+
+### M0–M5
+Existing backend foundation remains reusable where compatible.
+
+### M6 — Appointment foundation
+- Fixed appointment model
+- Slot model & capacity
+- Fixed booking
+- 5-minute buffer
+- User cancellation
+- Automatic missed cancellation
+- Family/group count
+- Document confirmation
+
+### M7 — Physical users + officer workflow
+- Physical tokens
+- Help-desk flow & printed slip
+- Physical ETA & queue
+- Dispatch rules (serving physical users whenever online capacity is unused)
+- Token-only public display
+
+### M8 — Closure/deadline operations
+- Office calendar
+- Service deadline & booking cutoff
+- Planned and sudden closure
+- Affected appointment notifications & rescheduling workflow
+
+### M9 — Completion + notifications
+- Officer completion & user confirmation (double confirmation)
+- Localized notifications (en/gu/hi)
+- Government-delay notifications
+- Physical ETA notifications where applicable
+
+### M10 — Payments/custom slots (Optional)
+- Custom future slots, pricing, payment state, verification, refund policy.
+
+### M11 — Flutter integration
+- Booking, family count, document checklist, slot selection, QR, appointment status, cancellation, completion confirmation, notifications.
+
+### M12 — Reports/simulation hardening
+- Appointment analytics, physical utilization, physical ETA accuracy, no-show analytics, deadline analytics, full simulation.
+
+---
+
+## 38. Autopilot & Final Decision Table
+
+| Situation | System behavior |
+|---|---|
+| Online user arrives on time | Serve according to fixed appointment |
+| Online user arrives within 5-minute buffer | Accept according to configured check-in rule |
+| Online user does not arrive | Mark missed and auto-cancel according to policy |
+| One online user absent + physical user waiting | Officer may serve physical user |
+| Three online users absent | Physical service continues; three is not a prerequisite |
+| Physical user arrives | Help desk creates physical token |
+| Physical token created | System calculates estimated turn |
+| Physical slip printed | Token + estimated turn shown |
+| Queue changes | Physical ETA may be recalculated |
+| Later online user arrives | Valid online appointment remains valid |
+| TV display | Token number only (never name or personal data) |
+| User wants to cancel | User can cancel |
+| Officer wants ordinary cancellation | Not allowed |
+| Sudden government/department closure | Exceptional closure flow with reason & notifications |
+| Government server delay | Notify affected users and follow rescheduling policy |
+| User paid premium custom slot | Still subject to government-side failure disclosure |
+| Government deadline approaching | Admin can close online booking early |
+| Online booking cutoff reached | New online bookings blocked; physical remains available |
+| Online service completed | Officer confirms + user confirms (double confirmation) |
+| Physical service completed | Officer confirms |

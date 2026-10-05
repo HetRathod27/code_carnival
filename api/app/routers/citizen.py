@@ -312,6 +312,7 @@ async def update_profile(
     payload: ProfileUpdateIn,
     user: UserClaims = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
 ) -> SuccessResponse:
     prof_res = await session.execute(select(Profile).where(Profile.id == user.user_id))
     profile = prof_res.scalar_one_or_none()
@@ -327,6 +328,7 @@ async def update_profile(
             phone=user.phone,
             name=payload.name,
             language=payload.language or "en",
+            created_at=clock.now(),
         )
         session.add(new_profile)
     await session.commit()

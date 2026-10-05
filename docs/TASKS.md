@@ -160,6 +160,32 @@ This document defines the formal task queue for QueueLess development, including
 
 ---
 
+## M5b: Backend Hardening
+- **Scope**:
+  1. **Accuracy proof**: Full-day simulation regression (open→close, breaks, priority, rush). Assert live-adjusted MAE is STRICTLY lower than naive. Record both MAE values + token count in `PROGRESS.md`. If nearly equal, investigate and report; do NOT loosen the assertion.
+  2. **Missing endpoints**:
+     - `POST /v1/devices` (C7): register FCM device token + language.
+     - `PATCH /v1/me` (C11): update own language preference.
+     - Admin CRUD (A1): `POST/GET/PATCH/DELETE /v1/admin/services`, `/counters`, `/counter-services` with validation.
+     - `GET /v1/display/{office_id}` (D1, P1): public lobby board — counter label + now-serving display code only (no personal data).
+     - `POST/DELETE /v1/queues/{service_id}/pause` (O10): pause/resume booking, reason required.
+     - Tests for each, including authorization matrix.
+  3. **Security**: DevAuth / dev token endpoints must cause startup failure (`AssertionError` or `RuntimeError`) when `ENVIRONMENT=production`. Test this.
+  4. **Correctness tests**:
+     - Officer manual no-show must never leave token stranded in `NO_SHOW` — must requeue or cancel exactly like tick sweep.
+     - Desk admission override requires `reason_code` in meta; logged as event.
+     - `DECISIONS.md` entry explaining `queue_state.last_seq` sync; test proving normal bookings never need the sync path.
+  5. **Smoke test doc** (`docs/SMOKE_TEST.md`): exact PowerShell commands to start API, run seed, get dev tokens for each role, walk one full token lifecycle in Swagger `/docs`, run simulator, read accuracy report. Record real output.
+- **Acceptance Criteria**:
+  - All new endpoints return correct responses; auth matrix tests pass.
+  - Startup guard test for DevAuth in production passes.
+  - Full-day simulation MAE assertion: live < naive (strict).
+  - `docs/SMOKE_TEST.md` exists with real recorded output.
+- **Gate**:
+  - `scripts/verify.ps1` exits 0.
+
+---
+
 ## M6b: Web Remainder & Polish
 - **Scope**:
   - Desk assisted booking with printable slip preview.

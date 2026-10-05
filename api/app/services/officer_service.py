@@ -416,7 +416,8 @@ async def mark_no_show(
 ) -> Token:
     """
     Mark a CALLED token as NO_SHOW (O5).
-    Section 19.5: reason_code is mandatory for no-show.
+    Requirement 4.1: Manual no-show must never leave token stranded in NO_SHOW;
+    it must requeue or cancel exactly like the tick sweep.
     """
     stmt = select(Token).where(Token.id == token_id).with_for_update()
     res = await session.execute(stmt)
@@ -424,6 +425,7 @@ async def mark_no_show(
     if not token:
         raise OfficerOperationError("TOKEN_NOT_FOUND", "Token not found", 404)
 
+    # 1. Transition: CALLED -> NO_SHOW
     await transition(
         token=token,
         to_state="NO_SHOW",
@@ -434,6 +436,68 @@ async def mark_no_show(
         counter_id=counter_id,
         meta={"reason_code": reason},
     )
+
+    # 2. Requeue or Cancel based on office settings
+    stmt_set = select(OfficeSettings).where(OfficeSettings.office_id == token.office_id)
+    res_set = await session.execute(stmt_set)
+    settings = res_set.scalar_one_or_none()
+    max_requeues = settings.max_requeues if settings else 1
+    requeue_offset = settings.requeue_offset if settings else 5
+
+    if token.requeue_count < max_requeues:
+        token.requeue_count += 1
+        stmt_offset = (
+            select(Token.sort_key)
+            .where(
+                Token.office_id == token.office_id,
+                Token.service_id == token.service_id,
+                Token.business_date == token.business_date,
+                Token.state == "WAITING",
+            )
+            .order_by(Token.sort_key.asc())
+            .offset(requeue_offset)
+            .limit(1)
+        )
+        res_offset = await session.execute(stmt_offset)
+        offset_sort_key = res_offset.scalar_one_or_none()
+        if offset_sort_key is not None:
+            token.sort_key = float(offset_sort_key) + 0.001
+        else:
+            token.sort_key = clock.now_epoch() + 1.0
+
+        # Transition: NO_SHOW -> WAITING
+        await transition(
+            token=token,
+            to_state="WAITING",
+            actor_type="SYSTEM",
+            actor_id="system",
+            session=session,
+            clock=clock,
+            meta={"reason_code": "OFFICER_NO_SHOW_REQUEUE", "requeue_count": token.requeue_count},
+        )
+
+        stmt_qs = select(QueueState).where(
+            QueueState.office_id == token.office_id,
+            QueueState.service_id == token.service_id,
+            QueueState.business_date == token.business_date,
+        ).with_for_update()
+        res_qs = await session.execute(stmt_qs)
+        qs = res_qs.scalar_one_or_none()
+        if qs:
+            qs.waiting_count += 1
+            qs.version += 1
+    else:
+        # Transition: NO_SHOW -> CANCELLED
+        await transition(
+            token=token,
+            to_state="CANCELLED",
+            actor_type="SYSTEM",
+            actor_id="system",
+            session=session,
+            clock=clock,
+            meta={"reason_code": "OFFICER_NO_SHOW_MAX_REQUEUES"},
+        )
+
     return token
 
 

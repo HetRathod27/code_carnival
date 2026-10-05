@@ -283,12 +283,30 @@ Running log of milestones, completed tasks, verifications, and status.
 ---
 
 ## M5b: Backend Hardening
-- **Status**: Starting immediately per Autopilot Rules.
-- **Plan**:
-  1. Strengthen simulation regression test for a full-day scenario; assert `mae_live < mae_naive` strictly.
-  2. Implement missing spec endpoints: `POST /v1/devices`, `PATCH /v1/me`, admin CRUD for services/counters/counter-services, `GET /v1/display/{office_id}`, pause/resume booking (`/v1/queues/{service_id}/pause`).
-  3. Production startup guard for DevAuth.
-  4. Correctness tests (no-show requeue, desk admission override, queue_state sync test).
-  5. Create `docs/SMOKE_TEST.md`.
+- **Date**: 2026-10-05
+- **Built**:
+  - Full-Day Simulation Regression Accuracy Proof: Evaluated 58 served tokens over an 8-hour day with rush events, breaks, and priority requests. Fixed `actual_wait` metric to `called_at - created_at` (Spec Section 8). Recorded: `MAE_Live = 50.397 min` strictly lower than `MAE_Naive = 50.840 min` (`test_full_day_sim_regression_strict_mae`). In background simulation API: `MAE_Live = 34.03 min` vs `MAE_Naive = 36.41 min`.
+  - Core V1 Endpoints (`api/app/routers/v1_core.py`):
+    - `POST /v1/devices` (C7): register FCM device token & language with upsert.
+    - `PATCH /v1/me` (C11): update user language & profile.
+    - `GET /v1/display/{office_id}`: public lobby board returning counter labels and active `now_serving` display codes without personal citizen data (no auth required).
+    - `POST/DELETE /v1/queues/{service_id}/pause` (O10): pause/resume booking with required reason, mutating `queue_state.paused`.
+  - Admin CRUD (`api/app/routers/admin.py`): Complete CRUD for `/v1/admin/services`, `/v1/admin/counters`, and `/v1/admin/counter-services` with validation and role guards.
+  - Production Security Guard: Lifespan hook in `api/app/main.py` raising `RuntimeError` if `ENVIRONMENT=production` while DevAuth is enabled.
+  - State Machine Correctness: `mark_no_show` in `officer_service.py` automatically requeues or cancels per `office_settings` (never leaves token stranded in `NO_SHOW`). Desk assisted booking supports `WALKIN` and `override_reason` logged in `token_events.meta["reason_code"]`.
+  - Admission Control Enhancement: Modeled capacity in `check_admission` when counters are temporarily closed before opening hours or on break.
+  - Technical Specification v3 (`docs/spec.md` & `docs/DECISIONS.md` D-006): Integrated superseding rule for fixed online appointment slots, physical tokens with live queue ETA, immediate physical dispatch on absent online users (no 3-missed prerequisite), double completion confirmation for online, and deadline cutoff controls.
+  - Smoke Test Documentation (`docs/SMOKE_TEST.md`): PowerShell commands with real recorded outputs covering seed, dev tokens, lifecycle, simulation, and all 3 aggregate reports.
+- **Files**:
+  - `api/app/routers/v1_core.py`, `api/app/routers/admin.py`, `api/app/routers/desk.py`, `api/app/routers/citizen.py`
+  - `api/app/services/token_service.py`, `api/app/services/officer_service.py`
+  - `api/app/eta/admission.py`, `api/app/sim/runner.py`
+  - `api/app/main.py`
+  - `api/tests/api/test_m5b_hardening.py`, `api/tests/sim/test_sim_regression.py`
+  - `docs/SMOKE_TEST.md`, `docs/spec.md`, `docs/DECISIONS.md`, `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `scripts/verify.ps1`: Exit code 0 (51 passed in 40.74s, Ruff: OK, OpenAPI export: OK, Mypy: OK on 51 files, Web typecheck & build: OK).
+- **Git Commit & Tag**: `m5b-done`
+
 
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -48,3 +50,65 @@ class OfficeDetailOut(BaseModel):
     open_time: str
     close_time: str
     active: bool
+
+
+# ─── M5b Admin CRUD & Display Models ─────────────────────────────────────────
+
+class ServiceCreateIn(BaseModel):
+    id: str
+    office_id: str
+    code: str
+    names: dict[str, str]
+    prior_avg_minutes: float
+    required_docs: list[Any] = []
+    priority_allowed: bool = True
+    requires_physical_visit: bool = True
+    online_alternative_url: str | None = None
+    location_hint: dict[str, str] | None = None
+
+
+class ServiceUpdateIn(BaseModel):
+    names: dict[str, str] | None = None
+    prior_avg_minutes: float | None = None
+    required_docs: list[Any] | None = None
+    priority_allowed: bool | None = None
+    requires_physical_visit: bool | None = None
+    online_alternative_url: str | None = None
+    location_hint: dict[str, str] | None = None
+    active: bool | None = None
+
+
+class CounterCreateIn(BaseModel):
+    id: str
+    office_id: str
+    label: str
+
+
+class CounterUpdateIn(BaseModel):
+    label: str | None = None
+    status: str | None = None
+
+
+class CounterOut(BaseModel):
+    id: str
+    office_id: str
+    label: str
+    status: str
+    officer_id: str | None = None
+
+
+class CounterServiceIn(BaseModel):
+    counter_id: str
+    service_id: str
+
+
+class DisplayCounterOut(BaseModel):
+    counter_label: str
+    now_serving: str | None = None
+
+
+class DisplayBoardOut(BaseModel):
+    office_id: str
+    office_name: str
+    counters: list[DisplayCounterOut]
+

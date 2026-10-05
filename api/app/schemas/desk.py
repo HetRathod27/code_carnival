@@ -10,6 +10,7 @@ class DeskBookIn(BaseModel):
     phone: str | None = None
     citizen_name: str | None = None
     created_via: str = "ASSISTED"  # ASSISTED or WALKIN
+    override_reason: str | None = None
 
 
 class DeskSlipOut(BaseModel):

@@ -82,12 +82,12 @@ async def load_queue_snapshot(
         res_all_counters = await session.execute(stmt_all_counters)
         counters = list(res_all_counters.scalars().all())
 
-    # 3. Serving tokens
+    # 3. Serving tokens (including CALLED awaiting citizen at counter)
     stmt_serving = select(Token).where(
         Token.office_id == office_id,
         Token.service_id == service_id,
         Token.business_date == b_date,
-        Token.state == "SERVING",
+        Token.state.in_(["SERVING", "CALLED"]),
     )
     res_serving = await session.execute(stmt_serving)
     serving_tokens_db = list(res_serving.scalars().all())

@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app.core.clock import VirtualClock
-from api.app.models.entities import Office, Token
+from api.app.models.entities import Counter, Office, Token
 from api.app.services.officer_service import (
     call_next,
     complete_serving,
@@ -116,7 +116,14 @@ async def run_simulation(
     clock = VirtualClock(start_dt)
     stats = SimStats()
 
-    # Open the counters
+    # Open the scenario counters and ensure any other counters in the office are closed
+    stmt_all_c = select(Counter).where(Counter.office_id == scenario.office_id)
+    res_all_c = await session.execute(stmt_all_c)
+    for c in res_all_c.scalars().all():
+        if c.id not in scenario.counter_ids and c.status != "CLOSED":
+            c.status = "CLOSED"
+            c.officer_id = None
+
     for counter_id in scenario.counter_ids:
         try:
             await set_counter_status(
@@ -173,6 +180,9 @@ async def run_simulation(
     no_show_fraction = scenario.services[0].no_show_fraction if scenario.services else 0.08
     first_service_id = scenario.services[0].service_id if scenario.services else None
 
+    # Track when tokens are called to compute actual_wait = called_at - created_at (Spec Section 8)
+    called_at_minute: dict[str, int] = {}
+
     # Virtual minute loop
     for minute in range(scenario.duration_minutes):
         # Advance clock by 1 virtual minute
@@ -195,12 +205,10 @@ async def run_simulation(
                 token_id = result["token_id"]
                 # Capture ETA fields recorded at booking time
                 # book_token returns: last_eta_minutes (p50), eta_low, eta_high
-                # naive_p50 is stored in eta_features on the token (not in response dict)
                 eta_p50 = float(result.get("last_eta_minutes", 0) or 0)
                 eta_low = float(result.get("eta_low", 0) or 0)
                 eta_high = float(result.get("eta_high", 0) or 0)
-                # naive_p50 not returned in booking response; use p50 as fallback
-                naive_p50 = eta_p50
+                naive_p50 = float(result.get("naive_p50", 0) or 0)
                 booked[token_id] = (eta_p50, eta_low, eta_high, naive_p50, minute)
                 stats.tokens_booked += 1
 
@@ -277,7 +285,8 @@ async def run_simulation(
                             stats.tokens_served += 1
                             if token_id in booked:
                                 eta_p50, eta_low, eta_high, naive_p50, booked_minute = booked[token_id]
-                                actual_wait = float(minute - booked_minute)
+                                called_m = called_at_minute.get(token_id, minute)
+                                actual_wait = float(called_m - booked_minute)
                                 stats.records.append({
                                     "token_id": token_id,
                                     "booked_minute": booked_minute,
@@ -305,6 +314,7 @@ async def run_simulation(
                         target_service_id=first_service_id,
                     )
                     called_token_id = called_tok.id
+                    called_at_minute[called_token_id] = minute
 
                     # Decide no-show
                     if rng.random() < no_show_fraction:
@@ -365,17 +375,17 @@ async def run_simulation(
     # Compute accuracy metrics
     records = stats.records
     if records:
-        live_errors = [abs(r["actual_wait"] - r["eta_p50"]) for r in records if r["eta_p50"] > 0]
-        naive_errors = [abs(r["actual_wait"] - r["naive_p50"]) for r in records if r["naive_p50"] > 0]
-        if live_errors:
-            stats.mae_live = sum(live_errors) / len(live_errors)
-        if naive_errors:
-            stats.mae_naive = sum(naive_errors) / len(naive_errors)
-
-        in_range = sum(
-            1 for r in records
-            if r["eta_high"] > 0 and r["eta_low"] <= r["actual_wait"] <= r["eta_high"]
-        )
-        stats.within_range_pct = (in_range / len(records)) * 100.0
+        eval_records = [
+            r for r in records
+            if 0.0 <= r["eta_p50"] < 500.0 and 0.0 <= r["naive_p50"] < 500.0
+        ]
+        if eval_records:
+            stats.mae_live = sum(abs(r["actual_wait"] - r["eta_p50"]) for r in eval_records) / len(eval_records)
+            stats.mae_naive = sum(abs(r["actual_wait"] - r["naive_p50"]) for r in eval_records) / len(eval_records)
+            in_range = sum(
+                1 for r in eval_records
+                if r["eta_high"] > 0 and r["eta_low"] <= r["actual_wait"] <= r["eta_high"]
+            )
+            stats.within_range_pct = (in_range / len(eval_records)) * 100.0
 
     return stats

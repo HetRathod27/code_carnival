@@ -45,6 +45,7 @@ async def book_token(
     on_behalf_of: str | None = None,
     beneficiary_name: str | None = None,
     priority_doc_type: str | None = None,
+    override_reason: str | None = None,
 ) -> dict[str, Any]:
     """
     Booking (C3, O7) — atomic numbering, one transaction.
@@ -155,7 +156,7 @@ async def book_token(
     max_waiting = office_settings.max_waiting_per_service if office_settings else 100
 
     current_snapshot = await load_queue_snapshot(session, clock, office_id, service_id)
-    is_desk_override = created_via in ["ASSISTED", "DESK"]
+    is_desk_override = created_via in ["ASSISTED", "DESK", "WALKIN"] or bool(override_reason)
     admitted, rejection_reason, _ = check_admission(
         snapshot=current_snapshot,
         office_close_time=office.close_time,
@@ -212,6 +213,10 @@ async def book_token(
 
     # 4. Insert initial event in token_events
     actor_type = "DESK" if created_via in ["ASSISTED", "DESK"] else "CITIZEN"
+    event_meta: dict[str, Any] = {"created_via": created_via, "seq": new_seq}
+    if is_desk_override and override_reason:
+        event_meta["reason_code"] = override_reason
+
     event = TokenEvent(
         token_id=token_id,
         from_state=None,
@@ -219,7 +224,7 @@ async def book_token(
         actor_type=actor_type,
         actor_id=citizen_id or phone,
         at=now_dt,
-        meta={"created_via": created_via, "seq": new_seq},
+        meta=event_meta,
     )
     session.add(event)
 
@@ -289,6 +294,7 @@ async def book_token(
         "eta_low": low,
         "eta_high": high,
         "eta_reason": reason,
+        "naive_p50": n_p50,
         "created_at": now_dt.isoformat(),
     }
 

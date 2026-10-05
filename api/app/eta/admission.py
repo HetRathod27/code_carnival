@@ -1,7 +1,7 @@
 from datetime import datetime, time, timedelta
 
 from api.app.eta.engine import LiveAdjustedEngine
-from api.app.eta.models import QueueSnapshot, WaitingToken
+from api.app.eta.models import CounterInfo, QueueSnapshot, WaitingToken
 
 
 def check_admission(
@@ -32,10 +32,20 @@ def check_admission(
         sort_key=float(snapshot.now.timestamp()) + 1.0,
         arrived_at=None,
     )
+
+    # For admission planning, if all counters are currently closed (e.g. before opening time or on break),
+    # model capacity assuming configured counters operate.
+    has_open_counter = any(c.status == "OPEN" for c in snapshot.counters)
+    tail_counters = (
+        [CounterInfo(id=c.id, status="OPEN", current_serving_token_id=c.current_serving_token_id) for c in snapshot.counters]
+        if not has_open_counter and snapshot.counters
+        else snapshot.counters
+    )
+
     tail_snapshot = QueueSnapshot(
         now=snapshot.now,
         service=snapshot.service,
-        counters=snapshot.counters,
+        counters=tail_counters,
         serving_tokens=snapshot.serving_tokens,
         waiting_tokens=snapshot.waiting_tokens + [dummy_token],
         calls_since_priority=snapshot.calls_since_priority,
