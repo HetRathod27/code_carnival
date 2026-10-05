@@ -298,6 +298,27 @@ class ApiClient {
     );
   }
 
+  Future<void> registerDevice({
+    required String token,
+    required String fcmToken,
+    String platform = 'android',
+    String language = 'en',
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/v1/devices'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'fcm_token': fcmToken,
+        'platform': platform,
+        'language': language,
+      }),
+    );
+    if (res.statusCode != 200) {
+      final err = jsonDecode(res.body);
+      throw Exception(err['error']?['message'] ?? 'Device registration failed');
+    }
+  }
+
   Future<String> getDevToken({
     required String phone,
     String role = 'CITIZEN',

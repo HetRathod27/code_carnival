@@ -10,6 +10,7 @@ import 'features/home/home_screen.dart';
 import 'features/browse/offices_screen.dart';
 import 'features/browse/services_screen.dart';
 import 'features/book/book_screen.dart';
+import 'core/notifications.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +31,11 @@ class _QueueLessCitizenAppState extends State<QueueLessCitizenApp> {
   void initState() {
     super.initState();
     _loadSavedLocale();
+    _initNotifications();
+  }
+
+  Future<void> _initNotifications() async {
+    await NotificationService().initialize();
   }
 
   Future<void> _loadSavedLocale() async {

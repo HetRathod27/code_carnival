@@ -463,5 +463,26 @@ Running log of milestones, completed tasks, verifications, and status.
   - "I'm on my way" extension is claimable once per token and extends `grace_deadline` by `on_my_way_extension_minutes` (default 5 min).
 - **Git Commit & Tag**: `f2-done`
 
+---
+
+## F3: Push Notifications (Human Gate)
+- **Date**: 2026-10-05
+- **Built**:
+  - `mobile/lib/core/notifications.dart`: Implemented `NotificationService` singleton managing device registration with the backend API, notification stream broadcasting, and mock FCM simulation for local development and offline test environments.
+  - `mobile/lib/api/client.dart`: Added `registerDevice(...)` method invoking `POST /v1/devices` with device FCM token, platform, and language preference.
+  - `mobile/lib/main.dart`: Initialized `NotificationService` in application lifecycle with notification listeners and in-app alerts with deep linking to active token view.
+  - `docs/HUMAN_TODO.md`: Documented exact step-by-step instructions for Firebase project creation (`QueueLess`), Android app registration (`in.gov.queueless.mobile`), `google-services.json` placement, and service account key setup for the backend.
+- **Files**:
+  - `mobile/lib/core/notifications.dart`, `mobile/lib/api/client.dart`, `mobile/lib/main.dart`
+  - `docs/HUMAN_TODO.md`, `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `flutter analyze` in `mobile/`: No issues found!
+  - `flutter test` in `mobile/`: All 11 tests passed!
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 57 pytest tests passed in 43.13s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 52 source files, Web typecheck & build: OK, Flutter analyze: OK).
+- **Assumptions**:
+  - In development environments without physical Google Play Services or Firebase credentials, `NotificationService` utilizes simulated local push notifications while registering mock device tokens with the backend `POST /v1/devices` endpoint.
+- **Git Commit & Tag**: `f3-done`
+
+
 
 
