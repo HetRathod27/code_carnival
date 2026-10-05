@@ -483,6 +483,32 @@ Running log of milestones, completed tasks, verifications, and status.
   - In development environments without physical Google Play Services or Firebase credentials, `NotificationService` utilizes simulated local push notifications while registering mock device tokens with the backend `POST /v1/devices` endpoint.
 - **Git Commit & Tag**: `f3-done`
 
+---
+
+## PKG: Packaging & Final Deliverables
+- **Date**: 2026-10-05
+- **Built**:
+  - `scripts/seed_demo.py`: Fixed `Counter` entity field (`status="OPEN"`), verified idempotent seeding of full demo office (`ward-central-01`), 4 services, 3 counters, office settings, and staff personas (Officer, Desk, Admin, Citizen).
+  - Staff Credentials & Persona Switcher: Fully integrated in React Web login (`web/src/pages/LoginPage.tsx`) with quick-switch role personas and descriptions.
+  - `README.md`: Comprehensive system overview, Technical Specification v3 feature summary, ASCII architecture diagram & feedback loop, complete tech stack, staff personas & credentials table, local setup instructions (Python/Postgres API, React Vite Web, Flutter Mobile/Web), automated verification suite guide, and the 13 Core Rules.
+  - `demo-script.md`: Detailed live demonstration script and judge walkthrough organized into 5 acts (Citizen mobile onboarding, fixed slot booking with document confirmation gating, Help desk walk-in turn slip printing with thermal slip preview, Public TV lobby board with privacy preservation, Officer operations with dynamic walk-in dispatch and pause audit, and Admin simulation center proving `MAE_Live < MAE_Naive`).
+  - Mobile Export Verification: Successfully executed `flutter build web --no-tree-shake-icons`, compiling citizen web fallback to `build\web` in 45.6s.
+  - Verification Suite: Master gate `scripts/verify.ps1` runs clean with 0 errors across all 5 checks (Ruff, OpenAPI export, Mypy on 52 files, 57 Pytest tests, Web build, Flutter analyze). All 11 Flutter widget tests passing in `mobile/`.
+- **Files**:
+  - `scripts/seed_demo.py`
+  - `README.md`
+  - `demo-script.md`
+  - `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `.\venv\Scripts\python.exe scripts/seed_demo.py`: Exit code 0 (Seeded services, counters, staff personas, and queue state).
+  - `flutter build web --no-tree-shake-icons`: Exit code 0 (Built `build\web` in 45.6s).
+  - `flutter test`: Exit code 0 (All 11 tests passed).
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 57 pytest tests passed in 37.92s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 52 source files, Web typecheck & build: OK, Flutter analyze: OK).
+- **Assumptions**:
+  - Demo environment runs against PostgreSQL database `queueless_dev` with preconfigured mock credentials for evaluator walkthrough.
+- **Git Commit & Tag**: `pkg-done`
+
+
 
 
 
