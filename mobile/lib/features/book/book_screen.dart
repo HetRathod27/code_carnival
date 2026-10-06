@@ -678,13 +678,12 @@ class _BookScreenState extends State<BookScreen> {
     int familyCount = _familyCount;
     String? localNotice;
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      barrierDismissible: true,
       builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (context, setSheetState) {
+          builder: (dialogCtx, setSheetState) {
             final now = DateTime.now();
             final todayStart = DateTime(now.year, now.month, now.day);
             final selectedStart = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
@@ -692,412 +691,401 @@ class _BookScreenState extends State<BookScreen> {
             final isCustomSlot = diffDays >= 2;
             final slots = _getSlotsForDay(diffDays < 0 ? 0 : diffDays);
 
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.88,
-              decoration: const BoxDecoration(
-                color: CivicTheme.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Drag handle
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                  // Header
-                  Row(
+            return Dialog(
+              backgroundColor: CivicTheme.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 580,
+                  maxHeight: 740,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.calendar_month, color: CivicTheme.primary, size: 26),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Choose Date & Time Slot',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: CivicTheme.textPrimary,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 18),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      // Header
+                      Row(
                         children: [
-                          // Calendar & Date Picker Row
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: CivicTheme.primarySoft,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Selected Date',
-                                        style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary, fontWeight: FontWeight.w600),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _formatFullDate(selectedDate, diffDays),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w800,
-                                          color: CivicTheme.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: CivicTheme.primary,
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size(0, 44),
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  ),
-                                  icon: const Icon(Icons.edit_calendar, size: 18),
-                                  label: const Text('Open Calendar'),
-                                  onPressed: () async {
-                                    final todayZero = DateTime(now.year, now.month, now.day);
-                                    final picked = await showDatePicker(
-                                      context: sheetContext,
-                                      initialDate: selectedDate.isBefore(todayZero) ? todayZero : selectedDate,
-                                      firstDate: todayZero,
-                                      lastDate: todayZero.add(const Duration(days: 30)),
-                                    );
-                                    if (picked != null) {
-                                      setSheetState(() {
-                                        selectedDate = picked;
-                                        localNotice = null;
-                                        final newDiff = DateTime(picked.year, picked.month, picked.day)
-                                            .difference(todayStart)
-                                            .inDays;
-                                        final newSlots = _getSlotsForDay(newDiff < 0 ? 0 : newDiff);
-                                        final isAvail = newSlots.any(
-                                          (s) => s['time'] == selectedSlotTime && (s['available'] as bool),
-                                        );
-                                        if (!isAvail) {
-                                          final firstAvail = newSlots.firstWhere(
-                                            (s) => s['available'] as bool,
-                                            orElse: () => newSlots.first,
-                                          );
-                                          selectedSlotTime = firstAvail['time'] as String;
-                                        }
-                                      });
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Quick Date Chips
-                          const Text(
-                            'Quick Selection',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
-                          ),
-                          const SizedBox(height: 8),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                _buildQuickDateChip(
-                                  label: 'Today',
-                                  subtext: 'Within 2 Days • ₹0 Fee',
-                                  isSelected: diffDays == 0,
-                                  onTap: () {
-                                    setSheetState(() {
-                                      selectedDate = now;
-                                      localNotice = null;
-                                    });
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _buildQuickDateChip(
-                                  label: 'Tomorrow',
-                                  subtext: 'Within 2 Days • ₹0 Fee',
-                                  isSelected: diffDays == 1,
-                                  onTap: () {
-                                    setSheetState(() {
-                                      selectedDate = now.add(const Duration(days: 1));
-                                      localNotice = null;
-                                    });
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _buildQuickDateChip(
-                                  label: 'In 2 Days',
-                                  subtext: 'Custom Date • ₹50 Fee',
-                                  isSelected: diffDays == 2,
-                                  onTap: () {
-                                    setSheetState(() {
-                                      selectedDate = now.add(const Duration(days: 2));
-                                      localNotice = null;
-                                    });
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _buildQuickDateChip(
-                                  label: 'In 3 Days',
-                                  subtext: 'Custom Date • ₹50 Fee',
-                                  isSelected: diffDays == 3,
-                                  onTap: () {
-                                    setSheetState(() {
-                                      selectedDate = now.add(const Duration(days: 3));
-                                      localNotice = null;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Dynamic Fee Tier Banner
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isCustomSlot ? CivicTheme.warningSoft : CivicTheme.successSoft,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isCustomSlot ? CivicTheme.warning : CivicTheme.success,
-                                width: 1.5,
+                          const Icon(Icons.calendar_month, color: CivicTheme.primary, size: 26),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Choose Date & Time Slot',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: CivicTheme.textPrimary,
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 18),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Calendar & Date Picker Row
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: CivicTheme.primarySoft,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
                                   children: [
-                                    Icon(
-                                      isCustomSlot ? Icons.star_outline : Icons.check_circle_outline,
-                                      color: isCustomSlot ? CivicTheme.warning : CivicTheme.success,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
                                     Expanded(
-                                      child: Text(
-                                        isCustomSlot
-                                            ? 'Custom Future Slot • Higher Fee (₹50)'
-                                            : 'Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Selected Date',
+                                            style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary, fontWeight: FontWeight.w600),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _formatFullDate(selectedDate, diffDays),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                              color: CivicTheme.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: CivicTheme.primary,
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size(0, 44),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      ),
+                                      icon: const Icon(Icons.edit_calendar, size: 18),
+                                      label: const Text('Open Calendar'),
+                                      onPressed: () async {
+                                        final todayZero = DateTime(now.year, now.month, now.day);
+                                        final picked = await showDatePicker(
+                                          context: sheetContext,
+                                          initialDate: selectedDate.isBefore(todayZero) ? todayZero : selectedDate,
+                                          firstDate: todayZero,
+                                          lastDate: todayZero.add(const Duration(days: 30)),
+                                        );
+                                        if (picked != null) {
+                                          setSheetState(() {
+                                            selectedDate = picked;
+                                            localNotice = null;
+                                            final newDiff = DateTime(picked.year, picked.month, picked.day)
+                                                .difference(todayStart)
+                                                .inDays;
+                                            final newSlots = _getSlotsForDay(newDiff < 0 ? 0 : newDiff);
+                                            final isAvail = newSlots.any(
+                                              (s) => s['time'] == selectedSlotTime && (s['available'] as bool),
+                                            );
+                                            if (!isAvail) {
+                                              final firstAvail = newSlots.firstWhere(
+                                                (s) => s['available'] as bool,
+                                                orElse: () => newSlots.first,
+                                              );
+                                              selectedSlotTime = firstAvail['time'] as String;
+                                            }
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+
+                              // Quick Date Chips
+                              const Text(
+                                'Quick Selection',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _buildQuickDateChip(
+                                    label: 'Today',
+                                    subtext: 'Within 2 Days • ₹0 Fee',
+                                    isSelected: diffDays == 0,
+                                    onTap: () {
+                                      setSheetState(() {
+                                        selectedDate = now;
+                                        localNotice = null;
+                                      });
+                                    },
+                                  ),
+                                  _buildQuickDateChip(
+                                    label: 'Tomorrow',
+                                    subtext: 'Within 2 Days • ₹0 Fee',
+                                    isSelected: diffDays == 1,
+                                    onTap: () {
+                                      setSheetState(() {
+                                        selectedDate = now.add(const Duration(days: 1));
+                                        localNotice = null;
+                                      });
+                                    },
+                                  ),
+                                  _buildQuickDateChip(
+                                    label: 'In 2 Days',
+                                    subtext: 'Custom Date • ₹50 Fee',
+                                    isSelected: diffDays == 2,
+                                    onTap: () {
+                                      setSheetState(() {
+                                        selectedDate = now.add(const Duration(days: 2));
+                                        localNotice = null;
+                                      });
+                                    },
+                                  ),
+                                  _buildQuickDateChip(
+                                    label: 'In 3 Days',
+                                    subtext: 'Custom Date • ₹50 Fee',
+                                    isSelected: diffDays == 3,
+                                    onTap: () {
+                                      setSheetState(() {
+                                        selectedDate = now.add(const Duration(days: 3));
+                                        localNotice = null;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+
+                              // Dynamic Fee Tier Banner
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isCustomSlot ? CivicTheme.warningSoft : CivicTheme.successSoft,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isCustomSlot ? CivicTheme.warning : CivicTheme.success,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          isCustomSlot ? Icons.star_outline : Icons.check_circle_outline,
                                           color: isCustomSlot ? CivicTheme.warning : CivicTheme.success,
+                                          size: 20,
                                         ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            isCustomSlot
+                                                ? 'Custom Future Slot • Higher Fee (₹50)'
+                                                : 'Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                              color: isCustomSlot ? CivicTheme.warning : CivicTheme.success,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      isCustomSlot
+                                          ? 'Statutory Disclosure (Spec Section 6.3): A custom slot fee does not protect against official department emergency closures, gazetted holidays, or government server delay.'
+                                          : 'Standard near-term booking within 2 days carries no additional fee.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isCustomSlot ? const Color(0xFF8A5800) : const Color(0xFF2E7D32),
+                                        height: 1.3,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  isCustomSlot
-                                      ? 'Statutory Disclosure (Spec Section 6.3): A custom slot fee does not protect against official department emergency closures, gazetted holidays, or government server delay.'
-                                      : 'Standard near-term booking within 2 days carries no additional fee.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isCustomSlot ? const Color(0xFF8A5800) : const Color(0xFF2E7D32),
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Capacity Warning Notice (if citizen clicks a full slot)
-                          if (localNotice != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 14),
-                              decoration: BoxDecoration(
-                                color: CivicTheme.errorSoft,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: CivicTheme.error),
                               ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(Icons.error_outline, color: CivicTheme.error, size: 20),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      localNotice!,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: CivicTheme.error,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
 
-                          // Time Slots Header
-                          const Text(
-                            'Available Time Slots',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CivicTheme.textPrimary),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: slots.map((slot) {
-                              final timeStr = slot['time'] as String;
-                              final isAvailable = slot['available'] as bool;
-                              final isSelected = selectedSlotTime == timeStr && isAvailable;
-
-                              return InkWell(
-                                onTap: () {
-                                  if (isAvailable) {
-                                    setSheetState(() {
-                                      selectedSlotTime = timeStr;
-                                      localNotice = null;
-                                    });
-                                  } else {
-                                    setSheetState(() {
-                                      localNotice = 'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries zero extra fees.';
-                                    });
-                                  }
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  width: (MediaQuery.of(context).size.width - 90) / 2 > 130
-                                      ? ((MediaQuery.of(context).size.width - 90) / 2).clamp(140.0, 220.0)
-                                      : 140,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              // Capacity Warning Notice (if citizen clicks a full slot)
+                              if (localNotice != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  margin: const EdgeInsets.only(bottom: 14),
                                   decoration: BoxDecoration(
-                                    color: !isAvailable
-                                        ? Colors.grey.shade100
-                                        : (isSelected ? CivicTheme.primarySoft : CivicTheme.surface),
+                                    color: CivicTheme.errorSoft,
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: !isAvailable
-                                          ? Colors.grey.shade300
-                                          : (isSelected ? CivicTheme.primary : CivicTheme.border),
-                                      width: isSelected ? 2 : 1,
-                                    ),
+                                    border: Border.all(color: CivicTheme.error),
                                   ),
-                                  child: Column(
+                                  child: Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(
-                                        timeStr,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: !isAvailable
-                                              ? Colors.grey.shade500
-                                              : (isSelected ? CivicTheme.primary : CivicTheme.textPrimary),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: !isAvailable
-                                                  ? Colors.red.shade50
-                                                  : (isSelected ? CivicTheme.primary.withValues(alpha: 0.15) : Colors.green.shade50),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              !isAvailable ? 'Slots Full' : 'Available',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: !isAvailable ? CivicTheme.error : CivicTheme.success,
-                                              ),
-                                            ),
+                                      const Icon(Icons.error_outline, color: CivicTheme.error, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          localNotice!,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: CivicTheme.error,
+                                            fontWeight: FontWeight.w600,
                                           ),
-                                          if (isSelected)
-                                            const Icon(Icons.check_circle, size: 16, color: CivicTheme.primary),
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 18),
+                              ],
 
-                          // Party Size Selector
-                          const Text(
-                            'How many people are coming with you? (Spec Section 7.2)',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CivicTheme.textPrimary),
+                              // Time Slots Header
+                              const Text(
+                                'Available Time Slots',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CivicTheme.textPrimary),
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: slots.map((slot) {
+                                  final timeStr = slot['time'] as String;
+                                  final isAvailable = slot['available'] as bool;
+                                  final isSelected = selectedSlotTime == timeStr && isAvailable;
+
+                                  return InkWell(
+                                    onTap: () {
+                                      if (isAvailable) {
+                                        setSheetState(() {
+                                          selectedSlotTime = timeStr;
+                                          localNotice = null;
+                                        });
+                                      } else {
+                                        setSheetState(() {
+                                          localNotice = 'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries zero extra fees.';
+                                        });
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                      width: 160,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: !isAvailable
+                                            ? Colors.grey.shade100
+                                            : (isSelected ? CivicTheme.primarySoft : CivicTheme.surface),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: !isAvailable
+                                              ? Colors.grey.shade300
+                                              : (isSelected ? CivicTheme.primary : CivicTheme.border),
+                                          width: isSelected ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            timeStr,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: !isAvailable
+                                                  ? Colors.grey.shade500
+                                                  : (isSelected ? CivicTheme.primary : CivicTheme.textPrimary),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: !isAvailable
+                                                      ? Colors.red.shade50
+                                                      : (isSelected ? CivicTheme.primary.withValues(alpha: 0.15) : Colors.green.shade50),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  !isAvailable ? 'Slots Full' : 'Available',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: !isAvailable ? CivicTheme.error : CivicTheme.success,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (isSelected)
+                                                const Icon(Icons.check_circle, size: 16, color: CivicTheme.primary),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // Party Size Selector
+                              const Text(
+                                'How many people are coming with you? (Spec Section 7.2)',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CivicTheme.textPrimary),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                children: [1, 2, 3, 4, 5].map((count) {
+                                  final isSelected = familyCount == count;
+                                  return ChoiceChip(
+                                    label: Text(count == 1 ? '1 Person' : ' People'),
+                                    selected: isSelected,
+                                    selectedColor: CivicTheme.primary,
+                                    labelStyle: TextStyle(
+                                      color: isSelected ? Colors.white : CivicTheme.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    onSelected: (val) {
+                                      if (val) setSheetState(() => familyCount = count);
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: [1, 2, 3, 4, 5].map((count) {
-                              final isSelected = familyCount == count;
-                              return ChoiceChip(
-                                label: Text(count == 1 ? '1 Person' : '$count People'),
-                                selected: isSelected,
-                                selectedColor: CivicTheme.primary,
-                                labelStyle: TextStyle(
-                                  color: isSelected ? Colors.white : CivicTheme.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                onSelected: (val) {
-                                  if (val) setSheetState(() => familyCount = count);
-                                },
-                              );
-                            }).toList(),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 14),
+                      // Confirmation Action Button
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.check_circle, size: 22),
+                        label: Text(
+                          isCustomSlot
+                              ? 'Confirm Appointment • Higher Fee: ₹50'
+                              : 'Confirm Appointment • Standard Fee: ₹0',
+                        ),
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          setState(() {
+                            _selectedDayIndex = diffDays;
+                            _selectedSlotTime = selectedSlotTime;
+                            _familyCount = familyCount;
+                          });
+                          _handleBook();
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  // Confirmation Action Button
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.check_circle, size: 22),
-                    label: Text(
-                      isCustomSlot
-                          ? 'Confirm Appointment • Higher Fee: ₹50'
-                          : 'Confirm Appointment • Standard Fee: ₹0',
-                    ),
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      setState(() {
-                        _selectedDayIndex = diffDays;
-                        _selectedSlotTime = selectedSlotTime;
-                        _familyCount = familyCount;
-                      });
-                      _handleBook();
-                    },
-                  ),
-                ],
+                ),
               ),
             );
           },
