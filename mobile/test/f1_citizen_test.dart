@@ -223,6 +223,31 @@ void main() {
       // Assert button is now ENABLED
       final enabledButton = tester.widget<ElevatedButton>(bookButtonFinder);
       expect(enabledButton.onPressed, isNotNull, reason: 'Book button must be enabled once documents confirmed');
+
+      // Tap Book Fixed Appointment to open bottom sheet
+      await tester.tap(bookButtonFinder);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose Date & Time Slot'), findsOneWidget);
+
+      // Verify standard slot fee starts at Free / ₹0
+      expect(find.textContaining('Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee'), findsOneWidget);
+
+      // Select 'In 2 Days' chip -> should switch to higher fee (₹50)
+      final in2DaysFinder = find.text('In 2 Days');
+      expect(in2DaysFinder, findsOneWidget);
+      await tester.tap(in2DaysFinder);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Custom Future Slot • Higher Fee (₹50)'), findsOneWidget);
+
+      // Tap Confirm Appointment to submit booking
+      final confirmBtn = find.textContaining('Confirm Appointment • Higher Fee: ₹50');
+      expect(confirmBtn, findsOneWidget);
+      await tester.tap(confirmBtn);
+      await tester.pumpAndSettle();
+
+      // Verify confirmation dialog displays token
+      expect(find.textContaining('Appointment Confirmed!'), findsOneWidget);
+      expect(find.text('TAX-001'), findsOneWidget);
     });
 
     testWidgets('Priority category selection switches mode and shows proof notice', (tester) async {

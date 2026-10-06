@@ -154,6 +154,7 @@ class _BookScreenState extends State<BookScreen> {
       );
 
       if (mounted) {
+        setState(() => _submitting = false);
         _showSuccessDialog(token);
       }
     } catch (e) {
@@ -773,16 +774,18 @@ class _BookScreenState extends State<BookScreen> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: CivicTheme.primary,
                                     foregroundColor: Colors.white,
+                                    minimumSize: const Size(0, 44),
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                   ),
                                   icon: const Icon(Icons.edit_calendar, size: 18),
                                   label: const Text('Open Calendar'),
                                   onPressed: () async {
+                                    final todayZero = DateTime(now.year, now.month, now.day);
                                     final picked = await showDatePicker(
-                                      context: context,
-                                      initialDate: selectedDate.isBefore(now) ? now : selectedDate,
-                                      firstDate: DateTime.now(),
-                                      lastDate: DateTime.now().add(const Duration(days: 30)),
+                                      context: sheetContext,
+                                      initialDate: selectedDate.isBefore(todayZero) ? todayZero : selectedDate,
+                                      firstDate: todayZero,
+                                      lastDate: todayZero.add(const Duration(days: 30)),
                                     );
                                     if (picked != null) {
                                       setSheetState(() {
@@ -985,7 +988,7 @@ class _BookScreenState extends State<BookScreen> {
                                 borderRadius: BorderRadius.circular(10),
                                 child: Container(
                                   width: (MediaQuery.of(context).size.width - 90) / 2 > 130
-                                      ? (MediaQuery.of(context).size.width - 90) / 2
+                                      ? ((MediaQuery.of(context).size.width - 90) / 2).clamp(140.0, 220.0)
                                       : 140,
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   decoration: BoxDecoration(
