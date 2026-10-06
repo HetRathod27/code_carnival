@@ -320,7 +320,7 @@ class _BookScreenState extends State<BookScreen> {
                         const SizedBox(height: 20),
 
                         // Document Checklist (Spec Rule 14 & Principle 14)
-                        _buildDocumentChecklist(_service!, l10n),
+                        _buildDocumentChecklist(_service!, l10n, currentLang),
                         const SizedBox(height: 20),
 
                         // Category Selector (Normal / Priority)
@@ -441,7 +441,39 @@ class _BookScreenState extends State<BookScreen> {
     );
   }
 
-  Widget _buildDocumentChecklist(ServiceModel service, AppLocalizations l10n) {
+  String _getDocumentName(dynamic doc, String currentLang) {
+    if (doc is Map) {
+      // 1. Language-specific keys (e.g. name_gu, name_hi, name_en)
+      final langKey = 'name_$currentLang';
+      if (doc[langKey] != null && doc[langKey].toString().trim().isNotEmpty) {
+        return doc[langKey].toString().trim();
+      }
+      // 2. Nested 'names' dictionary if provided (e.g. names['gu'])
+      if (doc['names'] is Map) {
+        final names = doc['names'] as Map;
+        if (names[currentLang] != null && names[currentLang].toString().trim().isNotEmpty) {
+          return names[currentLang].toString().trim();
+        }
+        if (names['en'] != null && names['en'].toString().trim().isNotEmpty) {
+          return names['en'].toString().trim();
+        }
+      }
+      // 3. Fallback to English name
+      if (doc['name_en'] != null && doc['name_en'].toString().trim().isNotEmpty) {
+        return doc['name_en'].toString().trim();
+      }
+      // 4. Fallback to generic name or title
+      if (doc['name'] != null && doc['name'].toString().trim().isNotEmpty) {
+        return doc['name'].toString().trim();
+      }
+      if (doc['title'] != null && doc['title'].toString().trim().isNotEmpty) {
+        return doc['title'].toString().trim();
+      }
+    }
+    return doc.toString();
+  }
+
+  Widget _buildDocumentChecklist(ServiceModel service, AppLocalizations l10n, String currentLang) {
     final docs = service.requiredDocs.isNotEmpty
         ? service.requiredDocs
         : [
@@ -482,7 +514,7 @@ class _BookScreenState extends State<BookScreen> {
           ),
           const SizedBox(height: 16),
           ...docs.map((doc) {
-            final docName = doc is Map ? (doc['name'] ?? doc.toString()) : doc.toString();
+            final docName = _getDocumentName(doc, currentLang);
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(
@@ -1047,7 +1079,7 @@ class _BookScreenState extends State<BookScreen> {
                                 children: [1, 2, 3, 4, 5].map((count) {
                                   final isSelected = familyCount == count;
                                   return ChoiceChip(
-                                    label: Text(count == 1 ? '1 Person' : ' People'),
+                                    label: Text(count == 1 ? '1 Person' : '$count People'),
                                     selected: isSelected,
                                     selectedColor: CivicTheme.primary,
                                     labelStyle: TextStyle(
