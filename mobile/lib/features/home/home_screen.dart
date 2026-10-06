@@ -58,6 +58,14 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final active = await _client.getActiveToken(token);
       if (mounted) {
+        if (active == null && !silent) {
+          try {
+            context.go('/offices');
+            return;
+          } catch (_) {
+            // Fallback for tests running outside GoRouter
+          }
+        }
         setState(() {
           _activeToken = active;
           _loading = false;

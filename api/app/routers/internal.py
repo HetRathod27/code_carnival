@@ -94,13 +94,6 @@ async def get_dev_token(
             "name": persona.name,
             "phone": persona.phone,
         }
-        tokens[persona.role.lower()] = {
-            "token": jwt,
-            "role": persona.role,
-            "office_id": persona.office_id,
-            "name": persona.name,
-            "phone": persona.phone,
-        }
 
     if payload and (payload.phone or payload.role):
         user_role = (payload.role or "CITIZEN").upper()

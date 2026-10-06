@@ -63,8 +63,21 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('ql_token', token);
       await prefs.setString('ql_phone', phone);
 
+      // Spec & UX: If citizen has an active token, open tracking on /home.
+      // Otherwise, jump directly to civic centre selection (/offices).
+      TokenModel? activeToken;
+      try {
+        activeToken = await _client.getActiveToken(token);
+      } catch (_) {
+        activeToken = null;
+      }
+
       if (mounted) {
-        context.go('/home');
+        if (activeToken != null) {
+          context.go('/home');
+        } else {
+          context.go('/offices');
+        }
       }
     } catch (e) {
       setState(() => _error = e.toString());

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/client.dart';
 import '../../core/theme.dart';
 
@@ -16,6 +17,7 @@ class OfficesScreen extends StatefulWidget {
 class _OfficesScreenState extends State<OfficesScreen> {
   late final ApiClient _client = widget.client ?? ApiClient();
   List<OfficeModel> _offices = [];
+  TokenModel? _activeToken;
   bool _loading = true;
   String? _error;
 
@@ -33,9 +35,20 @@ class _OfficesScreenState extends State<OfficesScreen> {
 
     try {
       final list = await _client.fetchOffices();
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('ql_token');
+      TokenModel? active;
+      if (token != null) {
+        try {
+          active = await _client.getActiveToken(token);
+        } catch (_) {
+          active = null;
+        }
+      }
       if (mounted) {
         setState(() {
           _offices = list;
+          _activeToken = active;
           _loading = false;
         });
       }
@@ -57,6 +70,12 @@ class _OfficesScreenState extends State<OfficesScreen> {
       appBar: AppBar(
         title: Text(l10n.officesTitle),
         actions: [
+          if (_activeToken != null)
+            IconButton(
+              icon: const Icon(Icons.confirmation_number_outlined),
+              tooltip: l10n.myToken,
+              onPressed: () => context.push('/home'),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l10n.retryAction,
@@ -106,16 +125,58 @@ class _OfficesScreenState extends State<OfficesScreen> {
                           separatorBuilder: (context, index) => const SizedBox(height: 16),
                           itemBuilder: (context, index) {
                             if (index == 0) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text(
-                                  l10n.selectOfficePrompt,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: CivicTheme.textSecondary,
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (_activeToken != null) ...[
+                                    InkWell(
+                                      onTap: () => context.push('/home'),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: CivicTheme.primary.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: CivicTheme.primary, width: 1.5),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.confirmation_number, color: CivicTheme.primary, size: 28),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'Active Appointment in Progress',
+                                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: CivicTheme.primary),
+                                                  ),
+                                                  Text(
+                                                    'Token: ${_activeToken!.displayCode} • Tap to view live ETA',
+                                                    style: const TextStyle(fontSize: 13, color: CivicTheme.textSecondary),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const Icon(Icons.arrow_forward_ios, size: 16, color: CivicTheme.primary),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Text(
+                                      l10n.selectOfficePrompt,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: CivicTheme.textSecondary,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               );
                             }
 
