@@ -120,11 +120,11 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancelAction),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Verify Arrival'),
+            child: Text(l10n.verifyArrivalAction),
           ),
         ],
       ),
@@ -211,12 +211,12 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep Appointment'),
+            child: Text(l10n.keepAppointmentAction),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: CivicTheme.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Yes, Cancel'),
+            child: Text(l10n.yesCancelAction),
           ),
         ],
       ),
@@ -231,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() => _activeToken = null);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment successfully cancelled')),
+          SnackBar(content: Text(l10n.cancelSuccessMessage)),
         );
       }
     } catch (e) {
@@ -267,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Sign Out',
+            tooltip: l10n.signOutTooltip,
             onPressed: _logout,
           ),
         ],
@@ -378,9 +378,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: CivicTheme.accentSoft,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        '⭐ Priority',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.priorityBadge,
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF9E6000),
@@ -411,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isArrived ? l10n.presenceVerified : 'Not Yet Checked In',
+                      isArrived ? l10n.presenceVerified : l10n.notCheckedInStatus,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -460,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     token.lastEtaMinutes != null
                         ? '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}'
-                        : 'Calculating…',
+                        : l10n.calculatingEta,
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                 ],
@@ -561,9 +561,9 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Icon(Icons.confirmation_number_outlined, size: 80, color: CivicTheme.border),
             const SizedBox(height: 20),
-            const Text(
-              'No Active Appointment',
-              style: TextStyle(
+            Text(
+              l10n.noActiveAppointment,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: CivicTheme.textPrimary,

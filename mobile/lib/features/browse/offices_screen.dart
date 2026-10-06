@@ -147,12 +147,12 @@ class _OfficesScreenState extends State<OfficesScreen> {
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  const Text(
-                                                    'Active Appointment in Progress',
-                                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: CivicTheme.primary),
+                                                  Text(
+                                                    l10n.activeAppointmentBanner,
+                                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: CivicTheme.primary),
                                                   ),
                                                   Text(
-                                                    'Token: ${_activeToken!.displayCode} • Tap to view live ETA',
+                                                    l10n.tapToViewEta(_activeToken!.displayCode),
                                                     style: const TextStyle(fontSize: 13, color: CivicTheme.textSecondary),
                                                   ),
                                                 ],

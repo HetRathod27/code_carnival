@@ -207,9 +207,9 @@ class _ServiceCard extends StatelessWidget {
                           color: CivicTheme.accentSoft,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          '⭐ Priority Allowed',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.priorityAllowedBadge,
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF9E6000),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
@@ -20,10 +21,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final ApiClient _client = ApiClient();
 
-  Future<void> _handleSendOtp() async {
+  Future<void> _handleSendOtp(AppLocalizations l10n) async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length < 10) {
-      setState(() => _error = 'Please enter a valid mobile number');
+      setState(() => _error = l10n.invalidPhoneError);
       return;
     }
     setState(() {
@@ -38,11 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  Future<void> _handleVerifyOtp() async {
+  Future<void> _handleVerifyOtp(AppLocalizations l10n) async {
     final phone = _phoneController.text.trim();
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
-      setState(() => _error = 'Please enter 6-digit OTP');
+      setState(() => _error = l10n.invalidOtpError);
       return;
     }
 
@@ -80,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -90,9 +91,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('QueueLess Sign In'),
+        title: Text(l10n.signInTitle),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -102,26 +105,26 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              const Text(
-                'Enter Mobile Number',
-                style: TextStyle(
+              Text(
+                l10n.enterMobileNumber,
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: CivicTheme.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Receive a 6-digit verification code to access your civic appointments.',
-                style: TextStyle(fontSize: 16, color: CivicTheme.textSecondary),
+              Text(
+                l10n.loginSubtitle,
+                style: const TextStyle(fontSize: 16, color: CivicTheme.textSecondary),
               ),
               const SizedBox(height: 24),
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Mobile Number',
-                  prefixIcon: Icon(Icons.phone_android, color: CivicTheme.primary),
+                decoration: InputDecoration(
+                  labelText: l10n.phoneNumber,
+                  prefixIcon: const Icon(Icons.phone_android, color: CivicTheme.primary),
                 ),
                 enabled: !_otpSent,
               ),
@@ -131,9 +134,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _otpController,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
-                  decoration: const InputDecoration(
-                    labelText: '6-Digit OTP',
-                    prefixIcon: Icon(Icons.lock_outline, color: CivicTheme.primary),
+                  decoration: InputDecoration(
+                    labelText: l10n.otpLabel,
+                    prefixIcon: const Icon(Icons.lock_outline, color: CivicTheme.primary),
                   ),
                 ),
               ],
@@ -146,11 +149,11 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
               const Spacer(),
               ElevatedButton(
-                onPressed: _loading ? null : (_otpSent ? _handleVerifyOtp : _handleSendOtp),
+                onPressed: _loading ? null : (_otpSent ? () => _handleVerifyOtp(l10n) : () => _handleSendOtp(l10n)),
                 child: Text(
                   _loading
-                      ? 'Please wait…'
-                      : (_otpSent ? 'Verify OTP & Enter' : 'Get Verification Code'),
+                      ? l10n.pleaseWait
+                      : (_otpSent ? l10n.verifyOtpAction : l10n.sendOtpAction),
                 ),
               ),
             ],

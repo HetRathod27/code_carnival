@@ -216,4 +216,183 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nowServingAt => 'Currently Serving:';
+
+  @override
+  String get chooseDateTimeSlot => 'Choose Date & Time Slot';
+
+  @override
+  String get selectedDateLabel => 'Selected Date';
+
+  @override
+  String get openCalendarAction => 'Open Calendar';
+
+  @override
+  String get quickSelectionTitle => 'Quick Selection';
+
+  @override
+  String get todayLabel => 'Today';
+
+  @override
+  String get tomorrowLabel => 'Tomorrow';
+
+  @override
+  String get in2DaysLabel => 'In 2 Days';
+
+  @override
+  String get in3DaysLabel => 'In 3 Days';
+
+  @override
+  String get within2DaysFeeFree => 'Within 2 Days • ₹0 Fee';
+
+  @override
+  String get customDateFee50 => 'Custom Date • ₹50 Fee';
+
+  @override
+  String get normalSlotTitle =>
+      'Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee';
+
+  @override
+  String get customSlotTitle => 'Custom Future Slot • Higher Fee (₹50)';
+
+  @override
+  String get statutoryDisclosure =>
+      'Statutory Disclosure (Spec Section 6.3): A custom slot fee does not protect against official department emergency closures, gazetted holidays, or government server delay.';
+
+  @override
+  String get standardNearTermNotice =>
+      'Standard near-term booking within 2 days carries no additional fee.';
+
+  @override
+  String get availableTimeSlotsTitle => 'Available Time Slots';
+
+  @override
+  String get slotsFullWarning =>
+      'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries zero extra fees.';
+
+  @override
+  String get slotsFullBadge => 'Slots Full';
+
+  @override
+  String get availableBadge => 'Available';
+
+  @override
+  String get peopleCountPrompt =>
+      'How many people are coming with you? (Spec Section 7.2)';
+
+  @override
+  String get confirmAppointmentStandard =>
+      'Confirm Appointment • Standard Fee: ₹0';
+
+  @override
+  String get confirmAppointmentHigher =>
+      'Confirm Appointment • Higher Fee: ₹50';
+
+  @override
+  String get applicantDetailsTitle => 'Applicant Details';
+
+  @override
+  String get dateSummaryLabel => 'Date:';
+
+  @override
+  String get slotTimeSummaryLabel => 'Slot Time:';
+
+  @override
+  String get partySizeSummaryLabel => 'Party Size:';
+
+  @override
+  String get feeTierSummaryLabel => 'Fee Tier:';
+
+  @override
+  String get standardFreeTier => 'Standard / Free (₹0)';
+
+  @override
+  String get customPaidTier => 'Custom Advance Slot (₹50)';
+
+  @override
+  String get onePerson => '1 Person';
+
+  @override
+  String multiplePeople(Object count) {
+    return '$count People';
+  }
+
+  @override
+  String get signInTitle => 'QueueLess Sign In';
+
+  @override
+  String get enterMobileNumber => 'Enter Mobile Number';
+
+  @override
+  String get invalidPhoneError => 'Please enter a valid mobile number';
+
+  @override
+  String get invalidOtpError => 'Please enter 6-digit OTP';
+
+  @override
+  String get pleaseWait => 'Please wait…';
+
+  @override
+  String get sendOtpAction => 'Get Verification Code';
+
+  @override
+  String get verifyOtpAction => 'Verify OTP & Enter';
+
+  @override
+  String get otpLabel => '6-Digit OTP';
+
+  @override
+  String get activeAppointmentBanner => 'Active Appointment in Progress';
+
+  @override
+  String tapToViewEta(String code) {
+    return 'Token: $code • Tap to view live ETA';
+  }
+
+  @override
+  String get priorityAllowedBadge => '⭐ Priority Allowed';
+
+  @override
+  String get seniorCitizenCategory => 'Senior Citizen (60+ years)';
+
+  @override
+  String get pregnantCategory => 'Pregnant / Nursing Mother';
+
+  @override
+  String get disabilityCategory => 'Person with Disability (PwD)';
+
+  @override
+  String get medicalCategory => 'Medical Urgency / Health';
+
+  @override
+  String get eligibilityCategoryLabel => 'Eligibility Category';
+
+  @override
+  String get signOutTooltip => 'Sign Out';
+
+  @override
+  String get keepAppointmentAction => 'Keep Appointment';
+
+  @override
+  String get yesCancelAction => 'Yes, Cancel';
+
+  @override
+  String get cancelSuccessMessage => 'Appointment successfully cancelled';
+
+  @override
+  String get priorityBadge => '⭐ Priority';
+
+  @override
+  String get notCheckedInStatus => 'Not Yet Checked In';
+
+  @override
+  String get calculatingEta => 'Calculating…';
+
+  @override
+  String get noActiveAppointment => 'No Active Appointment';
+
+  @override
+  String get cancelAction => 'Cancel';
+
+  @override
+  String get verifyArrivalAction => 'Verify Arrival';
 }

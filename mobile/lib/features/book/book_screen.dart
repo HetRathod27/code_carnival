@@ -50,12 +50,27 @@ class _BookScreenState extends State<BookScreen> {
   String _selectedSlotTime = '09:30 AM – 10:30 AM';
   int _familyCount = 1;
 
-  String _getDayLabel(int index) {
+  String _getDayLabel(int index, [String currentLang = 'en', AppLocalizations? l10n]) {
     final now = DateTime.now();
     final target = now.add(Duration(days: index));
-    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final dayName = index == 0 ? 'Today' : (index == 1 ? 'Tomorrow' : weekdays[target.weekday - 1]);
+    final enWeekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final guWeekdays = ['સોમ', 'મંગળ', 'બુધ', 'ગુરુ', 'શુક્ર', 'શનિ', 'રવિ'];
+    final hiWeekdays = ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
+    final enMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final guMonths = ['જાન્યુ', 'ફેબ્રુ', 'માર્ચ', 'એપ્રિલ', 'મે', 'જૂન', 'જુલાઈ', 'ઓગસ્ટ', 'સપ્ટે', 'ઓક્ટો', 'નવે', 'ડિસે'];
+    final hiMonths = ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+
+    final weekdays = currentLang == 'gu' ? guWeekdays : (currentLang == 'hi' ? hiWeekdays : enWeekdays);
+    final months = currentLang == 'gu' ? guMonths : (currentLang == 'hi' ? hiMonths : enMonths);
+
+    final String dayName;
+    if (index == 0) {
+      dayName = l10n?.todayLabel ?? (currentLang == 'gu' ? 'આજે' : (currentLang == 'hi' ? 'आज' : 'Today'));
+    } else if (index == 1) {
+      dayName = l10n?.tomorrowLabel ?? (currentLang == 'gu' ? 'આવતીકાલે' : (currentLang == 'hi' ? 'कल' : 'Tomorrow'));
+    } else {
+      dayName = weekdays[target.weekday - 1];
+    }
     return '$dayName, ${target.day} ${months[target.month - 1]}';
   }
 
@@ -93,6 +108,7 @@ class _BookScreenState extends State<BookScreen> {
       final prefs = await SharedPreferences.getInstance();
       final savedPhone = prefs.getString('ql_phone') ?? '+919876543210';
       _phoneController.text = savedPhone;
+      // Language is determined reactively via Localizations.localeOf(context)
 
       final services = await _client.fetchServices(widget.officeId);
       final found = services.firstWhere(
@@ -169,6 +185,7 @@ class _BookScreenState extends State<BookScreen> {
 
   void _showSuccessDialog(TokenModel token) {
     final l10n = AppLocalizations.of(context)!;
+    final currentLang = Localizations.localeOf(context).languageCode;
 
     showDialog(
       context: context,
@@ -216,15 +233,15 @@ class _BookScreenState extends State<BookScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Date:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
-                        Text(_getDayLabel(_selectedDayIndex), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        Text(l10n.dateSummaryLabel, style: const TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text(_getDayLabel(_selectedDayIndex, currentLang, l10n), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Slot Time:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text(l10n.slotTimeSummaryLabel, style: const TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
                         Text(_selectedSlotTime, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                       ],
                     ),
@@ -232,17 +249,17 @@ class _BookScreenState extends State<BookScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Party Size:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
-                        Text('$_familyCount person(s)', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        Text(l10n.partySizeSummaryLabel, style: const TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text(_familyCount == 1 ? l10n.onePerson : l10n.multiplePeople(_familyCount), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Applicable Fee:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text(l10n.feeTierSummaryLabel, style: const TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
                         Text(
-                          _selectedDayIndex < 2 ? '₹0 (Normal Slot)' : '₹50 (Custom Slot)',
+                          _selectedDayIndex < 2 ? l10n.standardFreeTier : l10n.customPaidTier,
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 13,
@@ -370,7 +387,7 @@ class _BookScreenState extends State<BookScreen> {
                           label: Text(
                             _submitting ? 'Booking…' : l10n.bookAppointmentAction,
                           ),
-                          onPressed: (_documentsConfirmed && !_submitting) ? _openTimeSelectionSheet : null,
+                          onPressed: (_documentsConfirmed && !_submitting) ? () => _openTimeSelectionSheet(l10n, currentLang) : null,
                         ),
                         if (!_documentsConfirmed) ...[
                           const SizedBox(height: 8),
@@ -442,36 +459,140 @@ class _BookScreenState extends State<BookScreen> {
   }
 
   String _getDocumentName(dynamic doc, String currentLang) {
+    String raw = '';
+
     if (doc is Map) {
-      // 1. Language-specific keys (e.g. name_gu, name_hi, name_en)
       final langKey = 'name_$currentLang';
       if (doc[langKey] != null && doc[langKey].toString().trim().isNotEmpty) {
-        return doc[langKey].toString().trim();
-      }
-      // 2. Nested 'names' dictionary if provided (e.g. names['gu'])
-      if (doc['names'] is Map) {
+        raw = doc[langKey].toString().trim();
+      } else if (doc['names'] is Map) {
         final names = doc['names'] as Map;
         if (names[currentLang] != null && names[currentLang].toString().trim().isNotEmpty) {
-          return names[currentLang].toString().trim();
+          raw = names[currentLang].toString().trim();
+        } else if (names['en'] != null && names['en'].toString().trim().isNotEmpty) {
+          raw = names['en'].toString().trim();
         }
-        if (names['en'] != null && names['en'].toString().trim().isNotEmpty) {
-          return names['en'].toString().trim();
+      } else if (doc['name_en'] != null && doc['name_en'].toString().trim().isNotEmpty) {
+        raw = doc['name_en'].toString().trim();
+      } else if (doc['name'] != null && doc['name'].toString().trim().isNotEmpty) {
+        raw = doc['name'].toString().trim();
+      } else if (doc['title'] != null && doc['title'].toString().trim().isNotEmpty) {
+        raw = doc['title'].toString().trim();
+      }
+    } else if (doc != null) {
+      String str = doc.toString().trim();
+      // If it looks like a serialized map {id: ..., name_gu: ..., name_en: ...}
+      if (str.startsWith('{') && str.endsWith('}')) {
+        // Try regex for name_$currentLang
+        final langPattern = RegExp('name_$currentLang' r'\s*:\s*([^,}\n]+)');
+        final matchLang = langPattern.firstMatch(str);
+        if (matchLang != null) {
+          raw = matchLang.group(1)?.trim() ?? '';
+        } else {
+          // Try name_en
+          final enPattern = RegExp(r'name_en\s*:\s*([^,}\n]+)');
+          final matchEn = enPattern.firstMatch(str);
+          if (matchEn != null) {
+            raw = matchEn.group(1)?.trim() ?? '';
+          } else {
+            // Try name:
+            final namePattern = RegExp(r'name\s*:\s*([^,}\n]+)');
+            final matchName = namePattern.firstMatch(str);
+            if (matchName != null) {
+              raw = matchName.group(1)?.trim() ?? '';
+            }
+          }
         }
-      }
-      // 3. Fallback to English name
-      if (doc['name_en'] != null && doc['name_en'].toString().trim().isNotEmpty) {
-        return doc['name_en'].toString().trim();
-      }
-      // 4. Fallback to generic name or title
-      if (doc['name'] != null && doc['name'].toString().trim().isNotEmpty) {
-        return doc['name'].toString().trim();
-      }
-      if (doc['title'] != null && doc['title'].toString().trim().isNotEmpty) {
-        return doc['title'].toString().trim();
+      } else {
+        raw = str;
       }
     }
-    return doc.toString();
+
+    // Clean any residual symbols or key-value patterns
+    raw = raw.replaceAll(RegExp(r'^\{+|\}+$'), '').trim();
+    if (raw.startsWith('name:')) {
+      raw = raw.substring(5).trim();
+    }
+
+    if (raw.isEmpty) {
+      return currentLang == 'gu' ? 'જરૂરી દસ્તાવેજ' : (currentLang == 'hi' ? 'आवश्यक दस्तावेज़' : 'Required Document');
+    }
+
+    // Check localized fallback dictionary for standard documents
+    final lower = raw.toLowerCase();
+    if (currentLang == 'gu') {
+      if (lower.contains('hospital') || lower.contains('discharge')) {
+        return 'હોસ્પિટલ ડિસ્ચાર્જ સારાંશ / પ્રમાણપત્ર';
+      }
+      if (lower.contains('parent') || lower.contains('aadhaar') || lower.contains('photo id')) {
+        return 'માતાપિતાનું ફોટો ઓળખકાર્ડ પુરાવો';
+      }
+      if (lower.contains('marriage')) {
+        return 'લગ્ન પ્રમાણપત્ર (જો લાગુ હોય તો)';
+      }
+      if (lower.contains('tax') || lower.contains('receipt')) {
+        return 'પાછલા વર્ષની ટેક્સ પહોંચ / રસીદ';
+      }
+      if (lower.contains('property') || lower.contains('index') || lower.contains('title')) {
+        return 'મિલકત ઇન્ડેક્સ-૨ / દસ્તાવેજ';
+      }
+      if (lower.contains('valid photo id')) {
+        return 'માન્ય ફોટો ઓળખકાર્ડ';
+      }
+      if (lower.contains('premises') || lower.contains('rent') || lower.contains('ownership')) {
+        return 'જગ્યાનો ભાડા કરાર / માલિકી પુરાવો';
+      }
+      if (lower.contains('fire') || lower.contains('emergency') || lower.contains('noc')) {
+        return 'ફાયર અને ઇમરજન્સી સેવાઓ તરફથી એનઓસી';
+      }
+      if (lower.contains('partnership') || lower.contains('incorporation')) {
+        return 'ભાગીદારી ડીડ / ઇન્કોર્પોરેશન પ્રમાણપત્ર';
+      }
+      if (lower.contains('identity proof') || lower.contains('voter')) {
+        return 'માન્ય ઓળખ પુરાવો (મતદાર કાર્ડ / ડ્રાઇવિંગ લાઇસન્સ / પાન)';
+      }
+      if (lower.contains('proof of address') || lower.contains('utility')) {
+        return 'સરનામાનો પુરાવો (લાઇટ બિલ / ભાડા કરાર)';
+      }
+    } else if (currentLang == 'hi') {
+      if (lower.contains('hospital') || lower.contains('discharge')) {
+        return 'अस्पताल डिस्चार्ज सारांश / प्रमाण पत्र';
+      }
+      if (lower.contains('parent') || lower.contains('aadhaar') || lower.contains('photo id')) {
+        return 'माता-पिता का फोटो पहचान प्रमाण';
+      }
+      if (lower.contains('marriage')) {
+        return 'विवाह प्रमाण पत्र (यदि लागू हो)';
+      }
+      if (lower.contains('tax') || lower.contains('receipt')) {
+        return 'पिछले वर्ष की कर रसीद';
+      }
+      if (lower.contains('property') || lower.contains('index') || lower.contains('title')) {
+        return 'संपत्ति इंडेक्स-2 / शीर्षक दस्तावेज़';
+      }
+      if (lower.contains('valid photo id')) {
+        return 'मान्य फोटो पहचान पत्र';
+      }
+      if (lower.contains('premises') || lower.contains('rent') || lower.contains('ownership')) {
+        return 'परिसर किराया समझौता / स्वामित्व प्रमाण';
+      }
+      if (lower.contains('fire') || lower.contains('emergency') || lower.contains('noc')) {
+        return 'अग्निशमन एवं आपातकालीन सेवाओं से एनओसी';
+      }
+      if (lower.contains('partnership') || lower.contains('incorporation')) {
+        return 'साझेदारी विलेख / निगमन प्रमाणपत्र';
+      }
+      if (lower.contains('identity proof') || lower.contains('voter')) {
+        return 'मान्य पहचान प्रमाण (मतदाता पहचान पत्र / ड्राइविंग लाइसेंस / पैन)';
+      }
+      if (lower.contains('proof of address') || lower.contains('utility')) {
+        return 'पते का प्रमाण (बिजली बिल / किराया समझौता)';
+      }
+    }
+
+    return raw;
   }
+
 
   Widget _buildDocumentChecklist(ServiceModel service, AppLocalizations l10n, String currentLang) {
     final docs = service.requiredDocs.isNotEmpty
@@ -640,14 +761,14 @@ class _BookScreenState extends State<BookScreen> {
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     initialValue: _priorityDocType ?? 'SENIOR_CITIZEN',
-                    decoration: const InputDecoration(
-                      labelText: 'Eligibility Category',
+                    decoration: InputDecoration(
+                      labelText: l10n.eligibilityCategoryLabel,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'SENIOR_CITIZEN', child: Text('Senior Citizen (60+ years)')),
-                      DropdownMenuItem(value: 'PREGNANT', child: Text('Pregnant / Nursing Mother')),
-                      DropdownMenuItem(value: 'DISABILITY', child: Text('Person with Disability (PwD)')),
-                      DropdownMenuItem(value: 'MEDICAL', child: Text('Medical Urgency / Health')),
+                    items: [
+                      DropdownMenuItem(value: 'SENIOR_CITIZEN', child: Text(l10n.seniorCitizenCategory)),
+                      DropdownMenuItem(value: 'PREGNANT', child: Text(l10n.pregnantCategory)),
+                      DropdownMenuItem(value: 'DISABILITY', child: Text(l10n.disabilityCategory)),
+                      DropdownMenuItem(value: 'MEDICAL', child: Text(l10n.medicalCategory)),
                     ],
                     onChanged: (val) {
                       setState(() => _priorityDocType = val);
@@ -673,9 +794,9 @@ class _BookScreenState extends State<BookScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Applicant Details',
-            style: TextStyle(
+          Text(
+            l10n.applicantDetailsTitle,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: CivicTheme.textPrimary,
@@ -704,7 +825,7 @@ class _BookScreenState extends State<BookScreen> {
     );
   }
 
-  void _openTimeSelectionSheet() {
+  void _openTimeSelectionSheet(AppLocalizations l10n, String currentLang) {
     DateTime selectedDate = DateTime.now().add(Duration(days: _selectedDayIndex));
     String selectedSlotTime = _selectedSlotTime;
     int familyCount = _familyCount;
@@ -743,9 +864,9 @@ class _BookScreenState extends State<BookScreen> {
                         children: [
                           const Icon(Icons.calendar_month, color: CivicTheme.primary, size: 26),
                           const SizedBox(width: 10),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Choose Date & Time Slot',
+                              l10n.chooseDateTimeSlot,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
@@ -778,13 +899,13 @@ class _BookScreenState extends State<BookScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
-                                            'Selected Date',
+                                          Text(
+                                            l10n.selectedDateLabel,
                                             style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary, fontWeight: FontWeight.w600),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            _formatFullDate(selectedDate, diffDays),
+                                            _formatFullDate(selectedDate, diffDays, currentLang, l10n),
                                             style: const TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w800,
@@ -802,7 +923,7 @@ class _BookScreenState extends State<BookScreen> {
                                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                       ),
                                       icon: const Icon(Icons.edit_calendar, size: 18),
-                                      label: const Text('Open Calendar'),
+                                      label: Text(l10n.openCalendarAction),
                                       onPressed: () async {
                                         final todayZero = DateTime(now.year, now.month, now.day);
                                         final picked = await showDatePicker(
@@ -839,8 +960,8 @@ class _BookScreenState extends State<BookScreen> {
                               const SizedBox(height: 14),
 
                               // Quick Date Chips
-                              const Text(
-                                'Quick Selection',
+                              Text(
+                                l10n.quickSelectionTitle,
                                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
                               ),
                               const SizedBox(height: 8),
@@ -849,8 +970,8 @@ class _BookScreenState extends State<BookScreen> {
                                 runSpacing: 8,
                                 children: [
                                   _buildQuickDateChip(
-                                    label: 'Today',
-                                    subtext: 'Within 2 Days • ₹0 Fee',
+                                    label: l10n.todayLabel,
+                                    subtext: l10n.within2DaysFeeFree,
                                     isSelected: diffDays == 0,
                                     onTap: () {
                                       setSheetState(() {
@@ -860,8 +981,8 @@ class _BookScreenState extends State<BookScreen> {
                                     },
                                   ),
                                   _buildQuickDateChip(
-                                    label: 'Tomorrow',
-                                    subtext: 'Within 2 Days • ₹0 Fee',
+                                    label: l10n.tomorrowLabel,
+                                    subtext: l10n.within2DaysFeeFree,
                                     isSelected: diffDays == 1,
                                     onTap: () {
                                       setSheetState(() {
@@ -871,8 +992,8 @@ class _BookScreenState extends State<BookScreen> {
                                     },
                                   ),
                                   _buildQuickDateChip(
-                                    label: 'In 2 Days',
-                                    subtext: 'Custom Date • ₹50 Fee',
+                                    label: l10n.in2DaysLabel,
+                                    subtext: l10n.customDateFee50,
                                     isSelected: diffDays == 2,
                                     onTap: () {
                                       setSheetState(() {
@@ -882,8 +1003,8 @@ class _BookScreenState extends State<BookScreen> {
                                     },
                                   ),
                                   _buildQuickDateChip(
-                                    label: 'In 3 Days',
-                                    subtext: 'Custom Date • ₹50 Fee',
+                                    label: l10n.in3DaysLabel,
+                                    subtext: l10n.customDateFee50,
                                     isSelected: diffDays == 3,
                                     onTap: () {
                                       setSheetState(() {
@@ -920,9 +1041,7 @@ class _BookScreenState extends State<BookScreen> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            isCustomSlot
-                                                ? 'Custom Future Slot • Higher Fee (₹50)'
-                                                : 'Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee',
+                                            isCustomSlot ? l10n.customSlotTitle : l10n.normalSlotTitle,
                                             style: TextStyle(
                                               fontWeight: FontWeight.w700,
                                               fontSize: 14,
@@ -934,9 +1053,7 @@ class _BookScreenState extends State<BookScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      isCustomSlot
-                                          ? 'Statutory Disclosure (Spec Section 6.3): A custom slot fee does not protect against official department emergency closures, gazetted holidays, or government server delay.'
-                                          : 'Standard near-term booking within 2 days carries no additional fee.',
+                                      isCustomSlot ? l10n.statutoryDisclosure : l10n.standardNearTermNotice,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: isCustomSlot ? const Color(0xFF8A5800) : const Color(0xFF2E7D32),
@@ -979,8 +1096,8 @@ class _BookScreenState extends State<BookScreen> {
                               ],
 
                               // Time Slots Header
-                              const Text(
-                                'Available Time Slots',
+                              Text(
+                                l10n.availableTimeSlotsTitle,
                                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CivicTheme.textPrimary),
                               ),
                               const SizedBox(height: 10),
@@ -1001,7 +1118,7 @@ class _BookScreenState extends State<BookScreen> {
                                         });
                                       } else {
                                         setSheetState(() {
-                                          localNotice = 'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries zero extra fees.';
+                                          localNotice = l10n.slotsFullWarning;
                                         });
                                       }
                                     },
@@ -1048,7 +1165,7 @@ class _BookScreenState extends State<BookScreen> {
                                                   borderRadius: BorderRadius.circular(4),
                                                 ),
                                                 child: Text(
-                                                  !isAvailable ? 'Slots Full' : 'Available',
+                                                  !isAvailable ? l10n.slotsFullBadge : l10n.availableBadge,
                                                   style: TextStyle(
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.w700,
@@ -1069,8 +1186,8 @@ class _BookScreenState extends State<BookScreen> {
                               const SizedBox(height: 18),
 
                               // Party Size Selector
-                              const Text(
-                                'How many people are coming with you? (Spec Section 7.2)',
+                              Text(
+                                l10n.peopleCountPrompt,
                                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CivicTheme.textPrimary),
                               ),
                               const SizedBox(height: 8),
@@ -1079,7 +1196,7 @@ class _BookScreenState extends State<BookScreen> {
                                 children: [1, 2, 3, 4, 5].map((count) {
                                   final isSelected = familyCount == count;
                                   return ChoiceChip(
-                                    label: Text(count == 1 ? '1 Person' : '$count People'),
+                                    label: Text(count == 1 ? l10n.onePerson : l10n.multiplePeople(count)),
                                     selected: isSelected,
                                     selectedColor: CivicTheme.primary,
                                     labelStyle: TextStyle(
@@ -1101,9 +1218,7 @@ class _BookScreenState extends State<BookScreen> {
                       ElevatedButton.icon(
                         icon: const Icon(Icons.check_circle, size: 22),
                         label: Text(
-                          isCustomSlot
-                              ? 'Confirm Appointment • Higher Fee: ₹50'
-                              : 'Confirm Appointment • Standard Fee: ₹0',
+                          isCustomSlot ? l10n.confirmAppointmentHigher : l10n.confirmAppointmentStandard,
                         ),
                         onPressed: () {
                           Navigator.of(sheetContext).pop();
@@ -1126,10 +1241,26 @@ class _BookScreenState extends State<BookScreen> {
     );
   }
 
-  String _formatFullDate(DateTime date, int diffDays) {
-    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final relative = diffDays == 0 ? ' (Today)' : (diffDays == 1 ? ' (Tomorrow)' : ' (In $diffDays Days)');
+  String _formatFullDate(DateTime date, int diffDays, String currentLang, AppLocalizations l10n) {
+    final enWeekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final guWeekdays = ['સોમવાર', 'મંગળવાર', 'બુધવાર', 'ગુરૂવાર', 'શુક્રવાર', 'શનિવાર', 'રવિવાર'];
+    final hiWeekdays = ['सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार', 'रविवार'];
+
+    final enMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final guMonths = ['જાન્યુ', 'ફેબ્રુ', 'માર્ચ', 'એપ્રિલ', 'મે', 'જૂન', 'જુલાઈ', 'ઓગસ્ટ', 'સપ્ટે', 'ઓક્ટો', 'નવે', 'ડિસે'];
+    final hiMonths = ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+
+    final weekdays = currentLang == 'gu' ? guWeekdays : (currentLang == 'hi' ? hiWeekdays : enWeekdays);
+    final months = currentLang == 'gu' ? guMonths : (currentLang == 'hi' ? hiMonths : enMonths);
+
+    final String relative;
+    if (diffDays == 0) {
+      relative = ' (${l10n.todayLabel})';
+    } else if (diffDays == 1) {
+      relative = ' (${l10n.tomorrowLabel})';
+    } else {
+      relative = currentLang == 'gu' ? ' ($diffDays દિવસમાં)' : (currentLang == 'hi' ? ' ($diffDays दिनों में)' : ' (In $diffDays Days)');
+    }
     return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}$relative';
   }
 

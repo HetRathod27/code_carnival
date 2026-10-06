@@ -217,4 +217,182 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get nowServingAt => 'वर्तमान में सेवा:';
+
+  @override
+  String get chooseDateTimeSlot => 'तारीख और समय स्लॉट चुनें';
+
+  @override
+  String get selectedDateLabel => 'चुनी गई तारीख';
+
+  @override
+  String get openCalendarAction => 'कैलेंडर खोलें';
+
+  @override
+  String get quickSelectionTitle => 'त्वरित चयन';
+
+  @override
+  String get todayLabel => 'आज';
+
+  @override
+  String get tomorrowLabel => 'कल';
+
+  @override
+  String get in2DaysLabel => '२ दिनों में';
+
+  @override
+  String get in3DaysLabel => '३ दिनों में';
+
+  @override
+  String get within2DaysFeeFree => '२ दिनों में • ₹० शुल्क (मुफ्त)';
+
+  @override
+  String get customDateFee50 => 'कस्टम तारीख • ₹५० शुल्क';
+
+  @override
+  String get normalSlotTitle =>
+      'सामान्य स्लॉट (२ दिनों में) • मुफ्त / ₹० मानक शुल्क';
+
+  @override
+  String get customSlotTitle => 'कस्टम भविष्य स्लॉट • अतिरिक्त शुल्क (₹५०)';
+
+  @override
+  String get statutoryDisclosure =>
+      'वैधानिक प्रकटीकरण (नियम ६.३): कस्टम स्लॉट शुल्क आपातकालीन कार्यालय बंद, सार्वजनिक अवकाश या सर्वर विलंब से सुरक्षा प्रदान नहीं करता है।';
+
+  @override
+  String get standardNearTermNotice =>
+      '२ दिनों के भीतर सामान्य बुकिंग के लिए कोई अतिरिक्त शुल्क नहीं है।';
+
+  @override
+  String get availableTimeSlotsTitle => 'उपलब्ध समय स्लॉट्स';
+
+  @override
+  String get slotsFullWarning =>
+      'इस समय के लिए स्लॉट भर चुके हैं! कृपया अन्य उपलब्ध स्लॉट या अन्य दिन चुनें। २ दिनों में उपलब्ध किसी भी सामान्य स्लॉट को बुक करने पर कोई अतिरिक्त शुल्क नहीं है।';
+
+  @override
+  String get slotsFullBadge => 'स्लॉट भर गए';
+
+  @override
+  String get availableBadge => 'उपलब्ध';
+
+  @override
+  String get peopleCountPrompt => 'आपके साथ कितने लोग आ रहे हैं? (नियम ७.२)';
+
+  @override
+  String get confirmAppointmentStandard =>
+      'अपॉइंटमेंट पुष्टि करें • मानक शुल्क: ₹०';
+
+  @override
+  String get confirmAppointmentHigher =>
+      'अपॉइंटमेंट पुष्टि करें • अतिरिक्त शुल्क: ₹५०';
+
+  @override
+  String get applicantDetailsTitle => 'आवेदक का विवरण';
+
+  @override
+  String get dateSummaryLabel => 'तारीख:';
+
+  @override
+  String get slotTimeSummaryLabel => 'स्लॉट समय:';
+
+  @override
+  String get partySizeSummaryLabel => 'व्यक्तियों की संख्या:';
+
+  @override
+  String get feeTierSummaryLabel => 'शुल्क श्रेणी:';
+
+  @override
+  String get standardFreeTier => 'मानक / मुफ्त (₹०)';
+
+  @override
+  String get customPaidTier => 'कस्टम अग्रिम स्लॉट (₹५०)';
+
+  @override
+  String get onePerson => '१ व्यक्ति';
+
+  @override
+  String multiplePeople(Object count) {
+    return '$count लोग';
+  }
+
+  @override
+  String get signInTitle => 'क्यूबलेस साइन इन';
+
+  @override
+  String get enterMobileNumber => 'मोबाइल नंबर दर्ज करें';
+
+  @override
+  String get invalidPhoneError => 'कृपया मान्य मोबाइल नंबर दर्ज करें';
+
+  @override
+  String get invalidOtpError => 'कृपया 6-अंकीय ओटीपी दर्ज करें';
+
+  @override
+  String get pleaseWait => 'कृपया प्रतीक्षा करें…';
+
+  @override
+  String get sendOtpAction => 'सत्यापन कोड प्राप्त करें';
+
+  @override
+  String get verifyOtpAction => 'ओटीपी सत्यापित करें और प्रवेश करें';
+
+  @override
+  String get otpLabel => '6-अंकीय ओटीपी';
+
+  @override
+  String get activeAppointmentBanner => 'सक्रिय अपॉइंटमेंट जारी है';
+
+  @override
+  String tapToViewEta(String code) {
+    return 'टोकन: $code • लाइव समय देखने के लिए टैप करें';
+  }
+
+  @override
+  String get priorityAllowedBadge => '⭐ प्राथमिकता मान्य';
+
+  @override
+  String get seniorCitizenCategory => 'वरिष्ठ नागरिक (60+ वर्ष)';
+
+  @override
+  String get pregnantCategory => 'गर्भवती / धात्री माता';
+
+  @override
+  String get disabilityCategory => 'दिव्यांग व्यक्ति (PwD)';
+
+  @override
+  String get medicalCategory => 'चिकित्सा आपातकाल / स्वास्थ्य';
+
+  @override
+  String get eligibilityCategoryLabel => 'पात्रता श्रेणी';
+
+  @override
+  String get signOutTooltip => 'साइन आउट';
+
+  @override
+  String get keepAppointmentAction => 'अपॉइंटमेंट जारी रखें';
+
+  @override
+  String get yesCancelAction => 'हाँ, रद्द करें';
+
+  @override
+  String get cancelSuccessMessage => 'अपॉइंटमेंट सफलतापूर्वक रद्द किया गया';
+
+  @override
+  String get priorityBadge => '⭐ प्राथमिकता';
+
+  @override
+  String get notCheckedInStatus => 'अभी चेक-इन नहीं किया है';
+
+  @override
+  String get calculatingEta => 'गणना की जा रही है…';
+
+  @override
+  String get noActiveAppointment => 'कोई सक्रिय अपॉइंटमेंट नहीं है';
+
+  @override
+  String get cancelAction => 'रद्द करें';
+
+  @override
+  String get verifyArrivalAction => 'आगमन सत्यापित करें';
 }

@@ -495,6 +495,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Currently Serving:'**
   String get nowServingAt;
+
+  /// No description provided for @chooseDateTimeSlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Date & Time Slot'**
+  String get chooseDateTimeSlot;
+
+  /// No description provided for @selectedDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected Date'**
+  String get selectedDateLabel;
+
+  /// No description provided for @openCalendarAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Calendar'**
+  String get openCalendarAction;
+
+  /// No description provided for @quickSelectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Selection'**
+  String get quickSelectionTitle;
+
+  /// No description provided for @todayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get todayLabel;
+
+  /// No description provided for @tomorrowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get tomorrowLabel;
+
+  /// No description provided for @in2DaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'In 2 Days'**
+  String get in2DaysLabel;
+
+  /// No description provided for @in3DaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'In 3 Days'**
+  String get in3DaysLabel;
+
+  /// No description provided for @within2DaysFeeFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Within 2 Days • ₹0 Fee'**
+  String get within2DaysFeeFree;
+
+  /// No description provided for @customDateFee50.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Date • ₹50 Fee'**
+  String get customDateFee50;
+
+  /// No description provided for @normalSlotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee'**
+  String get normalSlotTitle;
+
+  /// No description provided for @customSlotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Future Slot • Higher Fee (₹50)'**
+  String get customSlotTitle;
+
+  /// No description provided for @statutoryDisclosure.
+  ///
+  /// In en, this message translates to:
+  /// **'Statutory Disclosure (Spec Section 6.3): A custom slot fee does not protect against official department emergency closures, gazetted holidays, or government server delay.'**
+  String get statutoryDisclosure;
+
+  /// No description provided for @standardNearTermNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard near-term booking within 2 days carries no additional fee.'**
+  String get standardNearTermNotice;
+
+  /// No description provided for @availableTimeSlotsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Available Time Slots'**
+  String get availableTimeSlotsTitle;
+
+  /// No description provided for @slotsFullWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries zero extra fees.'**
+  String get slotsFullWarning;
+
+  /// No description provided for @slotsFullBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Slots Full'**
+  String get slotsFullBadge;
+
+  /// No description provided for @availableBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get availableBadge;
+
+  /// No description provided for @peopleCountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'How many people are coming with you? (Spec Section 7.2)'**
+  String get peopleCountPrompt;
+
+  /// No description provided for @confirmAppointmentStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Appointment • Standard Fee: ₹0'**
+  String get confirmAppointmentStandard;
+
+  /// No description provided for @confirmAppointmentHigher.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Appointment • Higher Fee: ₹50'**
+  String get confirmAppointmentHigher;
+
+  /// No description provided for @applicantDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Applicant Details'**
+  String get applicantDetailsTitle;
+
+  /// No description provided for @dateSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Date:'**
+  String get dateSummaryLabel;
+
+  /// No description provided for @slotTimeSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Slot Time:'**
+  String get slotTimeSummaryLabel;
+
+  /// No description provided for @partySizeSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Party Size:'**
+  String get partySizeSummaryLabel;
+
+  /// No description provided for @feeTierSummaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fee Tier:'**
+  String get feeTierSummaryLabel;
+
+  /// No description provided for @standardFreeTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard / Free (₹0)'**
+  String get standardFreeTier;
+
+  /// No description provided for @customPaidTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Advance Slot (₹50)'**
+  String get customPaidTier;
+
+  /// No description provided for @onePerson.
+  ///
+  /// In en, this message translates to:
+  /// **'1 Person'**
+  String get onePerson;
+
+  /// No description provided for @multiplePeople.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} People'**
+  String multiplePeople(Object count);
+
+  /// No description provided for @signInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'QueueLess Sign In'**
+  String get signInTitle;
+
+  /// No description provided for @enterMobileNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Mobile Number'**
+  String get enterMobileNumber;
+
+  /// No description provided for @invalidPhoneError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid mobile number'**
+  String get invalidPhoneError;
+
+  /// No description provided for @invalidOtpError.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter 6-digit OTP'**
+  String get invalidOtpError;
+
+  /// No description provided for @pleaseWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait…'**
+  String get pleaseWait;
+
+  /// No description provided for @sendOtpAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Verification Code'**
+  String get sendOtpAction;
+
+  /// No description provided for @verifyOtpAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify OTP & Enter'**
+  String get verifyOtpAction;
+
+  /// No description provided for @otpLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'6-Digit OTP'**
+  String get otpLabel;
+
+  /// No description provided for @activeAppointmentBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Appointment in Progress'**
+  String get activeAppointmentBanner;
+
+  /// No description provided for @tapToViewEta.
+  ///
+  /// In en, this message translates to:
+  /// **'Token: {code} • Tap to view live ETA'**
+  String tapToViewEta(String code);
+
+  /// No description provided for @priorityAllowedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'⭐ Priority Allowed'**
+  String get priorityAllowedBadge;
+
+  /// No description provided for @seniorCitizenCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Senior Citizen (60+ years)'**
+  String get seniorCitizenCategory;
+
+  /// No description provided for @pregnantCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Pregnant / Nursing Mother'**
+  String get pregnantCategory;
+
+  /// No description provided for @disabilityCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Person with Disability (PwD)'**
+  String get disabilityCategory;
+
+  /// No description provided for @medicalCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical Urgency / Health'**
+  String get medicalCategory;
+
+  /// No description provided for @eligibilityCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Eligibility Category'**
+  String get eligibilityCategoryLabel;
+
+  /// No description provided for @signOutTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign Out'**
+  String get signOutTooltip;
+
+  /// No description provided for @keepAppointmentAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Appointment'**
+  String get keepAppointmentAction;
+
+  /// No description provided for @yesCancelAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, Cancel'**
+  String get yesCancelAction;
+
+  /// No description provided for @cancelSuccessMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment successfully cancelled'**
+  String get cancelSuccessMessage;
+
+  /// No description provided for @priorityBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'⭐ Priority'**
+  String get priorityBadge;
+
+  /// No description provided for @notCheckedInStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Yet Checked In'**
+  String get notCheckedInStatus;
+
+  /// No description provided for @calculatingEta.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating…'**
+  String get calculatingEta;
+
+  /// No description provided for @noActiveAppointment.
+  ///
+  /// In en, this message translates to:
+  /// **'No Active Appointment'**
+  String get noActiveAppointment;
+
+  /// No description provided for @cancelAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancelAction;
+
+  /// No description provided for @verifyArrivalAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify Arrival'**
+  String get verifyArrivalAction;
 }
 
 class _AppLocalizationsDelegate

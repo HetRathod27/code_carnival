@@ -85,9 +85,21 @@ async def seed() -> None:
                 },
                 "prior_avg_minutes": 10.0,
                 "required_docs": [
-                    {"name": "Hospital Discharge Summary / Certificate"},
-                    {"name": "Parents Aadhaar or Photo ID"},
-                    {"name": "Marriage Certificate (if applicable)"},
+                    {
+                        "name_en": "Hospital Discharge Summary / Certificate",
+                        "name_gu": "હોસ્પિટલ ડિસ્ચાર્જ સારાંશ / પ્રમાણપત્ર",
+                        "name_hi": "अस्पताल डिस्चार्ज सारांश / प्रमाण पत्र",
+                    },
+                    {
+                        "name_en": "Parents Photo ID Proof",
+                        "name_gu": "માતાપિતાનું ફોટો ઓળખકાર્ડ",
+                        "name_hi": "माता-पिता का फोटो पहचान पत्र",
+                    },
+                    {
+                        "name_en": "Marriage Certificate (if applicable)",
+                        "name_gu": "લગ્ન પ્રમાણપત્ર (જો લાગુ હોય તો)",
+                        "name_hi": "विवाह प्रमाण पत्र (यदि लागू हो)",
+                    },
                 ],
                 "priority_allowed": True,
                 "requires_physical_visit": True,
@@ -103,9 +115,21 @@ async def seed() -> None:
                 },
                 "prior_avg_minutes": 15.0,
                 "required_docs": [
-                    {"name": "Previous Year Tax Receipt"},
-                    {"name": "Property Index-2 / Title Document"},
-                    {"name": "Valid Photo ID"},
+                    {
+                        "name_en": "Previous Year Tax Receipt",
+                        "name_gu": "પાછલા વર્ષની ટેક્સ પહોંચ / રસીદ",
+                        "name_hi": "पिछले वर्ष की कर रसीद",
+                    },
+                    {
+                        "name_en": "Property Index-2 / Title Document",
+                        "name_gu": "મિલકત ઇન્ડેક્સ-૨ / દસ્તાવેજ",
+                        "name_hi": "संपत्ति इंडेक्स-2 / शीर्षक दस्तावेज़",
+                    },
+                    {
+                        "name_en": "Valid Photo ID",
+                        "name_gu": "માન્ય ફોટો ઓળખકાર્ડ",
+                        "name_hi": "मान्य फोटो पहचान पत्र",
+                    },
                 ],
                 "priority_allowed": True,
                 "requires_physical_visit": False,
@@ -121,9 +145,21 @@ async def seed() -> None:
                 },
                 "prior_avg_minutes": 20.0,
                 "required_docs": [
-                    {"name": "Premises Rent Agreement / Ownership Proof"},
-                    {"name": "NOC from Fire & Emergency Services"},
-                    {"name": "Partnership Deed / Incorporation Certificate"},
+                    {
+                        "name_en": "Premises Rent Agreement / Ownership Proof",
+                        "name_gu": "જગ્યાનો ભાડા કરાર / માલિકી પુરાવો",
+                        "name_hi": "परिसर किराया समझौता / स्वामित्व प्रमाण",
+                    },
+                    {
+                        "name_en": "NOC from Fire & Emergency Services",
+                        "name_gu": "ફાયર અને ઇમરજન્સી સેવાઓ તરફથી એનઓસી",
+                        "name_hi": "अग्निशमन एवं आपातकालीन सेवाओं से एनओसी",
+                    },
+                    {
+                        "name_en": "Partnership Deed / Incorporation Certificate",
+                        "name_gu": "ભાગીદારી ડીડ / ઇન્કોર્પોરેશન પ્રમાણપત્ર",
+                        "name_hi": "साझेदारी विलेख / निगमन प्रमाणपत्र",
+                    },
                 ],
                 "priority_allowed": False,
                 "requires_physical_visit": True,
@@ -133,7 +169,8 @@ async def seed() -> None:
 
         for s_data in services_data:
             s_res = await session.execute(select(Service).where(Service.id == s_data["id"]))
-            if not s_res.scalar_one_or_none():
+            existing_service = s_res.scalar_one_or_none()
+            if not existing_service:
                 service = Service(
                     id=s_data["id"],
                     office_id=office_id,
@@ -148,6 +185,10 @@ async def seed() -> None:
                 )
                 session.add(service)
                 print(f"[+] Created Service: {s_data['code']} - {s_data['names']['en']}")
+            else:
+                existing_service.required_docs = s_data["required_docs"]
+                session.add(existing_service)
+                print(f"[+] Updated required_docs for Service: {s_data['code']}")
 
         # 4. Seed Service Counters
         counters_data = [

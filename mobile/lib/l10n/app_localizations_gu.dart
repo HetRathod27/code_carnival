@@ -215,4 +215,182 @@ class AppLocalizationsGu extends AppLocalizations {
 
   @override
   String get nowServingAt => 'હાલમાં સેવા:';
+
+  @override
+  String get chooseDateTimeSlot => 'તારીખ અને સમય સ્લોટ પસંદ કરો';
+
+  @override
+  String get selectedDateLabel => 'પસંદ કરેલ તારીખ';
+
+  @override
+  String get openCalendarAction => 'કેલેન્ડર ખોલો';
+
+  @override
+  String get quickSelectionTitle => 'ઝડપી પસંદગી';
+
+  @override
+  String get todayLabel => 'આજે';
+
+  @override
+  String get tomorrowLabel => 'આવતીકાલે';
+
+  @override
+  String get in2DaysLabel => '૨ દિવસમાં';
+
+  @override
+  String get in3DaysLabel => '૩ દિવસમાં';
+
+  @override
+  String get within2DaysFeeFree => '૨ દિવસમાં • ₹૦ ફી (મફત)';
+
+  @override
+  String get customDateFee50 => 'વિશેષ તારીખ • ₹૫૦ ફી';
+
+  @override
+  String get normalSlotTitle =>
+      'સામાન્ય સ્લોટ (૨ દિવસમાં) • મફત / ₹૦ સામાન્ય ફી';
+
+  @override
+  String get customSlotTitle => 'વિશેષ આગામી સ્લોટ • વધારાની ફી (₹૫૦)';
+
+  @override
+  String get statutoryDisclosure =>
+      'વૈધાનિક ખુલાસો (નિયમ ૬.૩): વિશેષ સ્લોટ ફી સરકારી કચેરીની કટોકટી બંધ, જાહેર રજાઓ કે સર્વર વિલંબ સામે સુરક્ષા આપતી નથી.';
+
+  @override
+  String get standardNearTermNotice =>
+      '૨ દિવસની અંદર સામાન્ય બુકિંગ માટે કોઈ વધારાની ફી નથી.';
+
+  @override
+  String get availableTimeSlotsTitle => 'ઉપલબ્ધ સમય સ્લોટ્સ';
+
+  @override
+  String get slotsFullWarning =>
+      'આ સમય માટે સ્લોટ ભરાઈ ગયા છે! કૃપા કરીને અન્ય ઉપલબ્ધ સ્લોટ અથવા અન્ય દિવસ પસંદ કરો. ૨ દિવસમાં ઉપલબ્ધ કોઈપણ સામાન્ય સ્લોટ બુક કરવા પર કોઈ વધારાની ફી નથી.';
+
+  @override
+  String get slotsFullBadge => 'સ્લોટ ભરાઈ ગયા';
+
+  @override
+  String get availableBadge => 'ઉપલબ્ધ';
+
+  @override
+  String get peopleCountPrompt =>
+      'તમારી સાથે કેટલા લોકો આવી રહ્યા છે? (નિયમ ૭.૨)';
+
+  @override
+  String get confirmAppointmentStandard =>
+      'મુલાકાત પુષ્ટિ કરો • સામાન્ય ફી: ₹૦';
+
+  @override
+  String get confirmAppointmentHigher => 'મુલાકાત પુષ્ટિ કરો • વિશેષ ફી: ₹૫૦';
+
+  @override
+  String get applicantDetailsTitle => 'અરજદારની વિગતો';
+
+  @override
+  String get dateSummaryLabel => 'તારીખ:';
+
+  @override
+  String get slotTimeSummaryLabel => 'સ્લોટ સમય:';
+
+  @override
+  String get partySizeSummaryLabel => 'લોકોની સંખ્યા:';
+
+  @override
+  String get feeTierSummaryLabel => 'ફી શ્રેણી:';
+
+  @override
+  String get standardFreeTier => 'સામાન્ય / મફત (₹૦)';
+
+  @override
+  String get customPaidTier => 'વિશેષ એડવાન્સ સ્લોટ (₹૫૦)';
+
+  @override
+  String get onePerson => '૧ વ્યક્તિ';
+
+  @override
+  String multiplePeople(Object count) {
+    return '$count વ્યક્તિઓ';
+  }
+
+  @override
+  String get signInTitle => 'ક્યૂલેસ સાઇન ઇન';
+
+  @override
+  String get enterMobileNumber => 'મોબાઇલ નંબર દાખલ કરો';
+
+  @override
+  String get invalidPhoneError => 'કૃપા કરીને માન્ય મોબાઇલ નંબર દાખલ કરો';
+
+  @override
+  String get invalidOtpError => 'કૃપા કરીને ૬-અંકનો ઓટીપી દાખલ કરો';
+
+  @override
+  String get pleaseWait => 'કૃપા કરીને રાહ જુઓ…';
+
+  @override
+  String get sendOtpAction => 'ચકાસણી કોડ મેળવો';
+
+  @override
+  String get verifyOtpAction => 'ઓટીપી ચકાસો અને આગળ વધો';
+
+  @override
+  String get otpLabel => '૬-અંકનો ઓટીપી';
+
+  @override
+  String get activeAppointmentBanner => 'સક્રિય એપોઇન્ટમેન્ટ ચાલુ છે';
+
+  @override
+  String tapToViewEta(String code) {
+    return 'ટોકન: $code • લાઈવ સમય જોવા માટે ટેપ કરો';
+  }
+
+  @override
+  String get priorityAllowedBadge => '⭐ અગ્રતા માન્ય';
+
+  @override
+  String get seniorCitizenCategory => 'વરિષ્ઠ નાગરિક (૬૦+ વર્ષ)';
+
+  @override
+  String get pregnantCategory => 'સગર્ભા / સ્તનપાન કરાવતી માતા';
+
+  @override
+  String get disabilityCategory => 'દિવ્યાંગ વ્યક્તિ (PwD)';
+
+  @override
+  String get medicalCategory => 'તબીબી કટોકટી / આરોગ્ય';
+
+  @override
+  String get eligibilityCategoryLabel => 'પાત્રતા શ્રેણી';
+
+  @override
+  String get signOutTooltip => 'સાઇન આઉટ';
+
+  @override
+  String get keepAppointmentAction => 'એપોઇન્ટમેન્ટ ચાલુ રાખો';
+
+  @override
+  String get yesCancelAction => 'હા, રદ કરો';
+
+  @override
+  String get cancelSuccessMessage => 'એપોઇન્ટમેન્ટ સફળતાપૂર્વક રદ કરવામાં આવી';
+
+  @override
+  String get priorityBadge => '⭐ અગ્રતા';
+
+  @override
+  String get notCheckedInStatus => 'હજી ચેક-ઇન કરેલ નથી';
+
+  @override
+  String get calculatingEta => 'ગણતરી કરી રહ્યાં છે…';
+
+  @override
+  String get noActiveAppointment => 'કોઈ સક્રિય એપોઇન્ટમેન્ટ નથી';
+
+  @override
+  String get cancelAction => 'રદ કરો';
+
+  @override
+  String get verifyArrivalAction => 'આગમન ચકાસો';
 }
