@@ -45,6 +45,32 @@ class _BookScreenState extends State<BookScreen> {
   final TextEditingController _beneficiaryController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
+  // Slot & Schedule state (Spec Section 6 & 7)
+  int _selectedDayIndex = 0; // 0 = Today, 1 = Tomorrow, 2 = In 2 Days, 3 = In 3 Days
+  String _selectedSlotTime = '09:30 AM – 10:30 AM';
+  int _familyCount = 1;
+  String? _slotNotice;
+
+  String _getDayLabel(int index) {
+    final now = DateTime.now();
+    final target = now.add(Duration(days: index));
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dayName = index == 0 ? 'Today' : (index == 1 ? 'Tomorrow' : weekdays[target.weekday - 1]);
+    return '$dayName, ${target.day} ${months[target.month - 1]}';
+  }
+
+  List<Map<String, dynamic>> _getSlotsForDay(int dayIndex) {
+    return [
+      {'time': '09:30 AM – 10:30 AM', 'available': true},
+      {'time': '10:30 AM – 11:30 AM', 'available': true},
+      {'time': '11:30 AM – 12:30 PM', 'available': dayIndex != 0}, // Full today to demonstrate rule
+      {'time': '02:00 PM – 03:00 PM', 'available': true},
+      {'time': '03:00 PM – 04:00 PM', 'available': dayIndex != 1}, // Full tomorrow
+      {'time': '04:30 PM – 05:30 PM', 'available': true},
+    ];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -181,6 +207,57 @@ class _BookScreenState extends State<BookScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
+                  color: CivicTheme.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: CivicTheme.border),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Date:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text(_getDayLabel(_selectedDayIndex), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Slot Time:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text(_selectedSlotTime, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Party Size:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text('$_familyCount person(s)', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Applicable Fee:', style: TextStyle(color: CivicTheme.textSecondary, fontSize: 13)),
+                        Text(
+                          _selectedDayIndex < 2 ? '₹0 (Normal Slot)' : '₹50 (Custom Slot)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: _selectedDayIndex < 2 ? CivicTheme.success : CivicTheme.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
                   color: CivicTheme.primarySoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -251,6 +328,14 @@ class _BookScreenState extends State<BookScreen> {
                           _buildCategorySelector(l10n),
                           const SizedBox(height: 20),
                         ],
+
+                        // Convenient Appointment Date & Time Slot Selection (Spec Section 6 & 7)
+                        _buildSlotSelector(l10n),
+                        const SizedBox(height: 20),
+
+                        // Party / Group Size Selector (Spec Section 7.2)
+                        _buildFamilySizeSelector(),
+                        const SizedBox(height: 20),
 
                         // Applicant Information Card
                         _buildApplicantForm(l10n),
@@ -589,6 +674,357 @@ class _BookScreenState extends State<BookScreen> {
               labelText: l10n.phoneNumber,
               prefixIcon: const Icon(Icons.phone_outlined, color: CivicTheme.primary),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlotSelector(AppLocalizations l10n) {
+    final isCustomSlot = _selectedDayIndex >= 2;
+    final slots = _getSlotsForDay(_selectedDayIndex);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: CivicTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: CivicTheme.border, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.schedule, color: CivicTheme.primary, size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Select Appointment Date & Time',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: CivicTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Book within 2 days for normal standard fee. Customized slots beyond 2 days carry a higher fee.',
+            style: TextStyle(fontSize: 14, color: CivicTheme.textSecondary, height: 1.3),
+          ),
+          const SizedBox(height: 16),
+
+          // Date Chips (Today, Tomorrow, In 2 Days, In 3 Days)
+          const Text(
+            'Appointment Date',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(4, (index) {
+                final isSelected = _selectedDayIndex == index;
+                final isNearTerm = index < 2;
+                final label = index == 0
+                    ? 'Today'
+                    : (index == 1 ? 'Tomorrow' : 'In $index Days');
+                final feeSubtext = isNearTerm ? '₹0 Fee' : '₹50 Fee';
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: ChoiceChip(
+                    label: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? Colors.white : CivicTheme.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          feeSubtext,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isSelected
+                                ? Colors.white70
+                                : (isNearTerm ? CivicTheme.success : CivicTheme.warning),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    selected: isSelected,
+                    selectedColor: CivicTheme.primary,
+                    backgroundColor: CivicTheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSelected ? CivicTheme.primary : CivicTheme.border,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedDayIndex = index;
+                          _slotNotice = null;
+                          final newSlots = _getSlotsForDay(index);
+                          final currentAvailable = newSlots.any(
+                            (s) => s['time'] == _selectedSlotTime && (s['available'] as bool),
+                          );
+                          if (!currentAvailable) {
+                            final firstAvail = newSlots.firstWhere(
+                              (s) => s['available'] as bool,
+                              orElse: () => newSlots.first,
+                            );
+                            _selectedSlotTime = firstAvail['time'] as String;
+                          }
+                        });
+                      }
+                    },
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Fee Tier Indicator & Rules
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isCustomSlot
+                  ? const Color(0xFFFFF8E7)
+                  : const Color(0xFFEBF7EE),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isCustomSlot ? const Color(0xFFE6A23C) : CivicTheme.success,
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isCustomSlot ? Icons.star_outline : Icons.check_circle_outline,
+                      color: isCustomSlot ? const Color(0xFFB87700) : CivicTheme.success,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isCustomSlot
+                            ? 'Custom Future Slot • Higher Fee (₹50)'
+                            : 'Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: isCustomSlot ? const Color(0xFFB87700) : CivicTheme.success,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (isCustomSlot) ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Statutory Disclosure (Spec Section 6.3): A custom slot fee does not protect against official department emergency closures, gazetted holidays, or government server delay.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF8A5800), height: 1.3),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Standard booking within 2 days carries no additional fee.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF2E7D32)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Slot Full Warning Notice (if citizen clicked a full slot)
+          if (_slotNotice != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: CivicTheme.errorSoft,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: CivicTheme.error),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.error_outline, color: CivicTheme.error, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _slotNotice!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: CivicTheme.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Time Slots Grid
+          const Text(
+            'Convenient Time Slots',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: slots.map((slot) {
+              final timeStr = slot['time'] as String;
+              final isAvailable = slot['available'] as bool;
+              final isSelected = _selectedSlotTime == timeStr && isAvailable;
+
+              return InkWell(
+                onTap: () {
+                  if (isAvailable) {
+                    setState(() {
+                      _selectedSlotTime = timeStr;
+                      _slotNotice = null;
+                    });
+                  } else {
+                    setState(() {
+                      _slotNotice = 'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries zero extra fees.';
+                    });
+                  }
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: (MediaQuery.of(context).size.width - 90) / 2 > 130
+                      ? (MediaQuery.of(context).size.width - 90) / 2
+                      : 140,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: !isAvailable
+                        ? Colors.grey.shade100
+                        : (isSelected ? CivicTheme.primarySoft : CivicTheme.surface),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: !isAvailable
+                          ? Colors.grey.shade300
+                          : (isSelected ? CivicTheme.primary : CivicTheme.border),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        timeStr,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: !isAvailable
+                              ? Colors.grey.shade500
+                              : (isSelected ? CivicTheme.primary : CivicTheme.textPrimary),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: !isAvailable
+                                  ? Colors.red.shade50
+                                  : (isSelected ? CivicTheme.primary.withValues(alpha: 0.15) : Colors.green.shade50),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              !isAvailable ? 'Slots Full' : 'Available',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: !isAvailable ? CivicTheme.error : CivicTheme.success,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(Icons.check_circle, size: 16, color: CivicTheme.primary),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFamilySizeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: CivicTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: CivicTheme.border, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.groups_outlined, color: CivicTheme.primary, size: 22),
+              SizedBox(width: 8),
+              Text(
+                'How many people are coming with you?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: CivicTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Capacity is reserved based on party size (Spec Section 7.2)',
+            style: TextStyle(fontSize: 13, color: CivicTheme.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            children: [1, 2, 3, 4, 5].map((count) {
+              final isSelected = _familyCount == count;
+              final label = count == 1 ? '1 Person' : '$count People';
+              return ChoiceChip(
+                label: Text(label),
+                selected: isSelected,
+                selectedColor: CivicTheme.primary,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : CivicTheme.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                onSelected: (val) {
+                  if (val) setState(() => _familyCount = count);
+                },
+              );
+            }).toList(),
           ),
         ],
       ),

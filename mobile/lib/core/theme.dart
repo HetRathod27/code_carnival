@@ -13,6 +13,8 @@ class CivicTheme {
   static const Color textSecondary = Color(0xFF4A5B69);
   static const Color success = Color(0xFF1B7A4B);
   static const Color successSoft = Color(0xFFE2F4EA);
+  static const Color warning = Color(0xFFD97706);
+  static const Color warningSoft = Color(0xFFFEF3C7);
   static const Color error = Color(0xFFB42318);
   static const Color errorSoft = Color(0xFFFDECEA);
 
