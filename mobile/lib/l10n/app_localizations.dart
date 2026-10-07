@@ -831,6 +831,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verify Arrival'**
   String get verifyArrivalAction;
+
+  /// No description provided for @qrCodeInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Show this QR code to the entrance officer or counter scanner to verify your arrival.'**
+  String get qrCodeInstruction;
+
+  /// No description provided for @manualVerificationCodePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Token Verification Code'**
+  String get manualVerificationCodePrompt;
+
+  /// No description provided for @qrFallbackOfficerNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code with the officer if the QR scanner faces any issue.'**
+  String get qrFallbackOfficerNotice;
 }
 
 class _AppLocalizationsDelegate

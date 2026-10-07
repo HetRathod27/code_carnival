@@ -1,3 +1,4 @@
+import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile/l10n/app_localizations.dart';
@@ -85,45 +86,122 @@ class _HomeScreenState extends State<HomeScreen> {
     final token = _activeToken;
     if (token == null) return;
 
-    final controller = TextEditingController(text: '${token.businessDate}:${token.officeId}:demo_qr_secret_key_123');
     final l10n = AppLocalizations.of(context)!;
 
     final qrPayload = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.qr_code_scanner, color: CivicTheme.primary),
-            const SizedBox(width: 8),
-            Text(l10n.checkInQr),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.enterQrCodePrompt,
-              style: const TextStyle(fontSize: 15, color: CivicTheme.textSecondary),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'QR Payload',
-                prefixIcon: Icon(Icons.qr_code, color: CivicTheme.primary),
+            const Icon(Icons.qr_code_2_rounded, color: CivicTheme.primary, size: 28),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                l10n.checkInQr,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
               ),
             ),
           ],
         ),
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  l10n.qrCodeInstruction,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary, height: 1.3),
+                ),
+                const SizedBox(height: 16),
+                // ACTUAL QR CODE TO SHOW TO DEPT OFFICER
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: CivicTheme.border, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x140E5A8A),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: QrImageView(
+                    data: 'TOKEN:${token.id}:${token.displayCode}',
+                    version: QrVersions.auto,
+                    size: 190.0,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF0E5A8A),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // BACKUP CODE GIVEN TO EMPLOYEE IF QR HAS ISSUE
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: CivicTheme.primarySoft,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: CivicTheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        l10n.manualVerificationCodePrompt.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                          color: CivicTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        token.displayCode,
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: CivicTheme.primary,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.qrFallbackOfficerNotice,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: CivicTheme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(null),
             child: Text(l10n.cancelAction),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            onPressed: () => Navigator.of(ctx).pop(
+              '${token.businessDate}:${token.officeId}:demo_qr_secret_key_123',
+            ),
             child: Text(l10n.verifyArrivalAction),
           ),
         ],

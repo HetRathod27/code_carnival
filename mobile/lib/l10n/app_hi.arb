@@ -128,5 +128,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "qrCodeInstruction": "अपने आगमन के सत्यापन के लिए यह QR कोड प्रवेश अधिकारी या काउंटर स्कैनर को दिखाएं।",
+  "manualVerificationCodePrompt": "टोकन सत्यापन कोड",
+  "qrFallbackOfficerNotice": "यदि QR स्कैनर में कोई समस्या आए तो यह कोड अधिकारी को बताएं।"
 }

@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app.core.auth import UserClaims, require_office_access, require_role
@@ -66,7 +66,20 @@ async def desk_manual_check_in(
     session: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
 ) -> TokenOut:
-    result = await session.execute(select(Token).where(Token.id == token_id))
+    clean_term = token_id.strip()
+    # Support payload prefix like TOKEN:uuid:code or raw code
+    candidates = [p for p in clean_term.split(":") if p and p != "TOKEN"]
+    if not candidates:
+        candidates = [clean_term]
+
+    result = await session.execute(
+        select(Token).where(
+            or_(
+                Token.id.in_(candidates),
+                Token.display_code.in_([c.upper() for c in candidates]),
+            )
+        ).order_by(Token.created_at.desc())
+    )
     token = result.scalar_one_or_none()
     if not token:
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)

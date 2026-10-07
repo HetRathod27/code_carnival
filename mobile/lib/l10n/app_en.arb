@@ -128,5 +128,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "qrCodeInstruction": "Show this QR code to the entrance officer or counter scanner to verify your arrival.",
+  "manualVerificationCodePrompt": "Token Verification Code",
+  "qrFallbackOfficerNotice": "Share this code with the officer if the QR scanner faces any issue."
 }

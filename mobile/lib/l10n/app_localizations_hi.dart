@@ -395,4 +395,15 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get verifyArrivalAction => 'आगमन सत्यापित करें';
+
+  @override
+  String get qrCodeInstruction =>
+      'अपने आगमन के सत्यापन के लिए यह QR कोड प्रवेश अधिकारी या काउंटर स्कैनर को दिखाएं।';
+
+  @override
+  String get manualVerificationCodePrompt => 'टोकन सत्यापन कोड';
+
+  @override
+  String get qrFallbackOfficerNotice =>
+      'यदि QR स्कैनर में कोई समस्या आए तो यह कोड अधिकारी को बताएं।';
 }

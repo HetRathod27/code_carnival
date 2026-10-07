@@ -393,4 +393,15 @@ class AppLocalizationsGu extends AppLocalizations {
 
   @override
   String get verifyArrivalAction => 'આગમન ચકાસો';
+
+  @override
+  String get qrCodeInstruction =>
+      'તમારા આગમનની પુષ્ટિ કરવા માટે આ QR કોડ પ્રવેશ અધિકારી અથવા કાઉન્ટર સ્કેનરને બતાવો.';
+
+  @override
+  String get manualVerificationCodePrompt => 'ટોકન વેરિફિકેશન કોડ';
+
+  @override
+  String get qrFallbackOfficerNotice =>
+      'જો QR સ્કેનરમાં કોઈ સમસ્યા આવે તો આ કોડ અધિકારી સાથે શેર કરો.';
 }

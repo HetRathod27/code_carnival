@@ -395,4 +395,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get verifyArrivalAction => 'Verify Arrival';
+
+  @override
+  String get qrCodeInstruction =>
+      'Show this QR code to the entrance officer or counter scanner to verify your arrival.';
+
+  @override
+  String get manualVerificationCodePrompt => 'Token Verification Code';
+
+  @override
+  String get qrFallbackOfficerNotice =>
+      'Share this code with the officer if the QR scanner faces any issue.';
 }
