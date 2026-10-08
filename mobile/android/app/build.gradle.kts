@@ -43,3 +43,21 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+tasks.register("reverseAdb") {
+    doLast {
+        try {
+            val adb = android.adbExecutable.absolutePath
+            exec {
+                commandLine(adb, "reverse", "tcp:8000", "tcp:8000")
+                isIgnoreExitValue = true
+            }
+        } catch (_: Exception) {}
+    }
+}
+
+gradle.projectsEvaluated {
+    tasks.matching { it.name.contains("install") || it.name.contains("assemble") }.configureEach {
+        finalizedBy("reverseAdb")
+    }
+}

@@ -78,6 +78,16 @@ class DeviceRegisterIn(BaseModel):
     language: str = "en"
 
 
+class ProfileOut(BaseModel):
+    id: str
+    phone: str | None = None
+    name: str | None = None
+    language: str = "en"
+    role: str = "CITIZEN"
+    office_id: str | None = None
+    priority_strikes: int = 0
+
+
 class ProfileUpdateIn(BaseModel):
     language: str | None = None
     name: str | None = None

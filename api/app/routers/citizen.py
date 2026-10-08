@@ -26,6 +26,7 @@ from api.app.schemas.citizen import (
     CitizenConfirmCompletionIn,
     DeviceRegisterIn,
     OfficeOut,
+    ProfileOut,
     ProfileUpdateIn,
     ServiceOut,
     TokenBookIn,
@@ -440,6 +441,34 @@ async def register_device(
     await session.execute(stmt)
     await session.commit()
     return SuccessResponse(message="Device registered successfully")
+
+
+@router.get("/me", response_model=ProfileOut)
+async def get_profile(
+    user: UserClaims = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> ProfileOut:
+    prof_res = await session.execute(select(Profile).where(Profile.id == user.user_id))
+    profile = prof_res.scalar_one_or_none()
+    if profile:
+        return ProfileOut(
+            id=profile.id,
+            phone=profile.phone or user.phone,
+            name=profile.name,
+            language=profile.language,
+            role=profile.role,
+            office_id=profile.office_id,
+            priority_strikes=profile.priority_strikes,
+        )
+    return ProfileOut(
+        id=user.user_id,
+        phone=user.phone,
+        name=None,
+        language="en",
+        role=user.role,
+        office_id=user.office_id,
+        priority_strikes=0,
+    )
 
 
 @router.patch("/me", response_model=SuccessResponse)

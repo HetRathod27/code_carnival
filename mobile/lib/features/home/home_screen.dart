@@ -401,6 +401,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => _loadActiveToken(),
           ),
           IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'My Account',
+            onPressed: () => context.push('/account'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: l10n.signOutTooltip,
             onPressed: _logout,

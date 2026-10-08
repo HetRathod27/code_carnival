@@ -77,6 +77,118 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _showServerConfigDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentUrl = ApiClient.defaultBaseUrl;
+    final controller = TextEditingController(text: currentUrl);
+    String? testStatus;
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.settings_ethernet, color: CivicTheme.primary),
+              SizedBox(width: 8),
+              Text('Server Connection', style: TextStyle(fontSize: 18)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Select connection method or enter your backend server URL:',
+                  style: TextStyle(fontSize: 13, color: CivicTheme.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(Icons.usb, size: 16),
+                      label: const Text('USB (localhost)'),
+                      onPressed: () {
+                        controller.text = 'http://localhost:8000';
+                        setDialogState(() => testStatus = null);
+                      },
+                    ),
+                    ActionChip(
+                      avatar: const Icon(Icons.wifi, size: 16),
+                      label: const Text('Wi-Fi (10.152.45.97)'),
+                      onPressed: () {
+                        controller.text = 'http://10.152.45.97:8000';
+                        setDialogState(() => testStatus = null);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Backend Base URL',
+                    hintText: 'http://10.152.45.97:8000',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (testStatus != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      testStatus!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: testStatus!.startsWith('✓') ? Colors.green.shade700 : Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.network_check, size: 16),
+                  label: const Text('Test Connection'),
+                  onPressed: () async {
+                    setDialogState(() => testStatus = 'Testing...');
+                    final ok = await ApiClient.pingServer(controller.text.trim());
+                    setDialogState(() {
+                      testStatus = ok ? '✓ Server reachable (/healthz: ok)' : '✗ Not reachable. Check IP or run adb reverse.';
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newUrl = controller.text.trim();
+                if (newUrl.isNotEmpty) {
+                  ApiClient.setBaseUrl(newUrl);
+                  await prefs.setString('ql_server_url', ApiClient.defaultBaseUrl);
+                  setState(() => _error = null);
+                }
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+              child: const Text('Save & Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -85,6 +197,13 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         title: Text(l10n.signInTitle),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_ethernet),
+            tooltip: 'Server Connection',
+            onPressed: _showServerConfigDialog,
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -130,9 +249,32 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: const TextStyle(color: CivicTheme.error, fontSize: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: CivicTheme.error, fontSize: 13, height: 1.4),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                        ),
+                        icon: const Icon(Icons.settings_ethernet, size: 16),
+                        label: const Text('Configure Server Connection / IP'),
+                        onPressed: _showServerConfigDialog,
+                      ),
+                    ],
+                  ),
                 ),
               ],
               const Spacer(),

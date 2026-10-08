@@ -117,6 +117,11 @@ class _OfficesScreenState extends State<OfficesScreen> {
               onPressed: () => context.push('/home'),
             ),
           IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'My Account',
+            onPressed: () => context.push('/account'),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l10n.retryAction,
             onPressed: _loadOffices,

@@ -158,11 +158,71 @@ class TokenModel {
   }
 }
 
-class ApiClient {
-  final String baseUrl;
-  final http.Client _client = http.Client();
+class ProfileModel {
+  final String id;
+  final String? phone;
+  final String? name;
+  final String language;
+  final String role;
+  final String? officeId;
+  final int priorityStrikes;
 
-  ApiClient({this.baseUrl = 'http://localhost:8000'});
+  ProfileModel({
+    required this.id,
+    this.phone,
+    this.name,
+    required this.language,
+    required this.role,
+    this.officeId,
+    required this.priorityStrikes,
+  });
+
+  factory ProfileModel.fromJson(Map<String, dynamic> json) {
+    return ProfileModel(
+      id: json['id'] as String,
+      phone: json['phone'] as String?,
+      name: json['name'] as String?,
+      language: (json['language'] as String?) ?? 'en',
+      role: (json['role'] as String?) ?? 'CITIZEN',
+      officeId: json['office_id'] as String?,
+      priorityStrikes: (json['priority_strikes'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class ApiClient {
+  static String _activeBaseUrl = const String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000',
+  );
+
+  static String get defaultBaseUrl => _activeBaseUrl;
+
+  static void setBaseUrl(String url) {
+    var cleaned = url.trim();
+    if (cleaned.isEmpty) return;
+    if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+      cleaned = 'http://$cleaned';
+    }
+    _activeBaseUrl = cleaned.replaceAll(RegExp(r'/+$'), '');
+  }
+
+  static Future<bool> pingServer([String? testUrl]) async {
+    final target = testUrl ?? _activeBaseUrl;
+    try {
+      final res = await http.get(Uri.parse('$target/healthz')).timeout(const Duration(seconds: 3));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  final String baseUrl;
+  final http.Client _client;
+
+  ApiClient({String? baseUrl, http.Client? client})
+      : baseUrl = baseUrl ?? _activeBaseUrl,
+        _client = client ?? http.Client();
 
   Map<String, String> _headers(String? token) {
     final h = {'Content-Type': 'application/json'};
@@ -172,8 +232,46 @@ class ApiClient {
     return h;
   }
 
+  Never _handleNetworkError(Object error, Uri uri) {
+    final errStr = error.toString().toLowerCase();
+    if (errStr.contains('socketexception') ||
+        errStr.contains('connection refused') ||
+        errStr.contains('clientexception')) {
+      throw Exception(
+        'Server not reachable at ${uri.host}:${uri.port}.\n\n'
+        '• If using USB cable: run "adb reverse tcp:8000 tcp:8000" in PC terminal.\n'
+        '• If on Wi-Fi: tap ⚙️ Server on top-right to set your PC IP (e.g. 10.152.45.97:8000).',
+      );
+    }
+    throw error;
+  }
+
+  Future<http.Response> _safeGet(Uri uri, {Map<String, String>? headers}) async {
+    try {
+      return await _client.get(uri, headers: headers);
+    } catch (e) {
+      _handleNetworkError(e, uri);
+    }
+  }
+
+  Future<http.Response> _safePost(Uri uri, {Map<String, String>? headers, Object? body}) async {
+    try {
+      return await _client.post(uri, headers: headers, body: body);
+    } catch (e) {
+      _handleNetworkError(e, uri);
+    }
+  }
+
+  Future<http.Response> _safePatch(Uri uri, {Map<String, String>? headers, Object? body}) async {
+    try {
+      return await _client.patch(uri, headers: headers, body: body);
+    } catch (e) {
+      _handleNetworkError(e, uri);
+    }
+  }
+
   Future<List<OfficeModel>> fetchOffices() async {
-    final res = await _client.get(Uri.parse('$baseUrl/v1/citizen/offices'));
+    final res = await _safeGet(Uri.parse('$baseUrl/v1/citizen/offices'));
     if (res.statusCode != 200) {
       throw Exception('Failed to load offices: ${res.statusCode}');
     }
@@ -182,7 +280,7 @@ class ApiClient {
   }
 
   Future<List<ServiceModel>> fetchServices(String officeId) async {
-    final res = await _client.get(Uri.parse('$baseUrl/v1/citizen/offices/$officeId/services'));
+    final res = await _safeGet(Uri.parse('$baseUrl/v1/citizen/offices/$officeId/services'));
     if (res.statusCode != 200) {
       throw Exception('Failed to load services: ${res.statusCode}');
     }
@@ -201,7 +299,7 @@ class ApiClient {
     int travelMinutes = 0,
     required String idempotencyKey,
   }) async {
-    final res = await _client.post(
+    final res = await _safePost(
       Uri.parse('$baseUrl/v1/citizen/tokens'),
       headers: {
         ..._headers(token),
@@ -225,7 +323,7 @@ class ApiClient {
   }
 
   Future<TokenModel?> getActiveToken(String token) async {
-    final res = await _client.get(
+    final res = await _safeGet(
       Uri.parse('$baseUrl/v1/citizen/tokens/me/active'),
       headers: _headers(token),
     );
@@ -243,7 +341,7 @@ class ApiClient {
     required String tokenId,
     required String qrPayload,
   }) async {
-    final res = await _client.post(
+    final res = await _safePost(
       Uri.parse('$baseUrl/v1/citizen/tokens/$tokenId/check-in'),
       headers: _headers(token),
       body: jsonEncode({'qr_payload': qrPayload}),
@@ -260,7 +358,7 @@ class ApiClient {
     required String tokenId,
     String? reason,
   }) async {
-    final res = await _client.post(
+    final res = await _safePost(
       Uri.parse('$baseUrl/v1/citizen/tokens/$tokenId/cancel'),
       headers: _headers(token),
       body: jsonEncode({'reason': reason}),
@@ -276,7 +374,7 @@ class ApiClient {
     required String token,
     required String tokenId,
   }) async {
-    final res = await _client.post(
+    final res = await _safePost(
       Uri.parse('$baseUrl/v1/citizen/tokens/$tokenId/on-my-way'),
       headers: _headers(token),
     );
@@ -295,7 +393,7 @@ class ApiClient {
     required int rating,
     String? feedbackText,
   }) async {
-    final res = await _client.post(
+    final res = await _safePost(
       Uri.parse('$baseUrl/v1/citizen/tokens/$tokenId/confirm-completion'),
       headers: _headers(token),
       body: jsonEncode({
@@ -311,15 +409,42 @@ class ApiClient {
     }
   }
 
+  Future<ProfileModel> getProfile(String token) async {
+    final res = await _safeGet(
+      Uri.parse('$baseUrl/v1/citizen/me'),
+      headers: _headers(token),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load profile (${res.statusCode})');
+    }
+    return ProfileModel.fromJson(jsonDecode(res.body));
+  }
+
+  Future<void> updateProfile({
+    required String token,
+    String? name,
+    String? language,
+  }) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (language != null) body['language'] = language;
+
+    final res = await _safePatch(
+      Uri.parse('$baseUrl/v1/citizen/me'),
+      headers: _headers(token),
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 200) {
+      final err = jsonDecode(res.body);
+      throw Exception(err['error']?['message'] ?? 'Failed to update profile');
+    }
+  }
+
   Future<void> updateLanguage({
     required String token,
     required String language,
   }) async {
-    await _client.patch(
-      Uri.parse('$baseUrl/v1/me'),
-      headers: _headers(token),
-      body: jsonEncode({'language': language}),
-    );
+    await updateProfile(token: token, language: language);
   }
 
   Future<void> registerDevice({
@@ -328,7 +453,7 @@ class ApiClient {
     String platform = 'android',
     String language = 'en',
   }) async {
-    final res = await _client.post(
+    final res = await _safePost(
       Uri.parse('$baseUrl/v1/devices'),
       headers: _headers(token),
       body: jsonEncode({
@@ -349,7 +474,7 @@ class ApiClient {
     String? officeId,
     String? name,
   }) async {
-    final res = await _client.post(
+    final res = await _safePost(
       Uri.parse('$baseUrl/internal/dev-token'),
       headers: {'Content-Type': 'application/json', 'X-Internal-Secret': 'default_dev_tick_secret'},
       body: jsonEncode({

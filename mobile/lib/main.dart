@@ -11,10 +11,17 @@ import 'features/browse/offices_screen.dart';
 import 'features/browse/city_selection_screen.dart';
 import 'features/browse/services_screen.dart';
 import 'features/book/book_screen.dart';
+import 'features/account/account_screen.dart';
 import 'core/notifications.dart';
+import 'api/client.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final savedServer = prefs.getString('ql_server_url');
+  if (savedServer != null && savedServer.isNotEmpty) {
+    ApiClient.setBaseUrl(savedServer);
+  }
   runApp(const ProviderScope(child: QueueLessCitizenApp()));
 }
 
@@ -92,6 +99,10 @@ class _QueueLessCitizenAppState extends State<QueueLessCitizenApp> {
           final serviceId = state.pathParameters['serviceId'] ?? '';
           return BookScreen(officeId: officeId, serviceId: serviceId);
         },
+      ),
+      GoRoute(
+        path: '/account',
+        builder: (context, state) => AccountScreen(onLocaleChanged: _setLocale),
       ),
     ],
   );
