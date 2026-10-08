@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -30,7 +30,7 @@ export function AdminPage() {
   const [pauseServiceId, setPauseServiceId] = useState<string | null>(null);
   const [pauseReason, setPauseReason] = useState<string>('Operational maintenance');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -47,11 +47,11 @@ export function AdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, officeId]);
 
   useEffect(() => {
     loadData();
-  }, [token, officeId]);
+  }, [loadData]);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();

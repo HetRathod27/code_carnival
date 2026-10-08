@@ -179,6 +179,19 @@ export async function callNext(
   );
 }
 
+export async function verifyCounter(
+  token: string,
+  tokenId: string,
+  verificationCode: string,
+): Promise<{ message: string }> {
+  return req<{ message: string }>(
+    'POST',
+    `/v1/officer/tokens/${tokenId}/verify-counter`,
+    token,
+    { verification_code: verificationCode },
+  );
+}
+
 export async function startServing(token: string, tokenId: string): Promise<TokenOut> {
   return req<TokenOut>('POST', `/v1/officer/tokens/${tokenId}/start`, token, {});
 }

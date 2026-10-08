@@ -23,6 +23,7 @@ from api.app.models.entities import (
 )
 from api.app.schemas.citizen import (
     CheckInIn,
+    CitizenConfirmCompletionIn,
     DeviceRegisterIn,
     OfficeOut,
     ProfileUpdateIn,
@@ -205,6 +206,19 @@ async def get_my_active_token(
     result = await session.execute(stmt)
     token = result.scalar_one_or_none()
     if not token:
+        # Check if citizen has a newly COMPLETED token awaiting double-verification & feedback
+        b_date = clock.business_date()
+        completed_conds: list[Any] = [Token.state == "COMPLETED", Token.business_date == b_date]
+        if user.phone:
+            completed_conds.append(Token.phone == user.phone)
+        else:
+            completed_conds.append(Token.citizen_id == user.user_id)
+
+        c_stmt = select(Token).where(*completed_conds).order_by(Token.completed_at.desc().nullslast()).limit(1)
+        c_res = await session.execute(c_stmt)
+        c_token = c_res.scalar_one_or_none()
+        if c_token and (not c_token.eta_features or not c_token.eta_features.get("citizen_confirmed")):
+            return await build_token_out(c_token, session, clock)
         return None
     return await build_token_out(token, session, clock)
 
@@ -346,6 +360,58 @@ async def citizen_on_my_way(
     session.add(event)
     await session.commit()
     return await build_token_out(token, session, clock)
+
+
+@router.post("/tokens/{token_id}/confirm-completion", response_model=SuccessResponse)
+async def citizen_confirm_completion(
+    token_id: str,
+    payload: CitizenConfirmCompletionIn,
+    user: UserClaims = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> SuccessResponse:
+    result = await session.execute(select(Token).where(Token.id == token_id))
+    token = result.scalar_one_or_none()
+    if not token:
+        raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    if user.role == "CITIZEN":
+        is_owner = (token.citizen_id and token.citizen_id == user.user_id) or (
+            token.phone and user.phone and token.phone == user.phone
+        )
+        if not is_owner:
+            raise AppException(ErrorCode.FORBIDDEN, "Access denied to confirm token completion", status.HTTP_403_FORBIDDEN)
+
+    now = clock.now()
+    # Mark citizen confirmed on token
+    features = dict(token.eta_features or {})
+    features["citizen_confirmed"] = True
+    features["citizen_service_completed"] = payload.service_completed
+    features["citizen_rating"] = payload.rating
+    if payload.reason_if_not:
+        features["citizen_reason_if_not"] = payload.reason_if_not
+    if payload.feedback_text:
+        features["citizen_feedback_text"] = payload.feedback_text
+    token.eta_features = features
+
+    event = TokenEvent(
+        token_id=token.id,
+        from_state=token.state,
+        to_state=token.state,
+        actor_type="CITIZEN",
+        actor_id=user.user_id,
+        at=now,
+        meta={
+            "action": "CITIZEN_COMPLETION_CONFIRMATION",
+            "service_completed": payload.service_completed,
+            "reason_if_not": payload.reason_if_not,
+            "rating": payload.rating,
+            "feedback_text": payload.feedback_text,
+        },
+    )
+    session.add(event)
+    await session.commit()
+    return SuccessResponse(message="Double verification and citizen feedback successfully submitted")
 
 
 @router.post("/devices", response_model=SuccessResponse)

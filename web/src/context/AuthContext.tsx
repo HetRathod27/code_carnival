@@ -14,6 +14,7 @@ interface AuthState {
   loading: boolean;
   error: string | null;
   login: (personaId: string) => void;
+  loginByRole: (role: 'OFFICER' | 'DESK' | 'ADMIN', loginId?: string, password?: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -62,6 +63,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [personas],
   );
 
+  const loginByRole = useCallback(
+    async (role: 'OFFICER' | 'DESK' | 'ADMIN', loginId?: string, _password?: string): Promise<boolean> => {
+      let pool = personas;
+      if (!pool) {
+        try {
+          pool = await fetchDevTokens();
+          setPersonas(pool);
+        } catch (e: any) {
+          setError(e.message);
+          return false;
+        }
+      }
+
+      const cleanId = (loginId || '').trim().toLowerCase();
+
+      // 1. Exact or partial key match in available personas
+      let targetKey: string | undefined;
+      let targetPersona: DevPersona | undefined;
+
+      if (cleanId) {
+        // Try exact key
+        for (const [k, p] of Object.entries(pool)) {
+          if (k.toLowerCase() === cleanId && p.role === role) {
+            targetKey = k;
+            targetPersona = p;
+            break;
+          }
+        }
+      }
+
+      // 2. Fallback to any persona with the specified role
+      if (!targetPersona) {
+        for (const [k, p] of Object.entries(pool)) {
+          if (p.role === role) {
+            targetKey = k;
+            targetPersona = p;
+            break;
+          }
+        }
+      }
+
+      if (targetKey && targetPersona) {
+        const full = { ...targetPersona, id: targetKey };
+        setToken(targetPersona.token);
+        setPersona(full);
+        localStorage.setItem(STORAGE_TOKEN, targetPersona.token);
+        localStorage.setItem(STORAGE_PERSONA, JSON.stringify(full));
+        return true;
+      }
+
+      return false;
+    },
+    [personas],
+  );
+
   const logout = useCallback(() => {
     setToken(null);
     setPersona(null);
@@ -70,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, persona, personas, loading, error, login, logout }}>
+    <AuthContext.Provider value={{ token, persona, personas, loading, error, login, loginByRole, logout }}>
       {children}
     </AuthContext.Provider>
   );

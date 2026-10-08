@@ -32,6 +32,7 @@ export function DeskPage() {
 
   // Issued Slip Modal
   const [issuedSlip, setIssuedSlip] = useState<DeskSlipOut | null>(null);
+  const [issuedAt, setIssuedAt] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export function DeskPage() {
         override_reason: overrideCapacity ? overrideReason : null,
       });
       setIssuedSlip(res);
+      setIssuedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       setSuccessMsg(`Token ${res.token.display_code} issued successfully!`);
       // Reset form
       setCitizenName('');
@@ -444,7 +446,7 @@ export function DeskPage() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Issued at:</span>
-                <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span>{issuedAt || 'Just now'}</span>
               </div>
             </div>
 

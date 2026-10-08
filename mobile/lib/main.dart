@@ -8,6 +8,7 @@ import 'features/language/language_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/browse/offices_screen.dart';
+import 'features/browse/city_selection_screen.dart';
 import 'features/browse/services_screen.dart';
 import 'features/book/book_screen.dart';
 import 'core/notifications.dart';
@@ -68,6 +69,10 @@ class _QueueLessCitizenAppState extends State<QueueLessCitizenApp> {
       GoRoute(
         path: '/home',
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/select-city',
+        builder: (context, state) => const CitySelectionScreen(),
       ),
       GoRoute(
         path: '/offices',

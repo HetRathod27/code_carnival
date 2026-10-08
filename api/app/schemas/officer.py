@@ -44,3 +44,7 @@ class QueueItemOut(BaseModel):
     masked_phone: str | None = None
     beneficiary_name: str | None = None
     waiting_minutes: float
+
+
+class CounterVerifyIn(BaseModel):
+    verification_code: str

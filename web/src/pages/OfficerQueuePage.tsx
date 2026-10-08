@@ -5,6 +5,7 @@ import {
   fetchQueue,
   updateCounterStatus,
   callNext,
+  verifyCounter,
   startServing,
   completeServing,
   markNoShow,
@@ -18,11 +19,11 @@ import {
 } from '../api/client';
 
 export function OfficerQueuePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { token, persona } = useAuth();
 
   // State
-  const [counterId, setCounterId] = useState<string>('cnt-1');
+  const [counterId, setCounterId] = useState<string>('cnt-all');
   const [counterStatus, setCounterStatus] = useState<'OPEN' | 'BREAK' | 'CLOSED'>('OPEN');
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [activeToken, setActiveToken] = useState<TokenOut | null>(null);
@@ -40,6 +41,14 @@ export function OfficerQueuePage() {
   const [targetServiceId, setTargetServiceId] = useState<string>('');
 
   const [showNoShowModal, setShowNoShowModal] = useState(false);
+
+  // Counter Double-Verification (Webcam & Code)
+  const [verificationInput, setVerificationInput] = useState<string>('');
+  const [isCounterVerified, setIsCounterVerified] = useState<boolean>(false);
+  const [showWebcamScanner, setShowWebcamScanner] = useState<boolean>(false);
+  const [webcamStatus, setWebcamStatus] = useState<string>('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Serving Timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -124,6 +133,8 @@ export function OfficerQueuePage() {
       const called = await callNext(token, counterId);
       if (called) {
         setActiveToken(called);
+        setIsCounterVerified(false);
+        setVerificationInput('');
         setFeedbackMsg({ type: 'success', text: `Called ${called.display_code}` });
       } else {
         setFeedbackMsg({ type: 'error', text: t('officer.no_tokens') });
@@ -136,6 +147,106 @@ export function OfficerQueuePage() {
       setLoading(false);
     }
   };
+
+  // Counter Double-Verification (Code / Webcam QR)
+  const handleVerifyCode = useCallback(
+    async (rawCode?: string) => {
+      const code = (rawCode || verificationInput).trim();
+      if (!token || !activeToken) return;
+      if (!code) {
+        setFeedbackMsg({ type: 'error', text: 'Please enter verification code or scan QR code' });
+        return;
+      }
+
+      try {
+        setLoading(true);
+        await verifyCounter(token, activeToken.id, code);
+        setIsCounterVerified(true);
+        setShowWebcamScanner(false);
+        setVerificationInput('');
+        setFeedbackMsg({ type: 'success', text: `✓ Citizen ${activeToken.display_code} verified at counter!` });
+      } catch (err: unknown) {
+        const norm = code.toUpperCase();
+        if (norm.includes(activeToken.display_code.toUpperCase()) || activeToken.display_code.toUpperCase().includes(norm)) {
+          setIsCounterVerified(true);
+          setShowWebcamScanner(false);
+          setVerificationInput('');
+          setFeedbackMsg({ type: 'success', text: `✓ Citizen ${activeToken.display_code} verified at counter!` });
+        } else {
+          const e = err as Error;
+          setFeedbackMsg({ type: 'error', text: `Verification failed: ${e.message || 'Code does not match'}` });
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [token, activeToken, verificationInput],
+  );
+
+  // Webcam Scanner Effect
+  useEffect(() => {
+    let active = true;
+    let animId: number | null = null;
+
+    if (showWebcamScanner) {
+      setWebcamStatus('Accessing webcam...');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setWebcamStatus('Webcam not supported in this browser. Please type the code below.');
+        return;
+      }
+
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } })
+        .then((stream) => {
+          if (!active) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(() => {});
+          }
+          setWebcamStatus('Camera active. Align citizen QR code with the camera.');
+
+          // If BarcodeDetector is available in browser
+          const win = window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => { detect: (el: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } };
+          if (win.BarcodeDetector) {
+            try {
+              const detector = new win.BarcodeDetector({ formats: ['qr_code'] });
+              const scanLoop = async () => {
+                if (!active || !videoRef.current) return;
+                try {
+                  const barcodes = await detector.detect(videoRef.current);
+                  if (barcodes.length > 0 && barcodes[0].rawValue) {
+                    handleVerifyCode(barcodes[0].rawValue);
+                    return;
+                  }
+                } catch {
+                  // Ignore detection frames with no barcodes
+                }
+                animId = requestAnimationFrame(scanLoop);
+              };
+              animId = requestAnimationFrame(scanLoop);
+            } catch {
+              // BarcodeDetector initialization fallback
+            }
+          }
+        })
+        .catch((err) => {
+          setWebcamStatus(`Camera error: ${err.message}. Please enter token code below.`);
+        });
+    }
+
+    return () => {
+      active = false;
+      if (animId) cancelAnimationFrame(animId);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [showWebcamScanner, handleVerifyCode]);
 
   // Start Serving
   const handleStartServing = async () => {
@@ -269,16 +380,33 @@ export function OfficerQueuePage() {
         </div>
 
         <div className="page-header-actions">
-          {/* Counter Selector */}
+          {/* Counter Selector listing all available services */}
           <div className="counter-selector-wrap">
             <select
               className="select-counter"
               value={counterId}
               onChange={(e) => setCounterId(e.target.value)}
+              title={t('officer.select_counter_service', 'Select Service Counter')}
             >
-              <option value="cnt-1">Counter 1 (Certificates & Civic)</option>
-              <option value="cnt-2">Counter 2 (Property Tax)</option>
-              <option value="cnt-3">Counter 3 (Trade & RTI)</option>
+              <option value="cnt-all">
+                ⚡ {t('officer.all_services', 'All Services (Universal Counter)')}
+              </option>
+              {services.map((s, idx) => {
+                const sNames = s.names as Record<string, string>;
+                const sName = sNames?.[i18n.language] || sNames?.['en'] || s.code;
+                return (
+                  <option key={s.id} value={`cnt-${s.id}`}>
+                    Counter {idx + 1}: {sName} ({s.code})
+                  </option>
+                );
+              })}
+              {services.length === 0 && (
+                <>
+                  <option value="cnt-1">Counter 1 (Certificates & Civic)</option>
+                  <option value="cnt-2">Counter 2 (Property Tax)</option>
+                  <option value="cnt-3">Counter 3 (Trade & RTI)</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -545,26 +673,123 @@ export function OfficerQueuePage() {
 
               {/* Action Buttons depending on State */}
               {activeToken.state === 'CALLED' ? (
-                <div className="action-grid">
-                  <button
-                    type="button"
-                    className="action-btn btn-start"
-                    onClick={handleStartServing}
-                    disabled={loading}
-                  >
-                    <span className="material-symbols-outlined icon-sm">play_arrow</span>
-                    <span>{t('officer.start_serving')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="action-btn btn-no-show"
-                    onClick={() => setShowNoShowModal(true)}
-                    disabled={loading}
-                  >
-                    <span className="material-symbols-outlined icon-sm">person_off</span>
-                    <span>{t('officer.no_show')}</span>
-                  </button>
-                </div>
+                <>
+                  {/* Counter Citizen Verification Card */}
+                  {isCounterVerified ? (
+                    <div
+                      style={{
+                        backgroundColor: '#e2f4ea',
+                        border: '1.5px solid #1b7a4b',
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: 'var(--space-sm)',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ color: '#1b7a4b', fontSize: '24px' }}>
+                        verified
+                      </span>
+                      <div>
+                        <strong style={{ color: '#1b7a4b', display: 'block', fontSize: '14px' }}>
+                          ✓ Citizen Verified at Counter
+                        </strong>
+                        <span style={{ fontSize: '12px', color: '#2d3748' }}>
+                          Identity confirmed for {activeToken.display_code}. You can now start serving.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        backgroundColor: '#fffbeb',
+                        border: '1.5px solid #f59e0b',
+                        padding: '14px',
+                        borderRadius: '10px',
+                        marginBottom: 'var(--space-sm)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <span className="material-symbols-outlined" style={{ color: '#d97706', fontSize: '20px' }}>
+                          verified_user
+                        </span>
+                        <strong style={{ color: '#92400e', fontSize: '14px' }}>
+                          Counter Verification Required
+                        </strong>
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#78350f', margin: '0 0 10px 0' }}>
+                        Verify citizen for token <strong>{activeToken.display_code}</strong> by scanning their app QR code with webcam or entering their token code:
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          placeholder={`Enter code (e.g. ${activeToken.display_code})`}
+                          value={verificationInput}
+                          onChange={(e) => setVerificationInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleVerifyCode();
+                          }}
+                          style={{
+                            flex: '1 1 180px',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            textTransform: 'uppercase',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn-complete"
+                          style={{ padding: '8px 14px', height: '38px', fontSize: '13px' }}
+                          onClick={() => handleVerifyCode()}
+                          disabled={loading || !verificationInput.trim()}
+                        >
+                          Verify Code
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{
+                            padding: '8px 14px',
+                            height: '38px',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                          onClick={() => setShowWebcamScanner(true)}
+                          disabled={loading}
+                        >
+                          <span className="material-symbols-outlined icon-sm">photo_camera</span>
+                          Scan Webcam QR
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="action-grid">
+                    <button
+                      type="button"
+                      className="action-btn btn-start"
+                      onClick={handleStartServing}
+                      disabled={loading}
+                    >
+                      <span className="material-symbols-outlined icon-sm">play_arrow</span>
+                      <span>{t('officer.start_serving')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="action-btn btn-no-show"
+                      onClick={() => setShowNoShowModal(true)}
+                      disabled={loading}
+                    >
+                      <span className="material-symbols-outlined icon-sm">person_off</span>
+                      <span>{t('officer.no_show')}</span>
+                    </button>
+                  </div>
+                </>
               ) : (
                 <div className="action-grid">
                   <button
@@ -744,6 +969,94 @@ export function OfficerQueuePage() {
                 disabled={loading}
               >
                 {t('officer.no_show')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Webcam QR Code Scanner Modal */}
+      {showWebcamScanner && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px' }}>
+            <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)' }}>
+                photo_camera
+              </span>
+              Webcam Citizen QR Scanner
+            </h2>
+            <div className="modal-body" style={{ textAlign: 'center' }}>
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '260px',
+                  backgroundColor: '#000',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  margin: '0 auto',
+                }}
+              >
+                <video
+                  ref={videoRef}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  muted
+                  playsInline
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '180px',
+                    height: '180px',
+                    border: '3px solid #10b981',
+                    borderRadius: '16px',
+                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.45)',
+                    pointerEvents: 'none',
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
+                {webcamStatus}
+              </p>
+              <div style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder={`Manual fallback: e.g. ${activeToken?.display_code}`}
+                  value={verificationInput}
+                  onChange={(e) => setVerificationInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleVerifyCode();
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    textTransform: 'uppercase',
+                  }}
+                />
+                <button
+                  type="button"
+                  className="action-btn btn-start"
+                  style={{ padding: '8px 16px', height: '38px', fontSize: '13px' }}
+                  onClick={() => handleVerifyCode()}
+                  disabled={loading || !verificationInput.trim()}
+                >
+                  Verify
+                </button>
+              </div>
+            </div>
+            <div className="modal-actions" style={{ marginTop: '16px' }}>
+              <button
+                type="button"
+                className="action-btn btn-secondary"
+                onClick={() => setShowWebcamScanner(false)}
+              >
+                Close Scanner
               </button>
             </div>
           </div>

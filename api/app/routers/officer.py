@@ -6,13 +6,15 @@ from api.app.core.auth import UserClaims, require_office_access, require_role
 from api.app.core.clock import Clock, get_clock
 from api.app.core.db import get_db
 from api.app.core.errors import AppException, ErrorCode
-from api.app.models.entities import Counter, CounterService, Token
+from api.app.models.entities import Counter, CounterService, Service, Token, TokenEvent
 from api.app.routers.citizen import build_token_out
 from api.app.schemas.citizen import TokenOut
+from api.app.schemas.common import SuccessResponse
 from api.app.schemas.officer import (
     CallNextIn,
     CompleteServingIn,
     CounterStatusIn,
+    CounterVerifyIn,
     NoteIn,
     PriorityCheckIn,
     QueueItemOut,
@@ -32,6 +34,34 @@ from api.app.services.officer_service import (
 router = APIRouter(prefix="/v1/officer", tags=["Officer"])
 
 
+async def _get_counter_or_auto_create(
+    session: AsyncSession, counter_id: str, default_office_id: str = "ward-central-01"
+) -> Counter | None:
+    c_res = await session.execute(select(Counter).where(Counter.id == counter_id))
+    counter = c_res.scalar_one_or_none()
+    if counter:
+        return counter
+    if counter_id.startswith("cnt-srv-"):
+        sid = counter_id[len("cnt-"):]
+        s_res = await session.execute(select(Service).where(Service.id == sid))
+        srv = s_res.scalar_one_or_none()
+        if srv:
+            counter = Counter(id=counter_id, office_id=srv.office_id, label=f"Counter ({srv.code})", status="OPEN")
+            session.add(counter)
+            session.add(CounterService(counter_id=counter_id, service_id=srv.id))
+            await session.commit()
+            return counter
+    elif counter_id == "cnt-all":
+        counter = Counter(id="cnt-all", office_id=default_office_id, label="Universal Counter (All Services)", status="OPEN")
+        session.add(counter)
+        all_s = (await session.execute(select(Service.id).where(Service.office_id == default_office_id))).scalars().all()
+        for sid in all_s:
+            session.add(CounterService(counter_id="cnt-all", service_id=sid))
+        await session.commit()
+        return counter
+    return None
+
+
 @router.get("/counters/{counter_id}/queue", response_model=list[QueueItemOut])
 async def get_counter_queue(
     counter_id: str,
@@ -39,8 +69,7 @@ async def get_counter_queue(
     session: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
 ) -> list[QueueItemOut]:
-    c_res = await session.execute(select(Counter).where(Counter.id == counter_id))
-    counter = c_res.scalar_one_or_none()
+    counter = await _get_counter_or_auto_create(session, counter_id, user.office_id or "ward-central-01")
     if not counter:
         raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", status.HTTP_404_NOT_FOUND)
 
@@ -106,8 +135,7 @@ async def update_counter_status(
     session: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
 ) -> dict[str, str]:
-    c_res = await session.execute(select(Counter).where(Counter.id == counter_id))
-    counter = c_res.scalar_one_or_none()
+    counter = await _get_counter_or_auto_create(session, counter_id, user.office_id or "ward-central-01")
     if not counter:
         raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", status.HTTP_404_NOT_FOUND)
 
@@ -132,8 +160,7 @@ async def officer_call_next(
     session: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
 ) -> TokenOut | None:
-    c_res = await session.execute(select(Counter).where(Counter.id == counter_id))
-    counter = c_res.scalar_one_or_none()
+    counter = await _get_counter_or_auto_create(session, counter_id, user.office_id or "ward-central-01")
     if not counter:
         raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", status.HTTP_404_NOT_FOUND)
 
@@ -154,6 +181,52 @@ async def officer_call_next(
         return None
     await session.commit()
     return await build_token_out(called, session, clock)
+
+
+@router.post("/tokens/{token_id}/verify-counter", response_model=SuccessResponse)
+async def officer_verify_counter(
+    token_id: str,
+    payload: CounterVerifyIn,
+    user: UserClaims = Depends(require_role(["OFFICER", "ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> SuccessResponse:
+    t_res = await session.execute(select(Token).where(Token.id == token_id))
+    token = t_res.scalar_one_or_none()
+    if not token:
+        raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    require_office_access(user, token.office_id)
+
+    code = payload.verification_code.strip().upper()
+    valid_codes = [
+        token.display_code.upper(),
+        token.id.upper(),
+        f"TOKEN:{token.id}:{token.display_code}".upper(),
+    ]
+    if not any(v in code or code in v for v in valid_codes):
+        raise AppException(
+            ErrorCode.INVALID_INPUT,
+            f"Verification code does not match token '{token.display_code}'",
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    now = clock.now()
+    if token.arrived_at is None:
+        token.arrived_at = now
+
+    event = TokenEvent(
+        token_id=token.id,
+        from_state=token.state,
+        to_state=token.state,
+        actor_type="OFFICER",
+        actor_id=user.user_id,
+        at=now,
+        meta={"action": "OFFICER_COUNTER_VERIFICATION", "verified_code": payload.verification_code},
+    )
+    session.add(event)
+    await session.commit()
+    return SuccessResponse(message=f"Citizen {token.display_code} successfully verified at counter")
 
 
 @router.post("/tokens/{token_id}/start", response_model=TokenOut)

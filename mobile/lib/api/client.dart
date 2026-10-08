@@ -287,6 +287,30 @@ class ApiClient {
     return TokenModel.fromJson(jsonDecode(res.body));
   }
 
+  Future<void> confirmCompletion({
+    required String token,
+    required String tokenId,
+    required bool serviceCompleted,
+    String? reasonIfNot,
+    required int rating,
+    String? feedbackText,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/v1/citizen/tokens/$tokenId/confirm-completion'),
+      headers: _headers(token),
+      body: jsonEncode({
+        'service_completed': serviceCompleted,
+        'reason_if_not': reasonIfNot,
+        'rating': rating,
+        'feedback_text': feedbackText,
+      }),
+    );
+    if (res.statusCode != 200) {
+      final err = jsonDecode(res.body);
+      throw Exception(err['error']?['message'] ?? 'Failed to submit completion confirmation');
+    }
+  }
+
   Future<void> updateLanguage({
     required String token,
     required String language,

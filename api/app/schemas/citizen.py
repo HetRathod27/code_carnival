@@ -81,3 +81,10 @@ class DeviceRegisterIn(BaseModel):
 class ProfileUpdateIn(BaseModel):
     language: str | None = None
     name: str | None = None
+
+
+class CitizenConfirmCompletionIn(BaseModel):
+    service_completed: bool = True
+    reason_if_not: str | None = None
+    rating: int = Field(default=5, ge=1, le=5)
+    feedback_text: str | None = None

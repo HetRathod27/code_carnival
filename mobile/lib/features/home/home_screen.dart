@@ -23,6 +23,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   Timer? _pollTimer;
 
+  // Double verification & feedback state
+  bool _serviceCompletedYes = true;
+  String _reasonIfNot = '';
+  int _ratingStars = 5;
+  String _feedbackComments = '';
+  bool _submittingConfirmation = false;
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         if (active == null && !silent) {
           try {
-            context.go('/offices');
+            context.go('/select-city');
             return;
           } catch (_) {
             // Fallback for tests running outside GoRouter
@@ -200,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(
-              '${token.businessDate}:${token.officeId}:demo_qr_secret_key_123',
+              'TOKEN:${token.id}:${token.displayCode}',
             ),
             child: Text(l10n.verifyArrivalAction),
           ),
@@ -324,6 +331,56 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _handleConfirmCompletion(TokenModel token) async {
+    final prefs = await SharedPreferences.getInstance();
+    final authToken = prefs.getString('ql_token') ?? '';
+    setState(() => _submittingConfirmation = true);
+
+    try {
+      await _client.confirmCompletion(
+        token: authToken,
+        tokenId: token.id,
+        serviceCompleted: _serviceCompletedYes,
+        reasonIfNot: _serviceCompletedYes ? null : _reasonIfNot,
+        rating: _ratingStars,
+        feedbackText: _feedbackComments.isNotEmpty ? _feedbackComments : null,
+      );
+
+      if (mounted) {
+        setState(() {
+          _activeToken = null;
+          _submittingConfirmation = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification and feedback submitted successfully!'),
+            backgroundColor: CivicTheme.success,
+          ),
+        );
+
+        // Directly redirect to list of civic centres available in the city
+        try {
+          context.go('/offices');
+        } catch (_) {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submittingConfirmation = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: CivicTheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('ql_token');
@@ -387,12 +444,92 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActiveTokenCard(TokenModel token, AppLocalizations l10n) {
+    if (token.state == 'COMPLETED') {
+      return _buildCompletionVerificationView(token, l10n);
+    }
+
     final isArrived = token.arrivedAt != null;
     final onMyWayClaimed = token.onMyWayAt != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (token.state == 'CALLED') ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: CivicTheme.accentSoft,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: CivicTheme.accent, width: 2),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.ring_volume, color: Color(0xFFB45309), size: 26),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'YOUR TURN HAS ARRIVED!',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFB45309),
+                      ),
+                    ),
+                  ],
+                ),
+                if (token.counterLabel != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Proceed to: ${token.counterLabel}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: CivicTheme.textPrimary,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: CivicTheme.border),
+                  ),
+                  child: Column(
+                    children: [
+                      QrImageView(
+                        data: 'TOKEN:${token.id}:${token.displayCode}',
+                        version: QrVersions.auto,
+                        size: 150.0,
+                        backgroundColor: Colors.white,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        token.displayCode,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: CivicTheme.primary,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Show this QR code to the officer\'s webcam or give this verification code.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -630,6 +767,260 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildCompletionVerificationView(TokenModel token, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: CivicTheme.success, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x141B7A4B),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Center(
+                child: Icon(Icons.check_circle_outline, color: CivicTheme.success, size: 60),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Service Completed at Counter',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: CivicTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'The counter officer has completed your service for Token ${token.displayCode}. Please confirm and provide feedback to complete the process:',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
+              ),
+              const SizedBox(height: 18),
+              const Divider(color: CivicTheme.border),
+              const SizedBox(height: 14),
+
+              // Question: Was your service completed successfully?
+              const Text(
+                'Was your service completed successfully?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: CivicTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'શું તમારી સેવા સફળતાપૂર્વક પૂર્ણ થઈ?',
+                style: TextStyle(fontSize: 13, color: CivicTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _serviceCompletedYes = true),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _serviceCompletedYes ? CivicTheme.successSoft : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _serviceCompletedYes ? CivicTheme.success : CivicTheme.border,
+                            width: _serviceCompletedYes ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 20,
+                              color: _serviceCompletedYes ? CivicTheme.success : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Yes / હા',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: _serviceCompletedYes ? CivicTheme.success : CivicTheme.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _serviceCompletedYes = false),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: !_serviceCompletedYes ? CivicTheme.errorSoft : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: !_serviceCompletedYes ? CivicTheme.error : CivicTheme.border,
+                            width: !_serviceCompletedYes ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.cancel,
+                              size: 20,
+                              color: !_serviceCompletedYes ? CivicTheme.error : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'No / ના',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: !_serviceCompletedYes ? CivicTheme.error : CivicTheme.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // If No: Reason why
+              if (!_serviceCompletedYes) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Why was the service not completed?',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: CivicTheme.error,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'This helps us improve government civic centres and queue management:',
+                  style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  onChanged: (val) => _reasonIfNot = val,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'e.g., Documents missing, counter officer left, server down...',
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+              const Divider(color: CivicTheme.border),
+              const SizedBox(height: 14),
+
+              // Star Rating
+              const Text(
+                'Rate Your Service Experience / અનુભવનું રેટિંગ આપો',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: CivicTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starNum = index + 1;
+                  return IconButton(
+                    iconSize: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    icon: Icon(
+                      starNum <= _ratingStars ? Icons.star : Icons.star_border,
+                      color: starNum <= _ratingStars ? Colors.amber.shade700 : Colors.grey.shade400,
+                    ),
+                    onPressed: () => setState(() => _ratingStars = starNum),
+                  );
+                }),
+              ),
+              Center(
+                child: Text(
+                  _ratingStars == 5
+                      ? '⭐⭐⭐⭐⭐ Excellent (5/5)'
+                      : _ratingStars == 4
+                          ? '⭐⭐⭐⭐ Very Good (4/5)'
+                          : _ratingStars == 3
+                              ? '⭐⭐⭐ Average (3/5)'
+                              : _ratingStars == 2
+                                  ? '⭐⭐ Needs Improvement (2/5)'
+                                  : '⭐ Poor (1/5)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.amber.shade900,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              // Feedback Comments
+              TextField(
+                onChanged: (val) => _feedbackComments = val,
+                decoration: InputDecoration(
+                  hintText: 'Additional feedback or suggestions (Optional)',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+
+              const SizedBox(height: 22),
+              // Submit Button
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  backgroundColor: CivicTheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: _submittingConfirmation
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check, size: 22),
+                label: Text(
+                  _submittingConfirmation ? 'Submitting...' : 'Submit & Return to Civic Centres',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                onPressed: _submittingConfirmation ? null : () => _handleConfirmCompletion(token),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildNoActiveTokenView(AppLocalizations l10n) {
     return Center(
       child: Padding(
@@ -658,7 +1049,7 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.calendar_month, size: 24),
               label: Text(l10n.bookSlot),
               onPressed: () {
-                context.push('/offices');
+                context.push('/select-city');
               },
             ),
           ],

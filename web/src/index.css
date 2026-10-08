@@ -478,13 +478,23 @@ input, select, textarea {
 
 .select-counter {
   height: 44px;
+  min-width: 280px;
+  max-width: 440px;
   padding: 0 var(--space-md);
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   font-weight: 600;
+  font-size: 13.5px;
   color: var(--color-text-primary);
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease;
+}
+
+.select-counter:focus {
+  outline: none;
+  border-color: var(--color-accent);
 }
 
 .counter-status-toggle {
@@ -907,3 +917,597 @@ input, select, textarea {
   font-size: 48px;
   color: var(--color-border);
 }
+
+/* ============================================================
+   PORTAL GATEWAY — Landing page to select which portal to enter
+   ============================================================ */
+.portal-gateway-bg {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #00142f 0%, #0e3a5c 45%, #0e5a8a 100%);
+}
+
+.portal-gov-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 32px;
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  font-weight: 500;
+}
+
+.portal-gov-emblem {
+  font-size: 20px;
+}
+
+.portal-gov-name {
+  letter-spacing: 0.3px;
+}
+
+.portal-gateway-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 40px;
+}
+
+.portal-hero {
+  text-align: center;
+}
+
+.portal-hero-icon {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 4px 20px rgba(14,90,138,0.5));
+}
+
+.portal-hero-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+}
+
+.portal-hero-sub {
+  font-size: 16px;
+  color: rgba(255,255,255,0.65);
+  font-weight: 400;
+}
+
+.portal-card-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 960px;
+  width: 100%;
+}
+
+.portal-gateway-card {
+  flex: 1 1 260px;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 28px 24px 24px;
+  background: var(--portal-bg);
+  border: 2px solid var(--portal-border);
+  border-radius: 20px;
+  text-align: left;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.portal-gateway-card::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--portal-border);
+  opacity: 0.08;
+}
+
+.portal-gateway-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px -8px rgba(0,0,0,0.3);
+}
+
+.pgc-icon {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.pgc-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+
+.pgc-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--portal-color);
+  line-height: 1.2;
+}
+
+.pgc-desc {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.pgc-arrow {
+  font-size: 22px;
+  color: var(--portal-color);
+  align-self: flex-end;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: all 0.18s ease;
+}
+
+.portal-gateway-card:hover .pgc-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.portal-gateway-footer {
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.3px;
+}
+
+/* ============================================================
+   ROLE LOGIN PAGES — Split-panel login for Officer / Desk / Admin
+   ============================================================ */
+.role-login-bg {
+  min-height: 100vh;
+  display: flex;
+}
+
+/* Left branding panel */
+.rll-panel {
+  width: 420px;
+  flex-shrink: 0;
+  background: linear-gradient(160deg, #0e3a5c 0%, #0e5a8a 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 32px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.desk-panel {
+  background: linear-gradient(160deg, #064e3b 0%, #15803d 100%);
+}
+
+.admin-panel {
+  background: linear-gradient(160deg, #3b0764 0%, #7c3aed 100%);
+}
+
+.rll-back {
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  font-weight: 500;
+  text-align: left;
+  padding: 0;
+  transition: color 0.15s;
+  margin-bottom: auto;
+}
+
+.rll-back:hover {
+  color: #fff;
+}
+
+.rll-brand {
+  margin-top: 40px;
+  margin-bottom: auto;
+}
+
+.rll-brand-icon {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+}
+
+.rll-brand-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+}
+
+.rll-brand-sub {
+  font-size: 15px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.rll-feature-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rll-feature-list li {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rll-panel-watermark {
+  position: absolute;
+  bottom: -20px;
+  right: -10px;
+  font-size: 100px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.05);
+  letter-spacing: -4px;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Right form panel */
+.rll-form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-canvas);
+  padding: 40px 24px;
+}
+
+.rll-form-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--color-surface);
+  border-radius: 20px;
+  padding: 36px 32px;
+  box-shadow: 0 8px 32px -8px rgba(15,23,42,0.12);
+  border: 1px solid var(--color-border);
+}
+
+.rll-form-header {
+  margin-bottom: 28px;
+}
+
+.rll-role-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.officer-badge { background: #e3f0f8; color: #0e5a8a; }
+.desk-badge    { background: #dcfce7; color: #15803d; }
+.admin-badge   { background: #ede9fe; color: #7c3aed; }
+
+.rll-form-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.rll-form-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.rll-status {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  padding: 16px 0;
+  text-align: center;
+}
+
+.rll-error {
+  font-size: 13px;
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.rll-persona-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rll-persona-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-canvas);
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.rll-persona-row:hover {
+  transform: translateX(4px);
+  border-color: var(--hover-border, #0e5a8a);
+  box-shadow: var(--shadow-sm);
+}
+
+.officer-row:hover { --hover-border: #0e5a8a; background: #e3f0f8; }
+.desk-row:hover    { --hover-border: #15803d; background: #dcfce7; }
+.admin-row:hover   { --hover-border: #7c3aed; background: #ede9fe; }
+
+.rll-persona-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.officer-avatar { background: linear-gradient(135deg, #0e5a8a, #0284c7); }
+.desk-avatar    { background: linear-gradient(135deg, #15803d, #16a34a); }
+.admin-avatar   { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+
+.rll-persona-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+}
+
+.rll-persona-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.rll-persona-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.rll-persona-arrow {
+  font-size: 20px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .role-login-bg {
+    flex-direction: column;
+  }
+  .rll-panel {
+    width: 100%;
+    padding: 24px;
+    min-height: 220px;
+  }
+  .rll-panel-watermark {
+    font-size: 64px;
+  }
+  .portal-card-row {
+    flex-direction: column;
+    align-items: center;
+  }
+  .portal-gateway-card {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* Direct Credential Form Styles */
+.rll-govt-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  backdrop-filter: blur(8px);
+}
+
+.rll-credential-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rll-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.rll-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.rll-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rll-input-icon {
+  position: absolute;
+  left: 12px;
+  font-family: 'Material Symbols Outlined';
+  font-size: 20px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.rll-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 40px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.rll-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(14, 90, 138, 0.15);
+}
+
+.rll-quick-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--color-canvas);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border);
+}
+
+.rll-demo-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.rll-demo-pill {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  padding: 2px 0;
+  transition: opacity 0.15s;
+}
+
+.rll-demo-pill:hover {
+  text-decoration: underline;
+}
+
+.officer-pill { color: #0e5a8a; }
+.desk-pill { color: #15803d; }
+.admin-pill { color: #7c3aed; }
+
+.rll-submit-btn {
+  width: 100%;
+  height: 46px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+
+.rll-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.rll-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.officer-submit-btn {
+  background: linear-gradient(135deg, #0e5a8a 0%, #0284c7 100%);
+}
+
+.desk-submit-btn {
+  background: linear-gradient(135deg, #15803d 0%, #16a34a 100%);
+}
+
+.admin-submit-btn {
+  background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%);
+}
+
+.rll-portal-links {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rll-portal-links-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.rll-portal-links-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rll-link-btn {
+  flex: 1;
+  padding: 8px 10px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.rll-link-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent);
+}
+
+

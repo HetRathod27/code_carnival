@@ -18,6 +18,7 @@ class _OfficesScreenState extends State<OfficesScreen> {
   late final ApiClient _client = widget.client ?? ApiClient();
   List<OfficeModel> _offices = [];
   TokenModel? _activeToken;
+  String? _selectedCity;
   bool _loading = true;
   String? _error;
 
@@ -25,6 +26,17 @@ class _OfficesScreenState extends State<OfficesScreen> {
   void initState() {
     super.initState();
     _loadOffices();
+  }
+
+  List<OfficeModel> get _displayedOffices {
+    if (_selectedCity == null || _selectedCity!.isEmpty || _selectedCity == 'All') {
+      return _offices;
+    }
+    final filtered = _offices.where((o) {
+      final text = '${o.name} ${o.address}'.toLowerCase();
+      return text.contains(_selectedCity!.toLowerCase());
+    }).toList();
+    return filtered;
   }
 
   Future<void> _loadOffices() async {
@@ -37,6 +49,18 @@ class _OfficesScreenState extends State<OfficesScreen> {
       final list = await _client.fetchOffices();
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('ql_token');
+      final city = prefs.getString('ql_selected_city');
+
+      // Before selecting centres, user must select their city first
+      if ((city == null || city.isEmpty) && widget.client == null) {
+        if (mounted) {
+          try {
+            context.go('/select-city');
+            return;
+          } catch (_) {}
+        }
+      }
+
       TokenModel? active;
       if (token != null) {
         try {
@@ -48,6 +72,7 @@ class _OfficesScreenState extends State<OfficesScreen> {
       if (mounted) {
         setState(() {
           _offices = list;
+          _selectedCity = city;
           _activeToken = active;
           _loading = false;
         });
@@ -68,7 +93,22 @@ class _OfficesScreenState extends State<OfficesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.officesTitle),
+        title: Text(
+          _selectedCity != null && _selectedCity != 'All'
+              ? '$_selectedCity Civic Centres'
+              : l10n.officesTitle,
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Select City / શહેર પસંદ કરો',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/select-city');
+            }
+          },
+        ),
         actions: [
           if (_activeToken != null)
             IconButton(
@@ -121,13 +161,100 @@ class _OfficesScreenState extends State<OfficesScreen> {
                         onRefresh: _loadOffices,
                         child: ListView.separated(
                           padding: const EdgeInsets.all(20),
-                          itemCount: _offices.length + 1,
+                          itemCount: _displayedOffices.isEmpty ? 2 : _displayedOffices.length + 1,
                           separatorBuilder: (context, index) => const SizedBox(height: 16),
                           itemBuilder: (context, index) {
                             if (index == 0) {
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
+                                  // City Selector Banner
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: CivicTheme.primary.withValues(alpha: 0.3),
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x0A0E5A8A),
+                                          blurRadius: 10,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: CivicTheme.primarySoft,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                            Icons.location_on,
+                                            color: CivicTheme.primary,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Selected City / શહેર',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: CivicTheme.textSecondary,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _selectedCity != null && _selectedCity != 'All'
+                                                    ? _selectedCity!
+                                                    : 'All Gujarat Cities',
+                                                style: const TextStyle(
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: CivicTheme.textPrimary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            minimumSize: const Size(0, 38),
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            side: const BorderSide(color: CivicTheme.primary, width: 1.5),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          icon: const Icon(Icons.swap_horiz, size: 18, color: CivicTheme.primary),
+                                          label: const Text(
+                                            'Change',
+                                            style: TextStyle(
+                                              color: CivicTheme.primary,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          onPressed: () async {
+                                            await context.push('/select-city');
+                                            _loadOffices();
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
                                   if (_activeToken != null) ...[
                                     InkWell(
                                       onTap: () => context.push('/home'),
@@ -167,20 +294,82 @@ class _OfficesScreenState extends State<OfficesScreen> {
                                   ],
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text(
-                                      l10n.selectOfficePrompt,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: CivicTheme.textSecondary,
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            l10n.selectOfficePrompt,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: CivicTheme.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: CivicTheme.primarySoft,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            '${_displayedOffices.length} Centres',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: CivicTheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               );
                             }
 
-                            final office = _offices[index - 1];
+                            if (_displayedOffices.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: CivicTheme.border),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.location_off, size: 48, color: CivicTheme.textSecondary),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No civic centres found in ${_selectedCity ?? "this city"}.',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: CivicTheme.textPrimary,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Active centres are currently available in Gandhinagar and Ahmedabad.',
+                                      style: TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      icon: const Icon(Icons.swap_horiz),
+                                      label: const Text('Switch City / અન્ય શહેર પસંદ કરો'),
+                                      onPressed: () async {
+                                        await context.push('/select-city');
+                                        _loadOffices();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final office = _displayedOffices[index - 1];
                             return _OfficeCard(
                               office: office,
                               onTap: () {

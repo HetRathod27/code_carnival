@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -26,7 +26,7 @@ export function ReportsPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -45,11 +45,11 @@ export function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, officeId, reportDate]);
 
   useEffect(() => {
     loadReports();
-  }, [token, officeId, reportDate]);
+  }, [loadReports]);
 
   // Aggregate totals from summary
   const totalServed = summary?.services.reduce((acc, s) => acc + s.served, 0) ?? 0;

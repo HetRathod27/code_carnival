@@ -5,9 +5,9 @@ and initial queue state for live demonstration and judging evaluation.
 """
 
 import asyncio
-from datetime import date, datetime, time, timedelta, timezone
 import os
 import sys
+from datetime import date, datetime, time, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -25,8 +25,6 @@ from api.app.models.entities import (
     Profile,
     QueueState,
     Service,
-    Token,
-    TokenEvent,
 )
 
 
