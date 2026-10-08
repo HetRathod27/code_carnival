@@ -232,9 +232,11 @@ class _ServiceCard extends StatelessWidget {
                   children: [
                     const Icon(Icons.timer_outlined, size: 16, color: CivicTheme.textSecondary),
                     const SizedBox(width: 4),
-                    Text(
-                      '${l10n.avgServiceDuration}: ~${service.priorAvgMinutes.round()} ${l10n.minutesUnit}',
-                      style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
+                    Expanded(
+                      child: Text(
+                        '${l10n.avgServiceDuration}: ~${service.priorAvgMinutes.round()} ${l10n.minutesUnit}',
+                        style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
+                      ),
                     ),
                   ],
                 ),
@@ -244,12 +246,14 @@ class _ServiceCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.people_alt_outlined, size: 16, color: CivicTheme.accent),
                       const SizedBox(width: 4),
-                      Text(
-                        '${l10n.currentQueueWait}: ~${service.indicativeWaitMinutes} ${l10n.minutesUnit}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF9E6000),
+                      Expanded(
+                        child: Text(
+                          '${l10n.currentQueueWait}: ~${service.indicativeWaitMinutes} ${l10n.minutesUnit}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF9E6000),
+                          ),
                         ),
                       ),
                     ],

@@ -21,66 +21,77 @@ class LanguageScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 32),
-              const Center(
-                child: Text('🎟️', style: TextStyle(fontSize: 56)),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'QueueLess',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: CivicTheme.primary,
-                  letterSpacing: -0.5,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 32),
+                        const Center(
+                          child: Text('🎟️', style: TextStyle(fontSize: 56)),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'QueueLess',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            color: CivicTheme.primary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Government Service Appointment & Queue System',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: CivicTheme.textSecondary,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Text(
+                          'Select Your Language / તમારી ભાષા પસંદ કરો / अपनी भाषा चुनें',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: CivicTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _LanguageOption(
+                          label: 'English',
+                          sublabel: 'Default Civic Language',
+                          onTap: () => _selectLanguage(context, 'en'),
+                        ),
+                        const SizedBox(height: 12),
+                        _LanguageOption(
+                          label: 'ગુજરાતી (Gujarati)',
+                          sublabel: 'ગુજરાત સરકાર સેવાઓ',
+                          onTap: () => _selectLanguage(context, 'gu'),
+                        ),
+                        const SizedBox(height: 12),
+                        _LanguageOption(
+                          label: 'हिन्दी (Hindi)',
+                          sublabel: 'नागरिक सेवा केंद्र',
+                          onTap: () => _selectLanguage(context, 'hi'),
+                        ),
+                        const Spacer(),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Government Service Appointment & Queue System',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: CivicTheme.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              const Text(
-                'Select Your Language / તમારી ભાષા પસંદ કરો / अपनी भाषा चुनें',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: CivicTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _LanguageOption(
-                label: 'English',
-                sublabel: 'Default Civic Language',
-                onTap: () => _selectLanguage(context, 'en'),
-              ),
-              const SizedBox(height: 12),
-              _LanguageOption(
-                label: 'ગુજરાતી (Gujarati)',
-                sublabel: 'ગુજરાત સરકાર સેવાઓ',
-                onTap: () => _selectLanguage(context, 'gu'),
-              ),
-              const SizedBox(height: 12),
-              _LanguageOption(
-                label: 'हिन्दी (Hindi)',
-                sublabel: 'नागरिक सेवा केंद्र',
-                onTap: () => _selectLanguage(context, 'hi'),
-              ),
-              const Spacer(),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

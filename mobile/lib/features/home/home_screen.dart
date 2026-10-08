@@ -289,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Icon(Icons.warning_amber_rounded, color: CivicTheme.error),
             const SizedBox(width: 8),
-            Text(l10n.cancelAppointment),
+            Expanded(child: Text(l10n.cancelAppointment)),
           ],
         ),
         content: Text(l10n.confirmCancelPrompt),
@@ -478,12 +478,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const Icon(Icons.ring_volume, color: Color(0xFFB45309), size: 26),
                     const SizedBox(width: 8),
-                    const Text(
-                      'YOUR TURN HAS ARRIVED!',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFB45309),
+                    const Flexible(
+                      child: Text(
+                        'YOUR TURN HAS ARRIVED!',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFB45309),
+                        ),
                       ),
                     ),
                   ],
@@ -633,12 +635,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isArrived ? CivicTheme.success : CivicTheme.textSecondary,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      isArrived ? l10n.presenceVerified : l10n.notCheckedInStatus,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isArrived ? CivicTheme.success : CivicTheme.textSecondary,
+                    Flexible(
+                      child: Text(
+                        isArrived ? l10n.presenceVerified : l10n.notCheckedInStatus,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isArrived ? CivicTheme.success : CivicTheme.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -651,7 +655,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(l10n.waitingAhead, style: const TextStyle(fontSize: 16)),
+                  Expanded(child: Text(l10n.waitingAhead, style: const TextStyle(fontSize: 16))),
                   Text(
                     '${token.waitingAhead}',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -663,13 +667,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(l10n.nowServingAt, style: const TextStyle(fontSize: 16)),
-                    Text(
-                      '${token.nowServing}${token.counterLabel != null ? " (${token.counterLabel})" : ""}',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: CivicTheme.primary,
+                    Expanded(child: Text(l10n.nowServingAt, style: const TextStyle(fontSize: 16))),
+                    Flexible(
+                      child: Text(
+                        '${token.nowServing}${token.counterLabel != null ? " (${token.counterLabel})" : ""}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: CivicTheme.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -679,12 +686,12 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16)),
+                  Expanded(child: Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16))),
                   Text(
                     token.lastEtaMinutes != null
                         ? '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}'
                         : l10n.calculatingEta,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -694,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(l10n.etaRangePrefix, style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary)),
+                    Expanded(child: Text(l10n.etaRangePrefix, style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary))),
                     Text(
                       '${token.etaLow!.round()} – ${token.etaHigh!.round()} ${l10n.minutesUnit}',
                       style: const TextStyle(

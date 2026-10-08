@@ -310,11 +310,13 @@ class _BookScreenState extends State<BookScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          l10n.dateSummaryLabel,
-                          style: const TextStyle(
-                            color: CivicTheme.textSecondary,
-                            fontSize: 13,
+                        Expanded(
+                          child: Text(
+                            l10n.dateSummaryLabel,
+                            style: const TextStyle(
+                              color: CivicTheme.textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         Text(
@@ -330,11 +332,13 @@ class _BookScreenState extends State<BookScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          l10n.slotTimeSummaryLabel,
-                          style: const TextStyle(
-                            color: CivicTheme.textSecondary,
-                            fontSize: 13,
+                        Expanded(
+                          child: Text(
+                            l10n.slotTimeSummaryLabel,
+                            style: const TextStyle(
+                              color: CivicTheme.textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         Text(
@@ -350,11 +354,13 @@ class _BookScreenState extends State<BookScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          l10n.partySizeSummaryLabel,
-                          style: const TextStyle(
-                            color: CivicTheme.textSecondary,
-                            fontSize: 13,
+                        Expanded(
+                          child: Text(
+                            l10n.partySizeSummaryLabel,
+                            style: const TextStyle(
+                              color: CivicTheme.textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         Text(
@@ -372,11 +378,13 @@ class _BookScreenState extends State<BookScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          l10n.feeTierSummaryLabel,
-                          style: const TextStyle(
-                            color: CivicTheme.textSecondary,
-                            fontSize: 13,
+                        Expanded(
+                          child: Text(
+                            l10n.feeTierSummaryLabel,
+                            style: const TextStyle(
+                              color: CivicTheme.textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         Text(
@@ -406,10 +414,13 @@ class _BookScreenState extends State<BookScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      l10n.waitingAhead,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    Expanded(
+                      child: Text(
+                        l10n.waitingAhead,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '${token.waitingAhead}',
                       style: const TextStyle(fontWeight: FontWeight.w800),
@@ -588,13 +599,14 @@ class _BookScreenState extends State<BookScreen> {
                   ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                '~${service.priorAvgMinutes.round()} min average',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: CivicTheme.primary,
+              Flexible(
+                child: Text(
+                  '~${service.priorAvgMinutes.round()} min average',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: CivicTheme.primary,
+                  ),
                 ),
               ),
             ],
@@ -1475,45 +1487,51 @@ class _BookScreenState extends State<BookScreen> {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: !isAvailable
-                                                      ? Colors.red.shade50
-                                                      : (isSelected
-                                                            ? CivicTheme.primary
-                                                                  .withValues(
-                                                                    alpha: 0.15,
-                                                                  )
-                                                            : Colors
-                                                                  .green
-                                                                  .shade50),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  !isAvailable
-                                                      ? l10n.slotsFullBadge
-                                                      : l10n.availableBadge,
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w700,
+                                              Flexible(
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                  decoration: BoxDecoration(
                                                     color: !isAvailable
-                                                        ? CivicTheme.error
-                                                        : CivicTheme.success,
+                                                        ? Colors.red.shade50
+                                                        : (isSelected
+                                                              ? CivicTheme.primary
+                                                                    .withValues(
+                                                                      alpha: 0.15,
+                                                                    )
+                                                              : Colors
+                                                                    .green
+                                                                    .shade50),
+                                                    borderRadius:
+                                                        BorderRadius.circular(4),
+                                                  ),
+                                                  child: Text(
+                                                    !isAvailable
+                                                        ? l10n.slotsFullBadge
+                                                        : l10n.availableBadge,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: !isAvailable
+                                                          ? CivicTheme.error
+                                                          : CivicTheme.success,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                              if (isSelected)
+                                              if (isSelected) ...[
+                                                const SizedBox(width: 4),
                                                 const Icon(
                                                   Icons.check_circle,
                                                   size: 16,
                                                   color: CivicTheme.primary,
                                                 ),
+                                              ],
                                             ],
                                           ),
                                         ],

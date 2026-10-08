@@ -370,25 +370,34 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          city.nameEn,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: city.isAvailable ? CivicTheme.textPrimary : Colors.grey.shade600,
+                        Expanded(
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            runSpacing: 2,
+                            children: [
+                              Text(
+                                city.nameEn,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: city.isAvailable ? CivicTheme.textPrimary : Colors.grey.shade600,
+                                ),
+                              ),
+                              Text(
+                                '(${city.nameGu})',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: city.isAvailable ? CivicTheme.primary : Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          '(${city.nameGu})',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: city.isAvailable ? CivicTheme.primary : Colors.grey.shade500,
-                          ),
-                        ),
-                        const Spacer(),
                         if (isCurrent)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

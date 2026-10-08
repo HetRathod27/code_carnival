@@ -399,12 +399,16 @@ class _OfficeCard extends StatelessWidget {
               children: [
                 const Icon(Icons.access_time, size: 16, color: CivicTheme.textSecondary),
                 const SizedBox(width: 6),
-                Text(
-                  '${l10n.officeHoursLabel}: ${office.openTime} – ${office.closeTime}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: CivicTheme.textSecondary,
+                Expanded(
+                  child: Text(
+                    '${l10n.officeHoursLabel}: ${office.openTime} – ${office.closeTime}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: CivicTheme.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

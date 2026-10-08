@@ -206,88 +206,99 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 16),
-              Text(
-                l10n.enterMobileNumber,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: CivicTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l10n.loginSubtitle,
-                style: const TextStyle(fontSize: 16, color: CivicTheme.textSecondary),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: l10n.phoneNumber,
-                  prefixIcon: const Icon(Icons.phone_android, color: CivicTheme.primary),
-                ),
-                enabled: !_otpSent,
-              ),
-              if (_otpSent) ...[
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _otpController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  decoration: InputDecoration(
-                    labelText: l10n.otpLabel,
-                    prefixIcon: const Icon(Icons.lock_outline, color: CivicTheme.primary),
-                  ),
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _error!,
-                        style: const TextStyle(color: CivicTheme.error, fontSize: 13, height: 1.4),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 32),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 16),
+                        Text(
+                          l10n.enterMobileNumber,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: CivicTheme.textPrimary,
+                          ),
                         ),
-                        icon: const Icon(Icons.settings_ethernet, size: 16),
-                        label: const Text('Configure Server Connection / IP'),
-                        onPressed: _showServerConfigDialog,
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.loginSubtitle,
+                          style: const TextStyle(fontSize: 16, color: CivicTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: l10n.phoneNumber,
+                            prefixIcon: const Icon(Icons.phone_android, color: CivicTheme.primary),
+                          ),
+                          enabled: !_otpSent,
+                        ),
+                        if (_otpSent) ...[
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _otpController,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            decoration: InputDecoration(
+                              labelText: l10n.otpLabel,
+                              prefixIcon: const Icon(Icons.lock_outline, color: CivicTheme.primary),
+                            ),
+                          ),
+                        ],
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _error!,
+                                  style: const TextStyle(color: CivicTheme.error, fontSize: 13, height: 1.4),
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 32),
+                                  ),
+                                  icon: const Icon(Icons.settings_ethernet, size: 16),
+                                  label: const Text('Configure Server Connection / IP'),
+                                  onPressed: _showServerConfigDialog,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        ElevatedButton(
+                          onPressed: _loading ? null : (_otpSent ? () => _handleVerifyOtp(l10n) : () => _handleSendOtp(l10n)),
+                          child: Text(
+                            _loading
+                                ? l10n.pleaseWait
+                                : (_otpSent ? l10n.verifyOtpAction : l10n.sendOtpAction),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
-              const Spacer(),
-              ElevatedButton(
-                onPressed: _loading ? null : (_otpSent ? () => _handleVerifyOtp(l10n) : () => _handleSendOtp(l10n)),
-                child: Text(
-                  _loading
-                      ? l10n.pleaseWait
-                      : (_otpSent ? l10n.verifyOtpAction : l10n.sendOtpAction),
-                ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
