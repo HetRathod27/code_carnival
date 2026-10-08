@@ -88,7 +88,7 @@ void main() {
     // Gandhinagar centre should be visible, Ahmedabad centre filtered out
     expect(find.text('Sector 21 Jan Seva Kendra'), findsOneWidget);
     expect(find.text('Bodakdev Civic Centre'), findsNothing);
-    expect(find.text('Gandhinagar'), findsOneWidget);
+    expect(find.text('Gandhinagar Civic Centres'), findsOneWidget);
     expect(find.text('1 Centres'), findsOneWidget);
   });
 }
