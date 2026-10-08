@@ -285,14 +285,9 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      itemCount: filteredCities.length + 1,
+                      itemCount: filteredCities.length,
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        if (index == filteredCities.length) {
-                          // "All Cities" Option at the end
-                          return _buildAllCitiesOption();
-                        }
-
                         final city = filteredCities[index];
                         final isCurrent = _currentlySelectedCity?.toLowerCase() == city.nameEn.toLowerCase();
 
@@ -471,29 +466,6 @@ class _CitySelectionScreenState extends State<CitySelectionScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAllCitiesOption() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 20),
-      child: OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 52),
-          side: const BorderSide(color: CivicTheme.primary, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        icon: const Icon(Icons.public, color: CivicTheme.primary),
-        label: const Text(
-          'View All Cities & Centres / તમામ કેન્દ્રો જુઓ',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: CivicTheme.primary,
-          ),
-        ),
-        onPressed: () => _selectCity('All'),
       ),
     );
   }
