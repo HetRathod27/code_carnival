@@ -22,27 +22,41 @@ class _AccountScreenState extends State<AccountScreen> {
   late final ApiClient _client = widget.client ?? ApiClient();
 
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
   String? _error;
   String? _successMessage;
 
-  String _phone = '';
+  String _phone = '+919876543210';
   String _selectedCity = 'Gandhinagar';
   String _language = 'en';
   String _userId = '';
   int _priorityStrikes = 0;
 
+  static const List<String> _supportedLanguages = ['en', 'gu', 'hi'];
+
+  String _normalizeLanguage(String? lang) {
+    if (lang == null || lang.isEmpty) return 'en';
+    final clean = lang.trim().toLowerCase().split(RegExp(r'[-_]')).first;
+    if (_supportedLanguages.contains(clean)) {
+      return clean;
+    }
+    return 'en';
+  }
+
   @override
   void initState() {
     super.initState();
+    _phoneController.text = _phone;
     _loadProfileData();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -56,8 +70,9 @@ class _AccountScreenState extends State<AccountScreen> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('ql_token') ?? '';
       _phone = prefs.getString('ql_phone') ?? '+919876543210';
+      _phoneController.text = _phone;
       _selectedCity = prefs.getString('ql_selected_city') ?? 'Gandhinagar';
-      _language = prefs.getString('ql_language') ?? 'en';
+      _language = _normalizeLanguage(prefs.getString('ql_language'));
       final cachedName = prefs.getString('ql_user_name') ?? '';
 
       if (cachedName.isNotEmpty) {
@@ -66,19 +81,20 @@ class _AccountScreenState extends State<AccountScreen> {
 
       if (token.isNotEmpty) {
         try {
-          final profile = await _client.getProfile(token);
+          final profile = await _client.getProfile(token).timeout(const Duration(seconds: 4));
           if (profile.name != null && profile.name!.isNotEmpty) {
             _nameController.text = profile.name!;
             await prefs.setString('ql_user_name', profile.name!);
           }
           if (profile.phone != null && profile.phone!.isNotEmpty) {
             _phone = profile.phone!;
+            _phoneController.text = _phone;
           }
           _userId = profile.id;
-          _language = profile.language;
+          _language = _normalizeLanguage(profile.language);
           _priorityStrikes = profile.priorityStrikes;
         } catch (_) {
-          // Fall back gracefully to cached data if offline
+          // Fall back gracefully to cached data if offline or timeout
           _userId = 'CITIZEN-${_phone.replaceAll(RegExp(r'\D'), '')}';
         }
       }
@@ -231,122 +247,127 @@ class _AccountScreenState extends State<AccountScreen> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Header Avatar Card
-                    _buildProfileHeaderCard(),
-                    const SizedBox(height: 20),
+            : Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 680),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header Avatar Card
+                        _buildProfileHeaderCard(),
+                        const SizedBox(height: 20),
 
-                    if (_successMessage != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: CivicTheme.successSoft,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.green.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.check_circle, color: CivicTheme.success, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _successMessage!,
-                                style: const TextStyle(
-                                  color: CivicTheme.success,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                        if (_successMessage != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: CivicTheme.successSoft,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.green.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle, color: CivicTheme.success, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _successMessage!,
+                                    style: const TextStyle(
+                                      color: CivicTheme.success,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
-                    if (_error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: CivicTheme.errorSoft,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.red.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline, color: CivicTheme.error, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: const TextStyle(color: CivicTheme.error, fontSize: 13),
-                              ),
+                        if (_error != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: CivicTheme.errorSoft,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.red.shade300),
                             ),
-                          ],
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: CivicTheme.error, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: const TextStyle(color: CivicTheme.error, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Section 1: Citizen Personal Details
+                        _buildSectionTitle('Personal Details', Icons.person_outline),
+                        const SizedBox(height: 8),
+                        _buildPersonalDetailsCard(),
+                        const SizedBox(height: 24),
+
+                        // Section 2: Preferences & Location
+                        _buildSectionTitle('App Preferences & Location', Icons.tune),
+                        const SizedBox(height: 8),
+                        _buildPreferencesCard(),
+                        const SizedBox(height: 24),
+
+                        // Section 3: App & Connectivity Details
+                        _buildSectionTitle('Application & Connectivity', Icons.cell_tower),
+                        const SizedBox(height: 8),
+                        _buildAppInfoCard(),
+                        const SizedBox(height: 32),
+
+                        // Save Button
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: CivicTheme.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.check),
+                          label: Text(
+                            _saving ? 'Saving Changes...' : 'Save & Update Details',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: _saving ? null : _handleSaveProfile,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                        const SizedBox(height: 16),
 
-                    // Section 1: Citizen Personal Details
-                    _buildSectionTitle('Personal Details', Icons.person_outline),
-                    const SizedBox(height: 8),
-                    _buildPersonalDetailsCard(),
-                    const SizedBox(height: 24),
-
-                    // Section 2: Preferences & Location
-                    _buildSectionTitle('App Preferences & Location', Icons.tune),
-                    const SizedBox(height: 8),
-                    _buildPreferencesCard(),
-                    const SizedBox(height: 24),
-
-                    // Section 3: App & Connectivity Details
-                    _buildSectionTitle('Application & Connectivity', Icons.cell_tower),
-                    const SizedBox(height: 8),
-                    _buildAppInfoCard(),
-                    const SizedBox(height: 32),
-
-                    // Save Button
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: CivicTheme.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Icon(Icons.check),
-                      label: Text(
-                        _saving ? 'Saving Changes...' : 'Save & Update Details',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: _saving ? null : _handleSaveProfile,
+                        // Sign Out Button
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            foregroundColor: CivicTheme.error,
+                            side: const BorderSide(color: CivicTheme.error),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.logout, size: 20),
+                          label: const Text('Sign Out / Switch Account', style: TextStyle(fontWeight: FontWeight.bold)),
+                          onPressed: _handleLogout,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-
-                    // Sign Out Button
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        foregroundColor: CivicTheme.error,
-                        side: const BorderSide(color: CivicTheme.error),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.logout, size: 20),
-                      label: const Text('Sign Out / Switch Account', style: TextStyle(fontWeight: FontWeight.bold)),
-                      onPressed: _handleLogout,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                  ),
                 ),
               ),
       ),
@@ -474,7 +495,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
             // Phone (Read-Only)
             TextField(
-              controller: TextEditingController(text: _phone),
+              controller: _phoneController,
               readOnly: true,
               enabled: false,
               decoration: const InputDecoration(
@@ -588,7 +609,7 @@ class _AccountScreenState extends State<AccountScreen> {
                       DropdownButton<String>(
                         isExpanded: true,
                         underline: const SizedBox(),
-                        value: _language,
+                        value: _normalizeLanguage(_language),
                         items: const [
                           DropdownMenuItem(value: 'en', child: Text('English (Default)')),
                           DropdownMenuItem(value: 'gu', child: Text('ગુજરાતી (Gujarati)')),

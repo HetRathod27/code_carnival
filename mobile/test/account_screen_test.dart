@@ -92,4 +92,28 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('ql_user_name'), 'Suresh Patel');
   });
+
+  testWidgets('AccountScreen renders safely when language is unfamiliar or invalid', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'ql_token': 'test_token',
+      'ql_phone': '+919876543210',
+      'ql_language': 'en_US',
+    });
+
+    final mockClient = MockAccountApiClient(
+      currentProfile: ProfileModel(
+        id: 'CITIZEN-001',
+        phone: '+919876543210',
+        name: 'Ramesh Patel',
+        language: 'en_US',
+        role: 'CITIZEN',
+        priorityStrikes: 0,
+      ),
+    );
+
+    await tester.pumpWidget(wrapWithTestApp(AccountScreen(client: mockClient)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('My Account'), findsOneWidget);
+  });
 }
