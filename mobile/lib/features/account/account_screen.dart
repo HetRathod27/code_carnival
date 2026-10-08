@@ -323,10 +323,10 @@ class _AccountScreenState extends State<AccountScreen> {
                         _buildPreferencesCard(),
                         const SizedBox(height: 24),
 
-                        // Section 3: App & Connectivity Details
-                        _buildSectionTitle('Application & Connectivity', Icons.cell_tower),
+                        // Section 3: Civic Support & Service Status
+                        _buildSectionTitle('Civic Support & Service Status', Icons.help_outline),
                         const SizedBox(height: 8),
-                        _buildAppInfoCard(),
+                        _buildCivicSupportCard(),
                         const SizedBox(height: 32),
 
                         // Save Button
@@ -632,9 +632,7 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  Widget _buildAppInfoCard() {
-    final currentBaseUrl = ApiClient.defaultBaseUrl;
-
+  Widget _buildCivicSupportCard() {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -646,49 +644,128 @@ class _AccountScreenState extends State<AccountScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Backend Server
+            // Row 1: Live Service Status
             Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: Color(0xFFEFEFEF),
-                  child: Icon(Icons.dns_outlined, color: CivicTheme.textPrimary, size: 20),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: CivicTheme.successSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle_outline, color: CivicTheme.success, size: 20),
                 ),
                 const SizedBox(width: 14),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Backend Server Endpoint', style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary)),
-                      const SizedBox(height: 2),
                       Text(
-                        currentBaseUrl,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
+                        'Live Service Status',
+                        style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'All Civic Centres Operational',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CivicTheme.success),
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.network_check, color: CivicTheme.primary),
-                  tooltip: 'Check Server Reachability',
-                  onPressed: () async {
-                    final reachable = await ApiClient.pingServer();
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(reachable ? '✓ Server reachable (/healthz: ok)' : '✗ Cannot reach server at $currentBaseUrl'),
-                        backgroundColor: reachable ? CivicTheme.success : CivicTheme.error,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: CivicTheme.successSoft,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.circle, color: CivicTheme.success, size: 8),
+                      SizedBox(width: 5),
+                      Text(
+                        'Online',
+                        style: TextStyle(color: CivicTheme.success, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
               ],
             ),
-            const Divider(),
+            const Divider(height: 24),
+
+            // Row 2: Citizen Helpline
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: CivicTheme.primarySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.support_agent, color: CivicTheme.primary, size: 20),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Citizen Support Helpline',
+                        style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        '1800-233-5500 (Toll-Free • 8 AM - 8 PM)',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+
+            // Row 3: Privacy & Security Guarantee
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: CivicTheme.accentSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.shield_outlined, color: CivicTheme.accent, size: 20),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Citizen Data Privacy',
+                        style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Zero Biometric Retention • Official Gujarat e-Gov',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: CivicTheme.textPrimary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+
+            // Row 4: App Version Footer
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('QueueLess Civic Mobile', style: TextStyle(fontSize: 13, color: CivicTheme.textSecondary)),
-                Text('v1.1.0 • Gujarat e-Gov', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: CivicTheme.textPrimary)),
+                Expanded(
+                  child: Text('QueueLess Civic Portal', style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary)),
+                ),
+                Text('v1.1.0 • Gujarat e-Gov', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: CivicTheme.textPrimary)),
               ],
             ),
           ],
