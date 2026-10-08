@@ -236,6 +236,17 @@ class _AccountScreenState extends State<AccountScreen> {
       appBar: AppBar(
         title: const Text('My Account'),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop(true);
+            } else {
+              context.go('/offices');
+            }
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

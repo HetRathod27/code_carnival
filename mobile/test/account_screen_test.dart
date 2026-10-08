@@ -116,4 +116,63 @@ void main() {
 
     expect(find.text('My Account'), findsOneWidget);
   });
+
+  testWidgets('AccountScreen saves city and language changes and invokes callback', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'ql_token': 'test_token',
+      'ql_phone': '+919876543210',
+      'ql_user_name': 'Ramesh Patel',
+      'ql_selected_city': 'Gandhinagar',
+      'ql_language': 'en',
+    });
+
+    final mockClient = MockAccountApiClient(
+      currentProfile: ProfileModel(
+        id: 'CITIZEN-001',
+        phone: '+919876543210',
+        name: 'Ramesh Patel',
+        language: 'en',
+        role: 'CITIZEN',
+        priorityStrikes: 0,
+      ),
+    );
+
+    Locale? changedLocale;
+    await tester.pumpWidget(
+      wrapWithTestApp(
+        AccountScreen(
+          client: mockClient,
+          onLocaleChanged: (loc) => changedLocale = loc,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap Change city button
+    final changeCityButton = find.widgetWithText(TextButton, 'Change');
+    expect(changeCityButton, findsOneWidget);
+    await tester.tap(changeCityButton);
+    await tester.pumpAndSettle();
+
+    // Select Ahmedabad
+    final ahmedabadOption = find.text('Ahmedabad');
+    expect(ahmedabadOption, findsOneWidget);
+    await tester.tap(ahmedabadOption);
+    await tester.pumpAndSettle();
+
+    // Now city in UI should be Ahmedabad
+    expect(find.text('Ahmedabad'), findsOneWidget);
+
+    // Save changes
+    final saveButton = find.text('Save & Update Details');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    // Verify SharedPreferences updated with new city
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('ql_selected_city'), 'Ahmedabad');
+    expect(mockClient.updateProfileCalled, isTrue);
+    expect(changedLocale?.languageCode, 'en');
+  });
 }

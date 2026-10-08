@@ -119,7 +119,10 @@ class _OfficesScreenState extends State<OfficesScreen> {
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'My Account',
-            onPressed: () => context.push('/account'),
+            onPressed: () async {
+              await context.push('/account');
+              _loadOffices();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

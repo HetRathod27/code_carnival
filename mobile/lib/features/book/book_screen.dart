@@ -170,6 +170,10 @@ class _BookScreenState extends State<BookScreen> {
       final prefs = await SharedPreferences.getInstance();
       final savedPhone = prefs.getString('ql_phone') ?? '+919876543210';
       _phoneController.text = savedPhone;
+      final savedName = prefs.getString('ql_user_name') ?? '';
+      if (savedName.isNotEmpty && _beneficiaryController.text.isEmpty) {
+        _beneficiaryController.text = savedName;
+      }
       // Language is determined reactively via Localizations.localeOf(context)
 
       final services = await _client.fetchServices(widget.officeId);
