@@ -297,6 +297,9 @@ class ApiClient {
     String? beneficiaryName,
     String? priorityDocType,
     int travelMinutes = 0,
+    String? appointmentDate,
+    String? appointmentSlot,
+    bool isFixed = true,
     required String idempotencyKey,
   }) async {
     final res = await _safePost(
@@ -313,6 +316,9 @@ class ApiClient {
         'beneficiary_name': beneficiaryName,
         'priority_doc_type': priorityDocType,
         'travel_minutes': travelMinutes,
+        'appointment_date': appointmentDate,
+        'appointment_slot': appointmentSlot,
+        'is_fixed': isFixed,
       }),
     );
     if (res.statusCode != 201) {

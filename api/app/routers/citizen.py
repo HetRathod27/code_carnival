@@ -182,6 +182,9 @@ async def create_token(
         travel_minutes=payload.travel_minutes,
         priority_doc_type=payload.priority_doc_type,
         idempotency_key=idempotency_key,
+        appointment_date=payload.appointment_date,
+        appointment_slot=payload.appointment_slot,
+        is_fixed=payload.is_fixed,
     )
     t_stmt = select(Token).where(Token.id == book_res["token_id"])
     res_t = await session.execute(t_stmt)

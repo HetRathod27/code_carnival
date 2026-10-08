@@ -39,6 +39,9 @@ class FakeApiClient extends ApiClient {
     String? beneficiaryName,
     String? priorityDocType,
     int travelMinutes = 0,
+    String? appointmentDate,
+    String? appointmentSlot,
+    bool isFixed = true,
     required String idempotencyKey,
   }) async {
     if (tokenToReturn != null) return tokenToReturn!;

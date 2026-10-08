@@ -47,7 +47,7 @@ class _BookScreenState extends State<BookScreen> {
 
   // Slot & Schedule state (Spec Section 6 & 7)
   int _selectedDayIndex =
-      0; // 0 = Today, 1 = Tomorrow, 2 = In 2 Days, 3 = In 3 Days
+      DateTime.now().hour >= 18 ? 1 : 0; // If past 6 PM, default to Tomorrow
   String _selectedSlotTime = '09:30 AM – 10:30 AM';
   int _familyCount = 1;
 
@@ -221,6 +221,10 @@ class _BookScreenState extends State<BookScreen> {
         await prefs.setString('ql_token', authToken);
       }
 
+      final date = DateTime.now().add(Duration(days: _selectedDayIndex));
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
       final idempotencyKey = _generateUuidV4();
       final token = await _client.bookToken(
         token: authToken,
@@ -234,6 +238,9 @@ class _BookScreenState extends State<BookScreen> {
         priorityDocType: _category == 'PRIORITY'
             ? (_priorityDocType ?? 'SENIOR_CITIZEN')
             : null,
+        appointmentDate: dateStr,
+        appointmentSlot: _selectedSlotTime,
+        isFixed: true,
         idempotencyKey: idempotencyKey,
       );
 

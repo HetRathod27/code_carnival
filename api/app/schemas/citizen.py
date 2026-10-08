@@ -36,6 +36,9 @@ class TokenBookIn(BaseModel):
     priority_doc_type: str | None = None
     beneficiary_name: str | None = None
     travel_minutes: int = 0
+    appointment_date: str | None = None
+    appointment_slot: str | None = None
+    is_fixed: bool = True
 
 
 class TokenOut(BaseModel):

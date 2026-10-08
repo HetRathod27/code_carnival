@@ -1,5 +1,6 @@
-import uuid
+from datetime import datetime
 from typing import Any
+import uuid
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,6 +47,9 @@ async def book_token(
     beneficiary_name: str | None = None,
     priority_doc_type: str | None = None,
     override_reason: str | None = None,
+    appointment_date: str | None = None,
+    appointment_slot: str | None = None,
+    is_fixed: bool = False,
 ) -> dict[str, Any]:
     """
     Booking (C3, O7) — atomic numbering, one transaction.
@@ -63,7 +67,13 @@ async def book_token(
             return existing_key.response
 
     now_dt = clock.now()
-    b_date = clock.business_date()
+    if appointment_date:
+        try:
+            b_date = datetime.strptime(appointment_date, "%Y-%m-%d").date()
+        except ValueError:
+            b_date = clock.business_date()
+    else:
+        b_date = clock.business_date()
 
     # 2. Validation: Office open, Service active, Phone active token limit
     stmt_office = select(Office).where(Office.id == office_id)
@@ -156,7 +166,8 @@ async def book_token(
     max_waiting = office_settings.max_waiting_per_service if office_settings else 100
 
     current_snapshot = await load_queue_snapshot(session, clock, office_id, service_id)
-    is_desk_override = created_via in ["ASSISTED", "DESK", "WALKIN"] or bool(override_reason)
+    is_fixed_appointment = is_fixed or bool(appointment_slot) or (appointment_date is not None)
+    is_desk_override = created_via in ["ASSISTED", "DESK", "WALKIN"] or bool(override_reason) or is_fixed_appointment
     admitted, rejection_reason, _ = check_admission(
         snapshot=current_snapshot,
         office_close_time=office.close_time,
@@ -267,7 +278,14 @@ async def book_token(
 
     token.last_eta_minutes = int(p50)
     token.last_eta_reason = reason
-    token.eta_features = {"low": low, "high": high, "naive_p50": n_p50}
+    eta_meta: dict[str, Any] = {"low": low, "high": high, "naive_p50": n_p50}
+    if is_fixed_appointment:
+        eta_meta["is_fixed"] = True
+    if appointment_slot:
+        eta_meta["appointment_slot"] = appointment_slot
+    if appointment_date:
+        eta_meta["appointment_date"] = appointment_date
+    token.eta_features = eta_meta
 
     eta_log_entry = EtaLog(
         token_id=token_id,
