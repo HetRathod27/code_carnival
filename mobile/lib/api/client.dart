@@ -61,12 +61,12 @@ class ServiceModel {
       officeId: json['office_id'] as String,
       code: json['code'] as String,
       names: (json['names'] as Map<String, dynamic>?) ?? {},
-      priorAvgMinutes: (json['prior_avg_minutes'] as num).toDouble(),
+      priorAvgMinutes: (json['prior_avg_minutes'] as num?)?.toDouble() ?? 0.0,
       requiredDocs: (json['required_docs'] as List<dynamic>?) ?? [],
       priorityAllowed: json['priority_allowed'] as bool? ?? true,
       requiresPhysicalVisit: json['requires_physical_visit'] as bool? ?? true,
       onlineAlternativeUrl: json['online_alternative_url'] as String?,
-      indicativeWaitMinutes: json['indicative_wait_minutes'] as int?,
+      indicativeWaitMinutes: (json['indicative_wait_minutes'] as num?)?.round(),
     );
   }
 
@@ -134,7 +134,7 @@ class TokenModel {
       officeId: json['office_id'] as String,
       serviceId: json['service_id'] as String,
       businessDate: json['business_date'] as String,
-      seq: json['seq'] as int,
+      seq: (json['seq'] as num?)?.toInt() ?? 0,
       displayCode: json['display_code'] as String,
       state: json['state'] as String,
       category: json['category'] as String,
@@ -152,7 +152,7 @@ class TokenModel {
       etaHigh: (json['eta_high'] as num?)?.toDouble(),
       onMyWayAt: json['on_my_way_at'] as String?,
       graceDeadline: json['grace_deadline'] as String?,
-      waitingAhead: json['waiting_ahead'] as int? ?? 0,
+      waitingAhead: (json['waiting_ahead'] as num?)?.toInt() ?? 0,
       nowServing: json['now_serving'] as String?,
     );
   }
