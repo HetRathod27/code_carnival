@@ -688,3 +688,31 @@ Running log of milestones, completed tasks, verifications, and status.
   - Child tokens belong to the primary booking and inherit the parent's contact/cancellation channel with `phone=None` to avoid phone uniqueness collisions on the active queue index.
 - **Git Commit & Tag**: `m-child-tokens-done`
 
+---
+
+## M-BOOKING-ADVANCE-LIMIT: 15-Day Maximum Advance Slot Selection Enforcement
+- **Date**: 2026-10-10
+- **Built**:
+  - `mobile/lib/features/book/book_screen.dart`:
+    - In `_showSlotSelectionSheet`: Capped `showDatePicker` `lastDate` to `todayZero.add(const Duration(days: 15))`, disabling any calendar selection beyond 15 days in advance.
+    - Clamped `initialDate` between `todayZero` and `maxAdvanceDate`.
+    - Added informative advance limit notice (`l10n.advanceLimitNotice`) directly below the selected date summary card.
+    - Gated `canConfirm` button with `dateExceedsLimit = diffDays > 15`, displaying error banner `l10n.dateExceeds15DaysError` if any slot exceeds 15 days.
+    - In `_handleBook`: Added synchronous guard verifying `_selectedDayIndex <= 15` before dispatching booking request to prevent async gap warnings and invalid bookings.
+  - `mobile/lib/l10n/app_en.arb`, `app_gu.arb`, `app_hi.arb`:
+    - Added localized translations for `advanceLimitNotice` ("Bookings are allowed up to 15 days in advance") and `dateExceeds15DaysError` across English, Gujarati, and Hindi.
+    - Recompiled localizations via `flutter gen-l10n`.
+  - `api/app/services/token_service.py`:
+    - In `book_token`: Validated `appointment_date` cannot exceed 15 days in advance relative to `clock.business_date()`. Raises `BookingError("APPOINTMENT_DATE_EXCEEDS_LIMIT", "Appointment date cannot exceed 15 days in advance", 400)`.
+  - `api/tests/api/test_routes.py`:
+    - Added `test_appointment_date_15_days_limit_enforced`: Proves appointment slot exactly 15 days ahead succeeds (HTTP 201), while appointment slot 16 days ahead is rejected with HTTP 400 and error code `APPOINTMENT_DATE_EXCEEDS_LIMIT`.
+    - Updated `test_citizen_booking_with_accompanying_children_allots_tokens_and_times` to use clock-relative valid appointment date.
+  - `mobile/test/f1_citizen_test.dart`:
+    - Added widget test `Custom date picker displays 15-day advance booking limit notice` asserting the 15-day advance booking notice renders in the slot selection dialog.
+- **Verification**:
+  - `flutter analyze` in `mobile/`: 0 errors / No issues found.
+  - `flutter test` in `mobile/`: 35/35 tests passed.
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 69 pytest tests passed in 68.71s, Ruff: OK, Mypy: OK, Web typecheck & build: OK, Flutter analyze: OK).
+- **Git Commit & Tag**: `m-advance-limit-done`
+
+

@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -229,12 +229,13 @@ async def test_citizen_booking_with_accompanying_children_allots_tokens_and_time
     cit_token = dev_auth.create_token(UserClaims(user_id=cit_id, role="CITIZEN", phone=phone))
     auth_headers = {"Authorization": f"Bearer {cit_token}"}
 
+    app_date = (vclock.business_date() + timedelta(days=2)).isoformat()
     payload = {
         "office_id": office_id,
         "service_id": service_id,
         "phone": phone,
         "beneficiary_name": "Primary Parent",
-        "appointment_date": "2026-10-15",
+        "appointment_date": app_date,
         "appointment_slot": "09:30 AM – 10:30 AM",
         "is_fixed": True,
         "accompanying_members": [
@@ -276,6 +277,54 @@ async def test_citizen_booking_with_accompanying_children_allots_tokens_and_time
     assert len(active_data["child_tokens"]) == 2
     assert active_data["child_tokens"][0]["display_code"] == child1["display_code"]
     assert active_data["child_tokens"][1]["display_code"] == child2["display_code"]
+
+
+@pytest.mark.asyncio
+async def test_appointment_date_15_days_limit_enforced(client, dev_auth, vclock):
+    """
+    Booking accepts appointment dates up to 15 days in advance, but rejects >15 days.
+    """
+    office_id = "ward-central-01"
+    service_id = "srv-bc"
+    phone_ok = f"+9198{uuid.uuid4().hex[:8]}"
+    cit_id_ok = f"user-{uuid.uuid4().hex[:6]}"
+    cit_token_ok = dev_auth.create_token(UserClaims(user_id=cit_id_ok, role="CITIZEN", phone=phone_ok))
+
+    # 1. Booking at exactly 15 days should succeed
+    date_15_days = (vclock.business_date() + timedelta(days=15)).isoformat()
+    resp_ok = await client.post(
+        "/v1/citizen/tokens",
+        json={
+            "office_id": office_id,
+            "service_id": service_id,
+            "phone": phone_ok,
+            "appointment_date": date_15_days,
+            "appointment_slot": "10:00 AM – 10:15 AM",
+            "is_fixed": True,
+        },
+        headers={"Authorization": f"Bearer {cit_token_ok}"},
+    )
+    assert resp_ok.status_code == 201
+
+    # 2. Booking beyond 15 days (16 days) should be rejected with 400 APPOINTMENT_DATE_EXCEEDS_LIMIT
+    phone_fail = f"+9198{uuid.uuid4().hex[:8]}"
+    cit_id_fail = f"user-{uuid.uuid4().hex[:6]}"
+    cit_token_fail = dev_auth.create_token(UserClaims(user_id=cit_id_fail, role="CITIZEN", phone=phone_fail))
+    date_16_days = (vclock.business_date() + timedelta(days=16)).isoformat()
+    resp_fail = await client.post(
+        "/v1/citizen/tokens",
+        json={
+            "office_id": office_id,
+            "service_id": service_id,
+            "phone": phone_fail,
+            "appointment_date": date_16_days,
+            "appointment_slot": "10:00 AM – 10:15 AM",
+            "is_fixed": True,
+        },
+        headers={"Authorization": f"Bearer {cit_token_fail}"},
+    )
+    assert resp_fail.status_code == 400
+    assert resp_fail.json()["error"]["code"] == "APPOINTMENT_DATE_EXCEEDS_LIMIT"
 
 
 @pytest.mark.asyncio

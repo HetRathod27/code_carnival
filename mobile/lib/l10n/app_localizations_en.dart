@@ -1199,4 +1199,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String queueSlotsReservedCount(int count) {
     return '$count queue slots will be allotted for your group.';
   }
+
+  @override
+  String get advanceLimitNotice =>
+      'Bookings are allowed up to 15 days in advance';
+
+  @override
+  String get dateExceeds15DaysError =>
+      'Appointment date cannot exceed 15 days from today.';
 }

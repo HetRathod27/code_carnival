@@ -2115,6 +2115,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} queue slots will be allotted for your group.'**
   String queueSlotsReservedCount(int count);
+
+  /// No description provided for @advanceLimitNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings are allowed up to 15 days in advance'**
+  String get advanceLimitNotice;
+
+  /// No description provided for @dateExceeds15DaysError.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment date cannot exceed 15 days from today.'**
+  String get dateExceeds15DaysError;
 }
 
 class _AppLocalizationsDelegate

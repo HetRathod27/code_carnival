@@ -429,5 +429,33 @@ void main() {
       expect(find.textContaining('Ramesh Patel'), findsOneWidget);
       expect(find.textContaining('09:45 AM – 10:00 AM'), findsAtLeast(1));
     });
+
+    testWidgets('Custom date picker displays 15-day advance booking limit notice', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final fakeClient = FakeApiClient(services: sampleServices);
+      await tester.pumpWidget(createTestApp(
+        BookScreen(officeId: 'off-1', serviceId: 'srv-1', client: fakeClient),
+      ));
+      await tester.pumpAndSettle();
+
+      // Check all documents to enable booking button
+      await tester.tap(find.byKey(const Key('mandatory_document_checkbox')));
+      await tester.pumpAndSettle();
+      for (int i = 0; i < 3; i++) {
+        await tester.tap(find.byKey(Key('doc_checkbox_$i')));
+        await tester.pumpAndSettle();
+      }
+
+      // Open time selection sheet
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Book Fixed Appointment'));
+      await tester.pumpAndSettle();
+
+      // Verify the advance booking limit notice is displayed
+      expect(find.text('Bookings are allowed up to 15 days in advance'), findsOneWidget);
+    });
   });
 }
+

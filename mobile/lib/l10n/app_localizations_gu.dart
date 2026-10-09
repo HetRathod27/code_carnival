@@ -1188,4 +1188,12 @@ class AppLocalizationsGu extends AppLocalizations {
   String queueSlotsReservedCount(int count) {
     return 'તમારા જૂથ માટે $count કતાર સ્લોટ ફાળવવામાં આવશે.';
   }
+
+  @override
+  String get advanceLimitNotice =>
+      'મુલાકાત વધુમાં વધુ 15 દિવસ અગાઉ સુધી જ બુક કરી શકાય છે';
+
+  @override
+  String get dateExceeds15DaysError =>
+      'મુલાકાતની તારીખ આજથી 15 દિવસથી વધુ હોઈ શકતી નથી.';
 }

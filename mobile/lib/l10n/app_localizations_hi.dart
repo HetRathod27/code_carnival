@@ -1193,4 +1193,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String queueSlotsReservedCount(int count) {
     return 'आपके समूह के लिए $count कतार स्लॉट आवंटित किए जाएंगे।';
   }
+
+  @override
+  String get advanceLimitNotice =>
+      'अपॉइंटमेंट अधिकतम 15 दिन पहले तक ही बुक किए जा सकते हैं';
+
+  @override
+  String get dateExceeds15DaysError =>
+      'अपॉइंटमेंट की तारीख आज से 15 दिनों से अधिक नहीं हो सकती।';
 }

@@ -318,6 +318,12 @@ class _BookScreenState extends State<BookScreen> {
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
+    if (_selectedDayIndex > 15) {
+      setState(() => _error = l10n.dateExceeds15DaysError);
+      return;
+    }
+
     setState(() {
       _submitting = true;
       _error = null;
@@ -1549,6 +1555,15 @@ class _BookScreenState extends State<BookScreen> {
                                               color: CivicTheme.primary,
                                             ),
                                           ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            l10n.advanceLimitNotice,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: CivicTheme.textSecondary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -1573,16 +1588,19 @@ class _BookScreenState extends State<BookScreen> {
                                           now.month,
                                           now.day,
                                         );
+                                        final maxAdvanceDate = todayZero.add(
+                                          const Duration(days: 15),
+                                        );
                                         final picked = await showDatePicker(
                                           context: sheetContext,
                                           initialDate:
                                               selectedDate.isBefore(todayZero)
                                               ? todayZero
-                                              : selectedDate,
+                                              : (selectedDate.isAfter(maxAdvanceDate)
+                                                  ? maxAdvanceDate
+                                                  : selectedDate),
                                           firstDate: todayZero,
-                                          lastDate: todayZero.add(
-                                            const Duration(days: 30),
-                                          ),
+                                          lastDate: maxAdvanceDate,
                                         );
                                         if (picked != null) {
                                           setSheetState(() {
@@ -2239,11 +2257,14 @@ class _BookScreenState extends State<BookScreen> {
                         builder: (ctx) {
                           final accompanyingError =
                               _getAccompanyingValidationError(familyCount, l10n);
-                          final canConfirm = accompanyingError == null;
+                          final dateExceedsLimit = diffDays > 15;
+                          final dateError = dateExceedsLimit ? l10n.dateExceeds15DaysError : null;
+                          final activeError = accompanyingError ?? dateError;
+                          final canConfirm = activeError == null;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (accompanyingError != null) ...[
+                              if (activeError != null) ...[
                                 Container(
                                   margin: const EdgeInsets.only(bottom: 10),
                                   padding: const EdgeInsets.all(10),
@@ -2265,7 +2286,7 @@ class _BookScreenState extends State<BookScreen> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          accompanyingError,
+                                          activeError,
                                           style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,

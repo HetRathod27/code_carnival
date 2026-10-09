@@ -380,5 +380,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "advanceLimitNotice": "Bookings are allowed up to 15 days in advance",
+  "dateExceeds15DaysError": "Appointment date cannot exceed 15 days from today."
 }

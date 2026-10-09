@@ -112,13 +112,22 @@ async def book_token(
             return existing_key.response
 
     now_dt = clock.now()
+    curr_b_date = clock.business_date()
     if appointment_date:
         try:
             b_date = datetime.strptime(appointment_date, "%Y-%m-%d").date()
         except ValueError:
-            b_date = clock.business_date()
+            b_date = curr_b_date
+        if b_date < curr_b_date:
+            raise BookingError("APPOINTMENT_DATE_PAST", "Appointment date cannot be in the past", 400)
+        if (b_date - curr_b_date).days > 15:
+            raise BookingError(
+                "APPOINTMENT_DATE_EXCEEDS_LIMIT",
+                "Appointment date cannot exceed 15 days in advance",
+                400,
+            )
     else:
-        b_date = clock.business_date()
+        b_date = curr_b_date
 
     # 2. Validation: Office open, Service active, Phone active token limit
     stmt_office = select(Office).where(Office.id == office_id)
