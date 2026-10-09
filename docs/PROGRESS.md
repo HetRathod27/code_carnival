@@ -508,6 +508,63 @@ Running log of milestones, completed tasks, verifications, and status.
   - Demo environment runs against PostgreSQL database `queueless_dev` with preconfigured mock credentials for evaluator walkthrough.
 - **Git Commit & Tag**: `pkg-done`
 
+---
+
+## UI-REDESIGN: Staff Web Dashboard Civic Government-Portal Redesign (Officer Role & App Shell)
+- **Date**: 2026-10-09
+- **Built**:
+  - **1. Shared App Shell (`web/src/components/AppShell.tsx`, `navConfig.ts`, `CivicCrest.tsx`, `officeNames.ts`)**:
+    - 260px wide institutional left sidebar on a light background (`var(--color-surface)`), 1px solid border (`var(--color-border)`), with zero dark sidebar styling, no gradients, and no drop shadows. Collapsible to icon-only view below 1280px and sliding off-canvas drawer with backdrop overlay below 1024px.
+    - Neutral `CivicCrest` placeholder component (shield, civic columns motif, neutral civic star) easy to customize; displays "QueueLess" and human office name (e.g. "Central Municipal Civic Centre (Sector 11)"), never technical internal IDs like `ward-central-01`.
+    - Navigation driven from central configuration (`ROLE_NAVIGATION`) grouped under small uppercase section labels (`WORKSPACE`, `ACTIVITY`, `TOOLS`, `ACCOUNT`). Active item highlighted with `var(--color-primary-soft)` background and a 4px primary left border (`var(--color-primary)`).
+    - Compact bottom user card displaying name, role badge, and human office name that navigates directly to My Account; tripartite language switcher (EN, ગુજરાતી, हिन्दी); and sign-out button with a modal confirmation dialog.
+    - 4px primary strip across the top edge. Slim top bar with breadcrumb path on the left (`QueueLess / Officer Portal / My queue`); office location chip, live date & clock, and sync pulse indicator on the right. Slim footer displaying civic help desk hotline (`1800-233-0000 · support@queueless.gov.in`), application version (`v1.4.0`), and last sync timestamp.
+  - **2. My Queue Screen (`web/src/pages/OfficerQueuePage.tsx`)**:
+    - Header with page title, plain descriptive counter selector (e.g. "Counter 1 · Birth certificate, Civic documents"), Open/Break/Closed control requiring mandatory reason selection (Lunch, Official work, System problem, Other) before entering Break or Closed, Report a problem incident modal, and keyboard shortcuts popover.
+    - **Single Primary Action Rule**: Header "Call next" is the sole primary action when the counter is idle; disabled with tooltip when a token is Called or Serving. When Called, "Start service" becomes primary. When Serving, "Complete service" becomes primary. All duplicate "Call next" buttons removed.
+    - "Next up" strip: displays the recommended token, reason badge (Arrived first, Priority, Appointment time), "Choose another" dialog with mandatory logged override reason, and online appointment buffer indicator.
+    - Waiting Card: filter tabs with dynamic count badges (All, Priority, Arrived, Online appointments, Walk-ins); instant search input; interactive rows with priority, arrival, online/walk-in, and pass-over chips; clicking any row opens a slide-over details drawer showing beneficiary details, document checklist with interactive checkboxes, and event timeline.
+    - Now Serving Card: Idle state, Called state (live grace period countdown, Start service as primary, Call again, Did not arrive, Release, and priority document check), Serving state (live elapsed timer with 10-minute benchmark, Complete service opening outcome modal with per-person count for group bookings, Transfer, and Check document).
+    - Counter check-in: barcode/QR wedge input supporting USB hardware scanners and "Scan with camera" webcam scanner with live targeting viewport.
+    - Keyboard shortcuts: `N` (Call next), `S` (Start service), `C` (Complete service), with synthesizer audio chime via Web Audio API.
+  - **3. Today's Activity Screen (`web/src/pages/TodayActivityPage.tsx`)**:
+    - Audit log of tokens served at the officer's counter today with summary KPI tiles (Tokens Served, Average Service Time, No-Shows), instant search input, outcome filtering (All, SERVED, NO_SHOW, MISSING_DOCS), and read-only audit table with durations and notes.
+  - **4. My Account Screen (`web/src/pages/MyAccountPage.tsx`)**:
+    - Official profile card with name, designation, department, human office name, shift timing, official email, masked phone, session status, and administrative notice ("Managed by your office admin.").
+    - Workstation preferences: language switcher, text size toggle (Normal 15px / Large 17px), acoustic arrival chime toggle with live preview button, and remembered default counter saved to local storage.
+    - Security: change password (disabled with dev notice) and sign out with confirmation modal.
+  - **5. Route Guards & Automated Tests (`web/src/App.tsx`, `web/tests/portal_layout.test.mjs`)**:
+    - Role-based route guards: Officers attempting to access `/admin` or `/desk` are greeted with a clear Access Restricted screen with a single action to return to their portal.
+    - Automated unit tests covering navigation per role, human office name formatting without internal IDs, single primary action logic, and route guard matrix.
+- **Files**:
+  - `web/src/components/CivicCrest.tsx`
+  - `web/src/components/navConfig.ts`
+  - `web/src/utils/officeNames.ts`
+  - `web/src/utils/audio.ts`
+  - `web/src/components/AppShell.tsx`
+  - `web/src/pages/OfficerQueuePage.tsx`
+  - `web/src/pages/TodayActivityPage.tsx`
+  - `web/src/pages/MyAccountPage.tsx`
+  - `web/src/App.tsx`
+  - `web/src/index.css`
+  - `web/src/i18n/en.json`
+  - `web/src/i18n/gu.json`
+  - `web/src/i18n/hi.json`
+  - `web/tests/portal_layout.test.mjs`
+  - `web/package.json`
+  - `api/app/routers/officer.py`
+  - `api/app/services/token_service.py`
+  - `docs/PROGRESS.md`
+- **Commands & Results**:
+  - `node --test web/tests/portal_layout.test.mjs`: 4/4 tests passed (navigation config, human office names, single primary action rule, role route guards).
+  - `npm run typecheck` in `web/`: Exit code 0 (0 errors).
+  - `npm run build` in `web/`: Exit code 0 (Built cleanly in 171ms).
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 57 pytest tests passed in 52.31s, Ruff: OK, OpenAPI schema: OK, Mypy: OK on 52 source files, Web typecheck & build: OK, Flutter analyze: OK).
+- **Assumptions**:
+  - Web Audio API synthesizer is utilized for audio feedback, avoiding external audio asset dependencies.
+- **Git Commit & Tag**: `officer-redesign-done`
+
+
 
 
 

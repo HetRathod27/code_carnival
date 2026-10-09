@@ -3,13 +3,43 @@
   "lang": "ગુજરાતી",
   "nav": {
     "queue": "કતાર",
+    "my_queue": "મારી કતાર",
+    "today_activity": "આજની પ્રવૃત્તિ",
     "counter": "મારો કાઉન્ટર",
     "desk": "ડેસ્ક અને સ્લિપ",
+    "new_token": "નવું ટોકન",
     "admin": "એડમિન",
+    "overview": "વિહંગાવલોકન",
+    "counters_services": "કાઉન્ટર્સ અને સેવાઓ",
+    "settings": "સેટિંગ્સ",
     "reports": "અહેવાલ",
     "sim": "સિમ્યુલેટર",
+    "simulation_demo": "સિમ્યુલેશન (ડેમો)",
     "display": "લોબી ડિસ્પ્લે",
-    "sign_out": "સાઇન આઉટ"
+    "lobby_display": "લોબી ડિસ્પ્લે",
+    "account": "મારું એકાઉન્ટ",
+    "my_account": "મારું એકાઉન્ટ",
+    "sign_out": "સાઇન આઉટ",
+    "confirm_sign_out": "સાઇન આઉટ પુષ્ટિ",
+    "confirm_sign_out_desc": "શું તમે ખરેખર સ્ટાફ પોર્ટલમાંથી સાઇન આઉટ કરવા માંગો છો?",
+    "section_workspace": "કાર્યસ્થળ",
+    "section_activity": "પ્રવૃત્તિ",
+    "section_tools": "સાધનો",
+    "section_account": "ખાતું",
+    "section_analysis": "વિશ્લેષણ"
+  },
+  "activity": {
+    "title": "આજની પ્રવૃત્તિ",
+    "subtitle": "તમારા કાઉન્ટર પર આજે સંભાળાયેલા ટોકન્સ અને સેવાની પરિસ્થિતિનું ઓડિટ લોગ.",
+    "kpi_served": "સેવા પૂરી પાડવામાં આવેલ",
+    "kpi_avg_time": "સરેરાશ સેવા સમય",
+    "kpi_noshow": "હાજર ન રહેલ",
+    "search_placeholder": "ટોકન કોડ અથવા નાગરિકના નામથી શોધો…",
+    "no_records": "તમારા ફિલ્ટર સાથે કોઈ પ્રવૃત્તિ મેળ ખાતી નથી."
+  },
+  "account": {
+    "title": "મારું એકાઉન્ટ",
+    "subtitle": "સ્ટાફ ઓળખ ઓળખપત્રો, કાર્યસ્થળ પસંદગીઓ અને સુરક્ષા નિયંત્રણો."
   },
   "login": {
     "title": "QueueLess ડેશબોર્ડ",

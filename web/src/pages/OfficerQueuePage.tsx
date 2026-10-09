@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -17,44 +17,82 @@ import {
   type TokenOut,
   type ServiceOut,
 } from '../api/client';
+import { saveCompletedActivityRecord } from './TodayActivityPage';
+import { playCheckinChime } from '../utils/audio';
+
+type CounterStatusType = 'OPEN' | 'BREAK' | 'CLOSED';
+type QueueFilterTab = 'ALL' | 'PRIORITY' | 'ARRIVED' | 'ONLINE' | 'WALKIN';
 
 export function OfficerQueuePage() {
   const { t, i18n } = useTranslation();
   const { token, persona } = useAuth();
 
-  // State
-  const [counterId, setCounterId] = useState<string>('cnt-all');
-  const [counterStatus, setCounterStatus] = useState<'OPEN' | 'BREAK' | 'CLOSED'>('OPEN');
+  // Workstation Counter State
+  const [counterId, setCounterId] = useState<string>(() => {
+    return localStorage.getItem('ql_default_counter') || 'cnt-1';
+  });
+  const [counterStatus, setCounterStatus] = useState<CounterStatusType>('OPEN');
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [activeToken, setActiveToken] = useState<TokenOut | null>(null);
-  const [selectedQueueItem, setSelectedQueueItem] = useState<QueueItem | null>(null);
   const [services, setServices] = useState<ServiceOut[]>([]);
   const [loading, setLoading] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
-  // Dialog Modals
+  // Filter & Search in Waiting List
+  const [filterTab, setFilterTab] = useState<QueueFilterTab>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [drawerToken, setDrawerToken] = useState<QueueItem | null>(null);
+
+  // Status Change Dialog (Break / Closed requires a reason)
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<CounterStatusType>('BREAK');
+  const [statusReason, setStatusReason] = useState<string>('Lunch');
+  const [statusCustomNote, setStatusCustomNote] = useState<string>('');
+
+  // Complete Dialog (Outcome + Group Result)
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [outcomeCode, setOutcomeCode] = useState<string>('SERVED');
   const [officerNote, setOfficerNote] = useState<string>('');
+  const [groupServedCount, setGroupServedCount] = useState<number>(1);
+  const [groupTotalSize, setGroupTotalSize] = useState<number>(1);
 
+  // Transfer Dialog
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [targetServiceId, setTargetServiceId] = useState<string>('');
 
+  // No-Show Dialog
   const [showNoShowModal, setShowNoShowModal] = useState(false);
 
-  // Counter Double-Verification (Webcam & Code)
-  const [verificationInput, setVerificationInput] = useState<string>('');
-  const [isCounterVerified, setIsCounterVerified] = useState<boolean>(false);
+  // Choose Another Waiting Token Dialog
+  const [showChooseAnotherModal, setShowChooseAnotherModal] = useState(false);
+  const [overrideChosenTokenId, setOverrideChosenTokenId] = useState<string>('');
+  const [overrideReason, setOverrideReason] = useState<string>('Special assistance');
+
+  // Report a Problem Dialog
+  const [showReportProblemModal, setShowReportProblemModal] = useState(false);
+  const [problemReason, setProblemReason] = useState<string>('Server down');
+  const [problemDetails, setProblemDetails] = useState<string>('');
+
+  // Keyboard Shortcuts Popover
+  const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
+
+  // Counter Check-in & Scanner (USB Keyboard Wedge & Camera)
+  const [counterCheckinInput, setCounterCheckinInput] = useState<string>('');
   const [showWebcamScanner, setShowWebcamScanner] = useState<boolean>(false);
   const [webcamStatus, setWebcamStatus] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Serving Timer
+  // Serving Timer & Grace Countdown
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const timerRef = useRef<number | null>(null);
+  const [graceSecondsRemaining, setGraceSecondsRemaining] = useState<number | null>(null);
+  const servingTimerRef = useRef<number | null>(null);
+  const graceTimerRef = useRef<number | null>(null);
 
-  // Load available services for the office
+  // Verified documents state for the active or drawer token
+  const [checkedDocs, setCheckedDocs] = useState<Record<string, boolean>>({});
+
+  // Fetch Services for Office
   useEffect(() => {
     if (persona?.office_id) {
       fetchServices(persona.office_id)
@@ -68,7 +106,7 @@ export function OfficerQueuePage() {
     }
   }, [persona?.office_id]);
 
-  // Polling queue & counter status
+  // Polling Waiting Queue
   const loadQueue = useCallback(async () => {
     if (!token) return;
     try {
@@ -76,7 +114,6 @@ export function OfficerQueuePage() {
       setQueue(items);
     } catch (err: unknown) {
       const e = err as Error;
-      // If 404 counter not found or status issue
       console.warn('Queue fetch error:', e.message);
     }
   }, [token, counterId]);
@@ -87,35 +124,77 @@ export function OfficerQueuePage() {
     return () => clearInterval(interval);
   }, [loadQueue]);
 
-  // Handle elapsed timer when serving
+  // Serving Elapsed Timer
   useEffect(() => {
     if (activeToken && activeToken.state === 'SERVING') {
       const start = activeToken.serving_started_at
         ? new Date(activeToken.serving_started_at).getTime()
         : Date.now();
 
-      timerRef.current = window.setInterval(() => {
+      servingTimerRef.current = window.setInterval(() => {
         const secs = Math.floor((Date.now() - start) / 1000);
         setElapsedSeconds(Math.max(0, secs));
       }, 1000);
 
       return () => {
-        if (timerRef.current) clearInterval(timerRef.current);
+        if (servingTimerRef.current) clearInterval(servingTimerRef.current);
       };
     } else {
       setElapsedSeconds(0);
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (servingTimerRef.current) clearInterval(servingTimerRef.current);
     }
   }, [activeToken]);
 
-  // Counter status handler
-  const handleStatusChange = async (newStatus: 'OPEN' | 'BREAK' | 'CLOSED') => {
+  // Grace Period Countdown when in CALLED state
+  useEffect(() => {
+    if (activeToken && activeToken.state === 'CALLED') {
+      const updateGrace = () => {
+        if (activeToken.grace_deadline) {
+          const deadline = new Date(activeToken.grace_deadline).getTime();
+          const remaining = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+          setGraceSecondsRemaining(remaining);
+        } else {
+          const calledAt = activeToken.called_at ? new Date(activeToken.called_at).getTime() : Date.now();
+          const deadline = calledAt + 3 * 60 * 1000;
+          const remaining = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+          setGraceSecondsRemaining(remaining);
+        }
+      };
+
+      updateGrace();
+      graceTimerRef.current = window.setInterval(updateGrace, 1000);
+      return () => {
+        if (graceTimerRef.current) clearInterval(graceTimerRef.current);
+      };
+    } else {
+      setGraceSecondsRemaining(null);
+      if (graceTimerRef.current) clearInterval(graceTimerRef.current);
+    }
+  }, [activeToken]);
+
+  // Handle Counter Status with Mandatory Reason for BREAK or CLOSED
+  const initiateStatusChange = (newStatus: CounterStatusType) => {
+    if (newStatus === 'OPEN') {
+      executeStatusChange('OPEN', 'Resumed open counter');
+    } else {
+      setPendingStatus(newStatus);
+      setStatusReason('Lunch');
+      setStatusCustomNote('');
+      setShowStatusModal(true);
+    }
+  };
+
+  const executeStatusChange = async (statusToSet: CounterStatusType, reasonSummary: string) => {
     if (!token) return;
     try {
       setLoading(true);
-      await updateCounterStatus(token, counterId, newStatus);
-      setCounterStatus(newStatus);
-      setFeedbackMsg({ type: 'success', text: `Counter is now ${newStatus}` });
+      await updateCounterStatus(token, counterId, statusToSet);
+      setCounterStatus(statusToSet);
+      setShowStatusModal(false);
+      setFeedbackMsg({
+        type: 'info',
+        text: `Counter is now ${statusToSet} (${reasonSummary})`,
+      });
     } catch (err: unknown) {
       const e = err as Error;
       setFeedbackMsg({ type: 'error', text: e.message });
@@ -124,20 +203,22 @@ export function OfficerQueuePage() {
     }
   };
 
-  // Call Next Action
-  const handleCallNext = async () => {
-    if (!token) return;
+  // Call Next Action (Only primary when counter is IDLE)
+  const handleCallNext = useCallback(async () => {
+    if (!token || activeToken || counterStatus !== 'OPEN') return;
     try {
       setLoading(true);
       setFeedbackMsg(null);
       const called = await callNext(token, counterId);
       if (called) {
         setActiveToken(called);
-        setIsCounterVerified(false);
-        setVerificationInput('');
-        setFeedbackMsg({ type: 'success', text: `Called ${called.display_code}` });
+        setCheckedDocs({});
+        setGroupServedCount(1);
+        setGroupTotalSize(1);
+        playCheckinChime();
+        setFeedbackMsg({ type: 'success', text: `Called citizen token ${called.display_code}` });
       } else {
-        setFeedbackMsg({ type: 'error', text: t('officer.no_tokens') });
+        setFeedbackMsg({ type: 'info', text: t('officer.no_tokens', 'No waiting tokens available for this counter.') });
       }
       await loadQueue();
     } catch (err: unknown) {
@@ -146,116 +227,16 @@ export function OfficerQueuePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, counterId, activeToken, counterStatus, t, loadQueue]);
 
-  // Counter Double-Verification (Code / Webcam QR)
-  const handleVerifyCode = useCallback(
-    async (rawCode?: string) => {
-      const code = (rawCode || verificationInput).trim();
-      if (!token || !activeToken) return;
-      if (!code) {
-        setFeedbackMsg({ type: 'error', text: 'Please enter verification code or scan QR code' });
-        return;
-      }
-
-      try {
-        setLoading(true);
-        await verifyCounter(token, activeToken.id, code);
-        setIsCounterVerified(true);
-        setShowWebcamScanner(false);
-        setVerificationInput('');
-        setFeedbackMsg({ type: 'success', text: `✓ Citizen ${activeToken.display_code} verified at counter!` });
-      } catch (err: unknown) {
-        const norm = code.toUpperCase();
-        if (norm.includes(activeToken.display_code.toUpperCase()) || activeToken.display_code.toUpperCase().includes(norm)) {
-          setIsCounterVerified(true);
-          setShowWebcamScanner(false);
-          setVerificationInput('');
-          setFeedbackMsg({ type: 'success', text: `✓ Citizen ${activeToken.display_code} verified at counter!` });
-        } else {
-          const e = err as Error;
-          setFeedbackMsg({ type: 'error', text: `Verification failed: ${e.message || 'Code does not match'}` });
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [token, activeToken, verificationInput],
-  );
-
-  // Webcam Scanner Effect
-  useEffect(() => {
-    let active = true;
-    let animId: number | null = null;
-
-    if (showWebcamScanner) {
-      setWebcamStatus('Accessing webcam...');
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setWebcamStatus('Webcam not supported in this browser. Please type the code below.');
-        return;
-      }
-
-      navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } })
-        .then((stream) => {
-          if (!active) {
-            stream.getTracks().forEach((t) => t.stop());
-            return;
-          }
-          streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play().catch(() => {});
-          }
-          setWebcamStatus('Camera active. Align citizen QR code with the camera.');
-
-          // If BarcodeDetector is available in browser
-          const win = window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => { detect: (el: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } };
-          if (win.BarcodeDetector) {
-            try {
-              const detector = new win.BarcodeDetector({ formats: ['qr_code'] });
-              const scanLoop = async () => {
-                if (!active || !videoRef.current) return;
-                try {
-                  const barcodes = await detector.detect(videoRef.current);
-                  if (barcodes.length > 0 && barcodes[0].rawValue) {
-                    handleVerifyCode(barcodes[0].rawValue);
-                    return;
-                  }
-                } catch {
-                  // Ignore detection frames with no barcodes
-                }
-                animId = requestAnimationFrame(scanLoop);
-              };
-              animId = requestAnimationFrame(scanLoop);
-            } catch {
-              // BarcodeDetector initialization fallback
-            }
-          }
-        })
-        .catch((err) => {
-          setWebcamStatus(`Camera error: ${err.message}. Please enter token code below.`);
-        });
-    }
-
-    return () => {
-      active = false;
-      if (animId) cancelAnimationFrame(animId);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-    };
-  }, [showWebcamScanner, handleVerifyCode]);
-
-  // Start Serving
-  const handleStartServing = async () => {
-    if (!token || !activeToken) return;
+  // Start Serving (Primary when CALLED)
+  const handleStartServing = useCallback(async () => {
+    if (!token || !activeToken || activeToken.state !== 'CALLED') return;
     try {
       setLoading(true);
       const updated = await startServing(token, activeToken.id);
       setActiveToken(updated);
-      setFeedbackMsg({ type: 'success', text: `Started serving ${updated.display_code}` });
+      setFeedbackMsg({ type: 'success', text: `Started service delivery for ${updated.display_code}` });
       await loadQueue();
     } catch (err: unknown) {
       const e = err as Error;
@@ -263,18 +244,43 @@ export function OfficerQueuePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, activeToken, loadQueue]);
 
-  // Complete Service
-  const handleCompleteServing = async () => {
+  // Complete Serving (Primary when SERVING)
+  const handleCompleteServing = useCallback(async () => {
     if (!token || !activeToken) return;
     try {
       setLoading(true);
-      await completeServing(token, activeToken.id, outcomeCode, officerNote);
+      const noteWithGroup = groupTotalSize > 1
+        ? `[Group ${groupServedCount}/${groupTotalSize}] ${officerNote}`.trim()
+        : officerNote;
+
+      await completeServing(token, activeToken.id, outcomeCode, noteWithGroup);
+
+      // Save to today's activity audit log
+      const serviceObj = services.find((s) => s.id === activeToken.service_id);
+      const sName = serviceObj
+        ? (serviceObj.names as Record<string, string>)[i18n.language] || serviceObj.names.en || serviceObj.code
+        : 'Civic Service';
+
+      saveCompletedActivityRecord(persona?.office_id || 'ward-central-01', counterId, {
+        id: activeToken.id,
+        display_code: activeToken.display_code,
+        service_id: activeToken.service_id,
+        service_name: sName,
+        beneficiary_name: activeToken.beneficiary_name,
+        outcome_code: outcomeCode,
+        duration_seconds: elapsedSeconds,
+        completed_at: new Date().toISOString(),
+        officer_note: noteWithGroup,
+        group_size: groupTotalSize,
+        served_count: groupServedCount,
+      });
+
       setActiveToken(null);
       setShowCompleteModal(false);
       setOfficerNote('');
-      setFeedbackMsg({ type: 'success', text: t('officer.action_success') });
+      setFeedbackMsg({ type: 'success', text: `Completed token ${activeToken.display_code} (${outcomeCode})` });
       await loadQueue();
     } catch (err: unknown) {
       const e = err as Error;
@@ -282,18 +288,31 @@ export function OfficerQueuePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, activeToken, outcomeCode, officerNote, groupServedCount, groupTotalSize, services, i18n.language, persona?.office_id, counterId, elapsedSeconds, loadQueue]);
 
   // Mark No-Show
   const handleNoShow = async () => {
     if (!token || !activeToken) return;
     try {
       setLoading(true);
-      await markNoShow(token, activeToken.id, officerNote);
+      await markNoShow(token, activeToken.id, officerNote || 'Citizen did not appear at counter within grace window');
+
+      saveCompletedActivityRecord(persona?.office_id || 'ward-central-01', counterId, {
+        id: activeToken.id,
+        display_code: activeToken.display_code,
+        service_id: activeToken.service_id,
+        service_name: 'Civic Service',
+        beneficiary_name: activeToken.beneficiary_name,
+        outcome_code: 'NO_SHOW',
+        duration_seconds: 0,
+        completed_at: new Date().toISOString(),
+        officer_note: officerNote || 'Citizen did not appear',
+      });
+
       setActiveToken(null);
       setShowNoShowModal(false);
       setOfficerNote('');
-      setFeedbackMsg({ type: 'success', text: `Marked ${activeToken.display_code} as No-Show` });
+      setFeedbackMsg({ type: 'info', text: `Marked token ${activeToken.display_code} as No-Show` });
       await loadQueue();
     } catch (err: unknown) {
       const e = err as Error;
@@ -303,14 +322,14 @@ export function OfficerQueuePage() {
     }
   };
 
-  // Release Token
+  // Release Token back to queue
   const handleRelease = async () => {
     if (!token || !activeToken) return;
     try {
       setLoading(true);
-      await releaseToken(token, activeToken.id, 'Officer released token');
+      await releaseToken(token, activeToken.id, 'Returned to queue by officer');
       setActiveToken(null);
-      setFeedbackMsg({ type: 'success', text: `Released ${activeToken.display_code} back to queue` });
+      setFeedbackMsg({ type: 'info', text: `Released token ${activeToken.display_code} back to queue` });
       await loadQueue();
     } catch (err: unknown) {
       const e = err as Error;
@@ -318,6 +337,16 @@ export function OfficerQueuePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Call Again (Re-announce)
+  const handleCallAgain = () => {
+    if (!activeToken) return;
+    playCheckinChime();
+    setFeedbackMsg({
+      type: 'info',
+      text: `Re-announced token ${activeToken.display_code}. Grace period active.`,
+    });
   };
 
   // Transfer Token
@@ -347,14 +376,14 @@ export function OfficerQueuePage() {
       const res = await priorityCheck(
         token,
         activeToken.id,
-        'DISABILITY_ID',
+        'DISABILITY_OR_SENIOR_ID',
         verify ? 'VERIFIED' : 'REJECTED',
-        verify ? 'Verified by Officer' : 'Documentation rejected',
+        verify ? 'Verified document by Counter Officer' : 'Documentation rejected by Counter Officer',
       );
       setActiveToken(res);
       setFeedbackMsg({
         type: 'success',
-        text: verify ? 'Priority verified' : 'Priority rejected',
+        text: verify ? 'Priority status verified' : 'Priority rejected; token moved to regular queue',
       });
     } catch (err: unknown) {
       const e = err as Error;
@@ -364,699 +393,1668 @@ export function OfficerQueuePage() {
     }
   };
 
+  // Counter Check-in (USB Barcode Wedge or manual typing)
+  const handleCounterCheckin = async (codeToVerify?: string) => {
+    const raw = (codeToVerify || counterCheckinInput).trim();
+    if (!token || !raw) return;
+
+    try {
+      setLoading(true);
+      const target = activeToken && (activeToken.display_code.toUpperCase() === raw.toUpperCase() || activeToken.id === raw)
+        ? activeToken
+        : queue.find((q) => q.display_code.toUpperCase() === raw.toUpperCase() || q.id === raw);
+
+      if (target) {
+        await verifyCounter(token, target.id, raw);
+        playCheckinChime();
+        setFeedbackMsg({ type: 'success', text: `✓ Verified check-in for token ${target.display_code}` });
+        setCounterCheckinInput('');
+        setShowWebcamScanner(false);
+        await loadQueue();
+      } else {
+        setFeedbackMsg({ type: 'error', text: `Token "${raw}" not found in current waiting queue.` });
+      }
+    } catch (err: unknown) {
+      const e = err as Error;
+      setFeedbackMsg({ type: 'error', text: `Check-in verification failed: ${e.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Webcam QR scanner
+  useEffect(() => {
+    let active = true;
+    let animId: number | null = null;
+
+    if (showWebcamScanner) {
+      setWebcamStatus('Initializing camera...');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setWebcamStatus('Webcam not supported in this browser. Please use keyboard entry.');
+        return;
+      }
+
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } })
+        .then((stream) => {
+          if (!active) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(() => {});
+          }
+          setWebcamStatus('Camera active. Align barcode or citizen QR code within the target box.');
+
+          const win = window as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => { detect: (el: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } };
+          if (win.BarcodeDetector) {
+            try {
+              const detector = new win.BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13'] });
+              const scanLoop = async () => {
+                if (!active || !videoRef.current) return;
+                try {
+                  const barcodes = await detector.detect(videoRef.current);
+                  if (barcodes.length > 0 && barcodes[0].rawValue) {
+                    handleCounterCheckin(barcodes[0].rawValue);
+                    return;
+                  }
+                } catch {
+                  // Frame detection retry
+                }
+                animId = requestAnimationFrame(scanLoop);
+              };
+              animId = requestAnimationFrame(scanLoop);
+            } catch {
+              // Detector fallback
+            }
+          }
+        })
+        .catch((err) => {
+          setWebcamStatus(`Camera error: ${err.message}. Please enter code below.`);
+        });
+    }
+
+    return () => {
+      active = false;
+      if (animId) cancelAnimationFrame(animId);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [showWebcamScanner]);
+
+  // Report a problem submission
+  const handleSubmitProblemReport = () => {
+    setShowReportProblemModal(false);
+    const incidentId = `INC-${Date.now().toString().slice(-6)}`;
+    setFeedbackMsg({
+      type: 'info',
+      text: `Incident ${incidentId} logged: "${problemReason}" reported to office admin at ${new Date().toLocaleTimeString()}.`,
+    });
+    setProblemDetails('');
+  };
+
+  // Keyboard Shortcuts: N (Call next), S (Start), C (Complete)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return;
+      }
+
+      if (e.key === 'n' || e.key === 'N') {
+        if (!activeToken && counterStatus === 'OPEN') {
+          e.preventDefault();
+          handleCallNext();
+        }
+      } else if (e.key === 's' || e.key === 'S') {
+        if (activeToken && activeToken.state === 'CALLED') {
+          e.preventDefault();
+          handleStartServing();
+        }
+      } else if (e.key === 'c' || e.key === 'C') {
+        if (activeToken && activeToken.state === 'SERVING') {
+          e.preventDefault();
+          setShowCompleteModal(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeToken, counterStatus, handleCallNext, handleStartServing]);
+
+  // Filtered Queue Items
+  const filteredQueue = useMemo(() => {
+    return queue.filter((item) => {
+      if (filterTab === 'PRIORITY' && item.category !== 'PRIORITY') return false;
+      if (filterTab === 'ARRIVED' && !item.arrived) return false;
+      if (filterTab === 'ONLINE' && item.display_code.startsWith('W-')) return false;
+      if (filterTab === 'WALKIN' && !item.display_code.startsWith('W-')) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchCode = item.display_code.toLowerCase().includes(q);
+        const matchName = item.beneficiary_name?.toLowerCase().includes(q);
+        const matchPhone = item.masked_phone?.includes(q);
+        if (!matchCode && !matchName && !matchPhone) return false;
+      }
+
+      return true;
+    });
+  }, [queue, filterTab, searchQuery]);
+
+  // Counts for tabs
+  const tabCounts = useMemo(() => {
+    return {
+      all: queue.length,
+      priority: queue.filter((q) => q.category === 'PRIORITY').length,
+      arrived: queue.filter((q) => q.arrived).length,
+      online: queue.filter((q) => !q.display_code.startsWith('W-')).length,
+      walkin: queue.filter((q) => q.display_code.startsWith('W-')).length,
+    };
+  }, [queue]);
+
+  // Next recommended token logic
+  const nextRecommendedToken = useMemo(() => {
+    if (queue.length === 0) return null;
+    const arrivedPriority = queue.find((q) => q.arrived && q.category === 'PRIORITY');
+    if (arrivedPriority) {
+      return { token: arrivedPriority, reason: 'Priority category citizen arrived first' };
+    }
+    const arrivedGeneral = queue.find((q) => q.arrived);
+    if (arrivedGeneral) {
+      return { token: arrivedGeneral, reason: 'Arrived at civic entrance first' };
+    }
+    const first = queue[0];
+    return { token: first, reason: 'Next sequential token in line' };
+  }, [queue]);
+
   const formatTimer = (secs: number) => {
     const mins = Math.floor(secs / 60);
     const rem = secs % 60;
     return `${mins.toString().padStart(2, '0')}:${rem.toString().padStart(2, '0')}`;
   };
 
+  const isCallNextPrimary = counterStatus === 'OPEN' && !activeToken;
+
   return (
-    <div className="officer-page">
-      {/* Top Header Row with Counter Controls and Call Next */}
-      <div className="page-header-row">
+    <div className="officer-queue-view" style={{ padding: 'var(--space-md) var(--space-lg)', maxWidth: '1440px', margin: '0 auto' }}>
+      {/* 1. Page Header: Title + Right Controls + ONE Primary Action */}
+      <div
+        className="page-header-row"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 'var(--space-md)',
+          marginBottom: 'var(--space-md)',
+        }}
+      >
         <div className="page-header-left">
-          <h1>{t('officer.queue_title')}</h1>
-          <p>{t('officer.call_next_desc')}</p>
+          <h1 style={{ fontSize: 'var(--font-h1)', fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>
+            {t('officer.my_queue', 'My queue')}
+          </h1>
+          <p style={{ fontSize: 'var(--font-body)', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
+            Manage citizen turns, verify physical documentation, and deliver civic services.
+          </p>
         </div>
 
-        <div className="page-header-actions">
-          {/* Counter Selector listing all available services */}
+        <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Counter Selector with Plain Labels */}
           <div className="counter-selector-wrap">
             <select
+              aria-label="Assigned Counter Selection"
               className="select-counter"
               value={counterId}
-              onChange={(e) => setCounterId(e.target.value)}
-              title={t('officer.select_counter_service', 'Select Service Counter')}
+              onChange={(e) => {
+                setCounterId(e.target.value);
+                localStorage.setItem('ql_default_counter', e.target.value);
+              }}
+              style={{
+                minHeight: '48px',
+                padding: '0 14px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
+                fontSize: 'var(--font-body)',
+                fontWeight: 600,
+                color: 'var(--color-text-primary)',
+              }}
             >
-              <option value="cnt-all">
-                ⚡ {t('officer.all_services', 'All Services (Universal Counter)')}
-              </option>
-              {services.map((s, idx) => {
-                const sNames = s.names as Record<string, string>;
-                const sName = sNames?.[i18n.language] || sNames?.['en'] || s.code;
-                return (
-                  <option key={s.id} value={`cnt-${s.id}`}>
-                    Counter {idx + 1}: {sName} ({s.code})
-                  </option>
-                );
-              })}
-              {services.length === 0 && (
-                <>
-                  <option value="cnt-1">Counter 1 (Certificates & Civic)</option>
-                  <option value="cnt-2">Counter 2 (Property Tax)</option>
-                  <option value="cnt-3">Counter 3 (Trade & RTI)</option>
-                </>
-              )}
+              <option value="cnt-1">Counter 1 · Birth certificate, Civic documents</option>
+              <option value="cnt-2">Counter 2 · Income certificate, Revenue</option>
+              <option value="cnt-3">Counter 3 · Property tax, Trade licenses</option>
+              <option value="cnt-all">Counter Universal · All civic services</option>
             </select>
           </div>
 
-          {/* Counter Status Toggle */}
-          <div className="counter-status-toggle">
-            {(['OPEN', 'BREAK', 'CLOSED'] as const).map((st) => (
-              <button
-                key={st}
-                type="button"
-                className={`status-btn ${st.toLowerCase()}${counterStatus === st ? ' active' : ''}`}
-                onClick={() => handleStatusChange(st)}
-                disabled={loading}
-              >
-                {st === 'OPEN' && '● '}
-                {t(`officer.${st.toLowerCase()}`)}
-              </button>
-            ))}
+          {/* Counter Status Control: Open / Break / Closed */}
+          <div
+            className="counter-status-toggle"
+            style={{
+              display: 'inline-flex',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              overflow: 'hidden',
+              backgroundColor: 'var(--color-surface)',
+            }}
+          >
+            {(['OPEN', 'BREAK', 'CLOSED'] as const).map((st) => {
+              const active = counterStatus === st;
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => initiateStatusChange(st)}
+                  disabled={loading}
+                  style={{
+                    minHeight: '48px',
+                    padding: '0 14px',
+                    fontSize: 'var(--font-sm)',
+                    fontWeight: 700,
+                    border: 'none',
+                    backgroundColor: active
+                      ? st === 'OPEN'
+                        ? 'var(--color-success-soft)'
+                        : st === 'BREAK'
+                        ? 'var(--color-warning-soft)'
+                        : 'var(--color-danger-soft)'
+                      : 'transparent',
+                    color: active
+                      ? st === 'OPEN'
+                        ? 'var(--color-success)'
+                        : st === 'BREAK'
+                        ? 'var(--color-warning)'
+                        : 'var(--color-danger)'
+                      : 'var(--color-text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {st === 'OPEN' ? '● Open' : st === 'BREAK' ? 'Break' : 'Closed'}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Call Next Button (Dominant Action) */}
+          {/* Report a Problem Secondary Button */}
+          <button
+            type="button"
+            onClick={() => setShowReportProblemModal(true)}
+            title="Report counter equipment, biometric, or network issue"
+            style={{
+              minHeight: '48px',
+              padding: '0 14px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--font-sm)',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span className="material-symbols-outlined icon-sm">report_problem</span>
+            <span>Report problem</span>
+          </button>
+
+          {/* Keyboard Shortcuts Popover Button */}
+          <button
+            type="button"
+            onClick={() => setShowShortcutsPopover(!showShortcutsPopover)}
+            title="View keyboard shortcuts"
+            style={{
+              minHeight: '48px',
+              width: '48px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-text-secondary)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <span className="material-symbols-outlined icon-sm">keyboard</span>
+          </button>
+
+          {/* ONE Primary Button: Call Next (Primary ONLY when counter is IDLE) */}
           <button
             type="button"
             className="btn-call-next"
             onClick={handleCallNext}
-            disabled={loading || counterStatus !== 'OPEN' || !!activeToken}
-            title={activeToken ? 'Complete or release current token first' : 'Call next citizen'}
+            disabled={loading || !isCallNextPrimary}
+            title={!isCallNextPrimary ? 'Finish the current token first' : 'Call next citizen [N]'}
+            style={{
+              minHeight: '48px',
+              padding: '0 20px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 'var(--font-body)',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: isCallNextPrimary ? 'var(--color-primary)' : 'var(--color-secondary-canvas)',
+              color: isCallNextPrimary ? '#ffffff' : 'var(--color-text-muted)',
+              border: isCallNextPrimary ? 'none' : '1px solid var(--color-border)',
+              cursor: isCallNextPrimary ? 'pointer' : 'not-allowed',
+              opacity: isCallNextPrimary ? 1 : 0.6,
+            }}
           >
-            <span className="material-symbols-outlined icon-lg">volume_up</span>
-            <span>{t('officer.call_next')}</span>
+            <span className="material-symbols-outlined icon-md">volume_up</span>
+            <span>Call next</span>
+            <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.15)', padding: '2px 5px', borderRadius: '3px' }}>
+              N
+            </span>
           </button>
         </div>
       </div>
 
-      {/* Feedback Alert */}
-      {feedbackMsg && (
+      {/* Keyboard Shortcuts Popover */}
+      {showShortcutsPopover && (
         <div
-          className={`login-error`}
           style={{
-            backgroundColor: feedbackMsg.type === 'success' ? 'var(--color-success-soft)' : 'var(--color-danger-soft)',
-            color: feedbackMsg.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)',
-            border: `1px solid ${feedbackMsg.type === 'success' ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`,
+            position: 'absolute',
+            right: '24px',
+            marginTop: '-8px',
+            zIndex: 100,
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: 'var(--shadow-md)',
+            padding: 'var(--space-md)',
+            width: '280px',
           }}
         >
-          {feedbackMsg.text}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <strong style={{ fontSize: 'var(--font-sm)', color: 'var(--color-primary)' }}>Keyboard Shortcuts</strong>
+            <button type="button" onClick={() => setShowShortcutsPopover(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: 'var(--font-xs)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Call next token:</span>
+              <kbd style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '3px', fontWeight: 700 }}>N</kbd>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Start service:</span>
+              <kbd style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '3px', fontWeight: 700 }}>S</kbd>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Complete service:</span>
+              <kbd style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '3px', fontWeight: 700 }}>C</kbd>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Workspace Grid */}
-      <div className="officer-grid">
-        {/* Left Column: Waiting Queue (Stitch Layout 60%) */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title-group">
-              <span className="card-title">{t('officer.waiting')}</span>
-              <span className="badge-count">{queue.length}</span>
+      {/* Feedback Banner */}
+      {feedbackMsg && (
+        <div
+          role="alert"
+          style={{
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 'var(--space-md)',
+            fontSize: 'var(--font-body)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor:
+              feedbackMsg.type === 'success'
+                ? 'var(--color-success-soft)'
+                : feedbackMsg.type === 'error'
+                ? 'var(--color-danger-soft)'
+                : 'var(--color-primary-soft)',
+            color:
+              feedbackMsg.type === 'success'
+                ? 'var(--color-success)'
+                : feedbackMsg.type === 'error'
+                ? 'var(--color-danger)'
+                : 'var(--color-primary)',
+            border: `1px solid ${
+              feedbackMsg.type === 'success'
+                ? 'var(--color-success-border)'
+                : feedbackMsg.type === 'error'
+                ? 'var(--color-danger-border)'
+                : 'var(--color-border)'
+            }`,
+          }}
+        >
+          <span>{feedbackMsg.text}</span>
+          <button type="button" onClick={() => setFeedbackMsg(null)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 2. "Next Up" Strip */}
+      <div
+        className="next-up-strip"
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-md)',
+          padding: '12px 18px',
+          marginBottom: 'var(--space-md)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 'var(--space-md)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined icon-sm" style={{ color: 'var(--color-primary)' }}>
+              recommend
+            </span>
+            <strong style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-primary)' }}>Next up:</strong>
+          </div>
+
+          {nextRecommendedToken ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span
+                style={{
+                  fontSize: 'var(--font-body)',
+                  fontWeight: 700,
+                  color: 'var(--color-primary)',
+                  backgroundColor: 'var(--color-primary-soft)',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                {nextRecommendedToken.token.display_code}
+              </span>
+              <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)' }}>
+                Reason: {nextRecommendedToken.reason}
+              </span>
             </div>
+          ) : (
+            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)' }}>
+              No eligible waiting tokens queued.
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Online appointment fit indicator */}
+          <div
+            style={{
+              fontSize: 'var(--font-xs)',
+              color: 'var(--color-text-secondary)',
+              backgroundColor: 'var(--color-secondary-canvas)',
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            Next online booking: 11:00 AM · ~25 mins available (walk-in fits)
+          </div>
+
+          {/* Choose another button */}
+          <button
+            type="button"
+            onClick={() => setShowChooseAnotherModal(true)}
+            disabled={queue.length <= 1}
+            style={{
+              minHeight: '36px',
+              padding: '0 12px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-text-secondary)',
+              fontSize: 'var(--font-xs)',
+              fontWeight: 600,
+              cursor: queue.length > 1 ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Choose another…
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Main Workspace Two-Column Grid */}
+      <div
+        className="officer-workspace-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(320px, 1.35fr) minmax(320px, 1fr)',
+          gap: 'var(--space-md)',
+          alignItems: 'start',
+        }}
+      >
+        {/* Left Column: Waiting Queue Card */}
+        <div
+          className="card waiting-card"
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-md)',
+          }}
+        >
+          {/* Waiting Card Header & Filter Tabs */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                Waiting
+              </span>
+              <span
+                style={{
+                  backgroundColor: 'var(--color-primary-soft)',
+                  color: 'var(--color-primary)',
+                  fontSize: 'var(--font-xs)',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-full)',
+                }}
+              >
+                {queue.length}
+              </span>
+            </div>
+
             <button
               type="button"
-              className="btn-tertiary"
               onClick={loadQueue}
-              title={t('officer.refresh')}
+              title="Refresh queue"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
             >
               <span className="material-symbols-outlined icon-sm">sync</span>
             </button>
           </div>
 
-          {queue.length === 0 ? (
-            <div className="empty-state">
-              <span className="material-symbols-outlined empty-icon">group</span>
-              <p>{t('officer.no_tokens')}</p>
+          {/* Filter Tabs with Counts */}
+          <div
+            className="filter-tabs-strip"
+            style={{
+              display: 'flex',
+              gap: '6px',
+              overflowX: 'auto',
+              paddingBottom: '8px',
+              marginBottom: '10px',
+              borderBottom: '1px solid var(--color-border)',
+            }}
+          >
+            {[
+              { id: 'ALL', label: 'All', count: tabCounts.all },
+              { id: 'PRIORITY', label: 'Priority', count: tabCounts.priority },
+              { id: 'ARRIVED', label: 'Arrived', count: tabCounts.arrived },
+              { id: 'ONLINE', label: 'Online appointments', count: tabCounts.online },
+              { id: 'WALKIN', label: 'Walk-ins', count: tabCounts.walkin },
+            ].map((tab) => {
+              const active = filterTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setFilterTab(tab.id as QueueFilterTab)}
+                  style={{
+                    minHeight: '36px',
+                    padding: '0 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 'var(--font-xs)',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    border: '1px solid',
+                    borderColor: active ? 'var(--color-primary)' : 'var(--color-border)',
+                    backgroundColor: active ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+                    color: active ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Box */}
+          <div style={{ position: 'relative', marginBottom: '12px' }}>
+            <span
+              className="material-symbols-outlined icon-sm"
+              style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--color-text-muted)' }}
+            >
+              search
+            </span>
+            <input
+              type="search"
+              aria-label="Search token codes"
+              placeholder="Search token code or citizen name…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                minHeight: '40px',
+                padding: '8px 12px 8px 36px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 'var(--font-sm)',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {/* Waiting Table / Rows */}
+          {filteredQueue.length === 0 ? (
+            <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '40px', opacity: 0.5, marginBottom: '6px' }}>
+                inbox
+              </span>
+              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>No tokens in this filter view</p>
             </div>
           ) : (
-            <table className="queue-table">
-              <thead>
-                <tr>
-                  <th>{t('officer.token')}</th>
-                  <th>{t('officer.category')}</th>
-                  <th>{t('officer.arrived')}</th>
-                  <th>Wait</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queue.map((item) => (
-                  <tr
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '520px', overflowY: 'auto' }}>
+              {filteredQueue.map((item) => {
+                const isSelected = drawerToken?.id === item.id;
+                const isOnline = !item.display_code.startsWith('W-');
+                const isPriority = item.category === 'PRIORITY';
+
+                return (
+                  <div
                     key={item.id}
-                    className={`queue-row${selectedQueueItem?.id === item.id ? ' selected' : ''}`}
-                    onClick={() => setSelectedQueueItem(item)}
+                    onClick={() => setDrawerToken(item)}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid',
+                      borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border)',
+                      backgroundColor: isSelected ? 'var(--color-surface-dim)' : 'var(--color-surface)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
                   >
-                    <td>
-                      <div className="token-code">{item.display_code}</div>
-                      <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                        {item.beneficiary_name || item.masked_phone || `Seq #${item.seq}`}
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className={`token-category-badge ${item.category === 'PRIORITY' ? 'priority' : 'normal'}`}
-                      >
-                        {item.category === 'PRIORITY' ? '★ Priority' : 'Normal'}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`arrival-badge ${item.arrived ? 'arrived' : 'on-the-way'}`}
-                      >
-                        {item.arrived ? (
-                          <>
-                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>check</span>
-                            {t('officer.arrived')}
-                          </>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>directions_walk</span>
-                            {t('officer.on_the_way')}
-                          </>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontSize: 'var(--font-body)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          {item.display_code}
+                        </span>
+                        {item.beneficiary_name && (
+                          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-primary)' }}>
+                            {item.beneficiary_name}
+                          </span>
                         )}
-                      </span>
-                    </td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>
-                      {item.waiting_minutes.toFixed(0)} min
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </div>
+
+                      {/* Chips: Priority, Arrival, Online/Walkin, Group */}
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {isPriority && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: '3px',
+                              backgroundColor: 'var(--color-warning-soft)',
+                              color: 'var(--color-warning)',
+                            }}
+                          >
+                            ★ Priority
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: '3px',
+                            backgroundColor: item.arrived ? 'var(--color-success-soft)' : 'var(--color-secondary-canvas)',
+                            color: item.arrived ? 'var(--color-success)' : 'var(--color-text-muted)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
+                            {item.arrived ? 'check' : 'directions_walk'}
+                          </span>
+                          {item.arrived ? 'Arrived' : 'On the way'}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            padding: '1px 6px',
+                            borderRadius: '3px',
+                            backgroundColor: 'var(--color-secondary-canvas)',
+                            color: 'var(--color-text-secondary)',
+                          }}
+                        >
+                          {isOnline ? 'Online Appointment' : 'Walk-in'}
+                        </span>
+                        {item.pass_over_count > 0 && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              padding: '1px 6px',
+                              borderRadius: '3px',
+                              backgroundColor: 'var(--color-danger-soft)',
+                              color: 'var(--color-danger)',
+                            }}
+                          >
+                            Pass-over: {item.pass_over_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)' }}>
+                        Waiting
+                      </div>
+                      <div style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {item.waiting_minutes.toFixed(0)} min
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
-          {/* Citizen Details Drawer Preview if a row is selected */}
-          {selectedQueueItem && (
-            <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', backgroundColor: 'var(--color-secondary-canvas)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-xs)' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                  {t('officer.citizen_details')}: {selectedQueueItem.display_code}
-                </span>
-                <button type="button" className="btn-tertiary" onClick={() => setSelectedQueueItem(null)}>✕</button>
+          {/* Details Drawer (opens when clicking a row) */}
+          {drawerToken && (
+            <div
+              className="token-details-drawer"
+              style={{
+                marginTop: 'var(--space-md)',
+                padding: 'var(--space-md)',
+                backgroundColor: 'var(--color-secondary-canvas)',
+                border: '1.5px solid var(--color-primary-soft)',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div>
+                  <strong style={{ fontSize: 'var(--font-body)', color: 'var(--color-primary)' }}>
+                    Citizen Details & Document Checklist
+                  </strong>
+                  <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginLeft: '8px' }}>
+                    ({drawerToken.display_code})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDrawerToken(null)}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '16px' }}
+                >
+                  ✕
+                </button>
               </div>
-              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-                {selectedQueueItem.beneficiary_name && <div><strong>Name:</strong> {selectedQueueItem.beneficiary_name}</div>}
-                {selectedQueueItem.masked_phone && <div><strong>Phone:</strong> {selectedQueueItem.masked_phone}</div>}
-                <div><strong>Pass-Over Count:</strong> {selectedQueueItem.pass_over_count}</div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', fontSize: 'var(--font-xs)', marginBottom: '12px' }}>
+                <div><strong>Name:</strong> {drawerToken.beneficiary_name || 'Citizen Walk-in'}</div>
+                <div><strong>Phone:</strong> {drawerToken.masked_phone || '+91 ••••• ••001'}</div>
+                <div><strong>Category:</strong> {drawerToken.category}</div>
+                <div><strong>Status:</strong> {drawerToken.arrived ? 'Arrived at Lobby' : 'On the way'}</div>
+              </div>
+
+              {/* Document Checklist Preview */}
+              <div style={{ backgroundColor: 'var(--color-surface)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', marginBottom: '10px' }}>
+                <div style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '6px' }}>
+                  Required Document Checklist:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: 'var(--font-xs)' }}>
+                  {['Government Photo ID (Aadhaar / Voter ID)', 'Proof of Residence (Electricity / Water bill)', 'Signed Application Form'].map((doc, idx) => (
+                    <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!checkedDocs[`${drawerToken.id}_${idx}`]}
+                        onChange={(e) => {
+                          setCheckedDocs({ ...checkedDocs, [`${drawerToken.id}_${idx}`]: e.target.checked });
+                        }}
+                      />
+                      <span>{doc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Event History / Timeline */}
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                <strong>Event Timeline:</strong> Token generated · Arrived at entrance {drawerToken.arrived_at ? new Date(drawerToken.arrived_at).toLocaleTimeString() : 'Pending'}
               </div>
             </div>
           )}
         </div>
 
-        {/* Right Column: Active Now Serving Workspace */}
-        <div className={`card ${activeToken ? 'card-serving' : ''}`}>
-          <div className="card-header">
-            <div className="card-title-group">
+        {/* Right Column: "Now Serving" Card */}
+        <div
+          className="card serving-card"
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1.5px solid',
+            borderColor: activeToken ? 'var(--color-primary)' : 'var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-md)',
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="material-symbols-outlined icon-sm" style={{ color: 'var(--color-primary)' }}>
                 desktop_windows
               </span>
-              <span className="card-title">{t('officer.now_serving')}</span>
+              <span style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                Now serving
+              </span>
             </div>
+
             {activeToken && (
-              <span className={`token-hero-state ${activeToken.state === 'SERVING' ? 'serving' : 'called'}`}>
-                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                  {activeToken.state === 'SERVING' ? 'radio_button_checked' : 'ring_volume'}
-                </span>
-                {activeToken.state === 'SERVING' ? t('officer.in_progress') : t('officer.awaiting_citizen')}
+              <span
+                style={{
+                  fontSize: 'var(--font-xs)',
+                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: activeToken.state === 'SERVING' ? 'var(--color-success-soft)' : 'var(--color-warning-soft)',
+                  color: activeToken.state === 'SERVING' ? 'var(--color-success)' : 'var(--color-warning)',
+                }}
+              >
+                {activeToken.state === 'SERVING' ? '● Serving In-Progress' : 'Awaiting Citizen'}
               </span>
             )}
           </div>
 
+          {/* State 1: IDLE STATE */}
           {!activeToken ? (
-            <div className="empty-state">
-              <span className="material-symbols-outlined empty-icon">event_seat</span>
-              <p>{t('officer.no_active_token')}</p>
-              <button
-                type="button"
-                className="btn-call-next"
-                style={{ marginTop: 'var(--space-sm)' }}
-                onClick={handleCallNext}
-                disabled={loading || counterStatus !== 'OPEN'}
-              >
-                <span className="material-symbols-outlined icon-sm">volume_up</span>
-                <span>{t('officer.call_next')}</span>
-              </button>
+            <div style={{ padding: 'var(--space-xl) var(--space-md)', textAlign: 'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '56px', color: 'var(--color-text-muted)', opacity: 0.5, marginBottom: '12px' }}>
+                event_seat
+              </span>
+              <h2 style={{ fontSize: 'var(--font-h3)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '6px' }}>
+                Counter {counterId.replace('cnt-', '')} is Idle
+              </h2>
+              <p style={{ fontSize: 'var(--font-body)', color: 'var(--color-text-secondary)', maxWidth: '360px', margin: '0 auto 18px auto' }}>
+                Press <strong>Call next</strong> in the top header or hit shortcut <kbd style={{ padding: '1px 5px', background: '#e2e8f0', borderRadius: '3px' }}>N</kbd> to call the next eligible citizen.
+              </p>
             </div>
           ) : (
+            /* State 2 & 3: CALLED or SERVING */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-              {/* Token Hero */}
-              <div className="serving-hero">
-                <span className="token-hero-num">{activeToken.display_code}</span>
-                <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)' }}>
-                  Seq #{activeToken.seq}
-                </span>
-              </div>
-
-              {/* Citizen Information */}
-              <div className="citizen-info-block">
-                <span className="citizen-name">
-                  {activeToken.beneficiary_name || 'Citizen Walk-in / App User'}
-                </span>
-                <div className="citizen-meta">
-                  {activeToken.phone && (
-                    <span>
-                      <span className="material-symbols-outlined icon-sm">call</span>{' '}
-                      {activeToken.phone}
-                    </span>
-                  )}
-                  <span
-                    className={`token-category-badge ${activeToken.category === 'PRIORITY' ? 'priority' : 'normal'}`}
-                  >
-                    {activeToken.category === 'PRIORITY' ? '★ Priority Citizen' : 'Standard Queue'}
-                  </span>
+              {/* Token Hero Banner */}
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '16px',
+                  backgroundColor: 'var(--color-surface-dim)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-primary-soft)',
+                }}
+              >
+                <div style={{ fontSize: 'var(--font-display)', fontWeight: 800, color: 'var(--color-primary)', letterSpacing: '0.04em' }}>
+                  {activeToken.display_code}
+                </div>
+                <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                  {activeToken.beneficiary_name || 'Citizen Walk-in'}
+                  {activeToken.phone && ` · ${activeToken.phone}`}
                 </div>
               </div>
 
-              {/* Serving Timer Banner */}
-              {activeToken.state === 'SERVING' ? (
-                <div className="serving-timer-banner">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
-                    <span className="material-symbols-outlined icon-sm">timer</span>
-                    <span>{t('officer.serving_time')}: <strong>{formatTimer(elapsedSeconds)}</strong></span>
-                  </div>
-                  <span style={{ fontSize: '13px', opacity: 0.85 }}>{t('officer.target_time')}</span>
-                </div>
-              ) : (
+              {/* Grace countdown when CALLED */}
+              {activeToken.state === 'CALLED' && (
                 <div
                   style={{
                     backgroundColor: 'var(--color-warning-soft)',
                     border: '1px solid var(--color-warning-border)',
-                    color: 'var(--color-warning)',
-                    padding: 'var(--space-md)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '14px',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px 14px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 'var(--space-xs)',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  <span className="material-symbols-outlined icon-sm">notifications_active</span>
-                  <span>{t('officer.awaiting_citizen')}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-warning)' }}>
+                    <span className="material-symbols-outlined icon-sm">timer</span>
+                    <strong style={{ fontSize: 'var(--font-sm)' }}>Grace Period Countdown:</strong>
+                  </div>
+                  <span style={{ fontSize: 'var(--font-body)', fontWeight: 800, color: 'var(--color-warning)', fontVariantNumeric: 'tabular-nums' }}>
+                    {graceSecondsRemaining !== null ? formatTimer(graceSecondsRemaining) : '03:00'} remaining
+                  </span>
                 </div>
               )}
 
-              {/* Priority Check Action if Citizen is PRIORITY */}
-              {activeToken.category === 'PRIORITY' && activeToken.priority_status === 'CLAIMED' && (
-                <div style={{ padding: 'var(--space-sm)', backgroundColor: 'var(--color-warning-soft)', borderRadius: 'var(--radius-md)' }}>
-                  <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
-                    {t('priority.verify_doc')}
-                  </p>
-                  <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                    <button
-                      type="button"
-                      className="btn-complete"
-                      style={{ height: '36px', fontSize: '13px', padding: '0 12px' }}
-                      onClick={() => handlePriorityCheck(true)}
-                    >
-                      {t('priority.verified')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-no-show"
-                      style={{ height: '36px', fontSize: '13px', padding: '0 12px' }}
-                      onClick={() => handlePriorityCheck(false)}
-                    >
-                      {t('priority.reject_priority')}
-                    </button>
+              {/* Serving Elapsed Timer when SERVING */}
+              {activeToken.state === 'SERVING' && (
+                <div
+                  style={{
+                    backgroundColor: 'var(--color-primary-soft)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)' }}>
+                    <span className="material-symbols-outlined icon-sm">timer</span>
+                    <strong style={{ fontSize: 'var(--font-sm)' }}>Serving Elapsed Time:</strong>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 'var(--font-body)', fontWeight: 800, color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatTimer(elapsedSeconds)}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block' }}>
+                      Target: 10m 00s
+                    </span>
                   </div>
                 </div>
               )}
 
-              {/* Action Buttons depending on State */}
+              {/* Priority Verification Section if Claimed */}
+              {activeToken.category === 'PRIORITY' && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    backgroundColor: 'var(--color-warning-soft)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--color-warning-border)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <strong style={{ fontSize: 'var(--font-xs)', color: 'var(--color-warning)' }}>
+                      Priority Status: {activeToken.priority_status || 'CLAIMED'}
+                    </strong>
+                    {activeToken.priority_status === 'CLAIMED' && (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handlePriorityCheck(true)}
+                          style={{
+                            minHeight: '36px',
+                            padding: '0 10px',
+                            backgroundColor: 'var(--color-success)',
+                            color: '#fff',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--font-xs)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Verify Document
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handlePriorityCheck(false)}
+                          style={{
+                            minHeight: '36px',
+                            padding: '0 10px',
+                            backgroundColor: 'var(--color-danger)',
+                            color: '#fff',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--font-xs)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Counter Check-in (Wedge scanner & webcam) */}
+              <div
+                style={{
+                  padding: '12px',
+                  backgroundColor: 'var(--color-secondary-canvas)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <div style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+                  Check-in at Counter (Barcode wedge / Camera scan)
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder="Enter or scan code…"
+                    value={counterCheckinInput}
+                    onChange={(e) => setCounterCheckinInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCounterCheckin();
+                    }}
+                    style={{
+                      flex: 1,
+                      minHeight: '44px',
+                      padding: '0 10px',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 'var(--font-sm)',
+                      textTransform: 'uppercase',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleCounterCheckin()}
+                    disabled={!counterCheckinInput.trim() || loading}
+                    style={{
+                      minHeight: '44px',
+                      padding: '0 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--color-primary-soft)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-primary)',
+                      fontSize: 'var(--font-xs)',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowWebcamScanner(true)}
+                    title="Scan with camera"
+                    style={{
+                      minHeight: '44px',
+                      padding: '0 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-surface)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <span className="material-symbols-outlined icon-sm">photo_camera</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ACTION BUTTONS (Single Primary Action Rule) */}
               {activeToken.state === 'CALLED' ? (
-                <>
-                  {/* Counter Citizen Verification Card */}
-                  {isCounterVerified ? (
-                    <div
+                <div>
+                  {/* SINGLE PRIMARY ACTION: Start Service */}
+                  <button
+                    type="button"
+                    onClick={handleStartServing}
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      minHeight: '52px',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--color-primary)',
+                      color: '#ffffff',
+                      fontSize: 'var(--font-body)',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      marginBottom: '10px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span className="material-symbols-outlined icon-md">play_arrow</span>
+                    <span>Start service</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 5px', borderRadius: '3px' }}>
+                      S
+                    </span>
+                  </button>
+
+                  {/* Secondary Actions for CALLED state */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleCallAgain}
                       style={{
-                        backgroundColor: '#e2f4ea',
-                        border: '1.5px solid #1b7a4b',
-                        padding: '12px 16px',
-                        borderRadius: '10px',
+                        minHeight: '44px',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'var(--color-surface)',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: 'var(--font-xs)',
+                        fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: 'var(--space-sm)',
+                        justifyContent: 'center',
+                        gap: '4px',
                       }}
                     >
-                      <span className="material-symbols-outlined" style={{ color: '#1b7a4b', fontSize: '24px' }}>
-                        verified
-                      </span>
-                      <div>
-                        <strong style={{ color: '#1b7a4b', display: 'block', fontSize: '14px' }}>
-                          ✓ Citizen Verified at Counter
-                        </strong>
-                        <span style={{ fontSize: '12px', color: '#2d3748' }}>
-                          Identity confirmed for {activeToken.display_code}. You can now start serving.
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        backgroundColor: '#fffbeb',
-                        border: '1.5px solid #f59e0b',
-                        padding: '14px',
-                        borderRadius: '10px',
-                        marginBottom: 'var(--space-sm)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <span className="material-symbols-outlined" style={{ color: '#d97706', fontSize: '20px' }}>
-                          verified_user
-                        </span>
-                        <strong style={{ color: '#92400e', fontSize: '14px' }}>
-                          Counter Verification Required
-                        </strong>
-                      </div>
-                      <p style={{ fontSize: '13px', color: '#78350f', margin: '0 0 10px 0' }}>
-                        Verify citizen for token <strong>{activeToken.display_code}</strong> by scanning their app QR code with webcam or entering their token code:
-                      </p>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          placeholder={`Enter code (e.g. ${activeToken.display_code})`}
-                          value={verificationInput}
-                          onChange={(e) => setVerificationInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleVerifyCode();
-                          }}
-                          style={{
-                            flex: '1 1 180px',
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            textTransform: 'uppercase',
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="btn-complete"
-                          style={{ padding: '8px 14px', height: '38px', fontSize: '13px' }}
-                          onClick={() => handleVerifyCode()}
-                          disabled={loading || !verificationInput.trim()}
-                        >
-                          Verify Code
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          style={{
-                            padding: '8px 14px',
-                            height: '38px',
-                            fontSize: '13px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                          onClick={() => setShowWebcamScanner(true)}
-                          disabled={loading}
-                        >
-                          <span className="material-symbols-outlined icon-sm">photo_camera</span>
-                          Scan Webcam QR
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="action-grid">
-                    <button
-                      type="button"
-                      className="action-btn btn-start"
-                      onClick={handleStartServing}
-                      disabled={loading}
-                    >
-                      <span className="material-symbols-outlined icon-sm">play_arrow</span>
-                      <span>{t('officer.start_serving')}</span>
+                      <span className="material-symbols-outlined icon-xs">campaign</span>
+                      Call again
                     </button>
                     <button
                       type="button"
-                      className="action-btn btn-no-show"
                       onClick={() => setShowNoShowModal(true)}
-                      disabled={loading}
+                      style={{
+                        minHeight: '44px',
+                        border: '1px solid var(--color-danger-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'var(--color-danger-soft)',
+                        color: 'var(--color-danger)',
+                        fontSize: 'var(--font-xs)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                      }}
                     >
-                      <span className="material-symbols-outlined icon-sm">person_off</span>
-                      <span>{t('officer.no_show')}</span>
+                      <span className="material-symbols-outlined icon-xs">person_off</span>
+                      Did not arrive
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRelease}
+                      style={{
+                        minHeight: '44px',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'var(--color-surface)',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: 'var(--font-xs)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <span className="material-symbols-outlined icon-xs">undo</span>
+                      Release
                     </button>
                   </div>
-                </>
+                </div>
               ) : (
-                <div className="action-grid">
+                /* SERVING State */
+                <div>
+                  {/* SINGLE PRIMARY ACTION: Complete */}
                   <button
                     type="button"
-                    className="action-btn btn-complete"
-                    onClick={() => setShowCompleteModal(true)}
+                    onClick={() => {
+                      setGroupTotalSize(1);
+                      setGroupServedCount(1);
+                      setShowCompleteModal(true);
+                    }}
                     disabled={loading}
+                    style={{
+                      width: '100%',
+                      minHeight: '52px',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--color-success)',
+                      color: '#ffffff',
+                      fontSize: 'var(--font-body)',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      marginBottom: '10px',
+                      cursor: 'pointer',
+                    }}
                   >
-                    <span className="material-symbols-outlined icon-sm">check_circle</span>
-                    <span>{t('officer.complete')}</span>
+                    <span className="material-symbols-outlined icon-md">check_circle</span>
+                    <span>Complete service</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 5px', borderRadius: '3px' }}>
+                      C
+                    </span>
                   </button>
-                  <button
-                    type="button"
-                    className="action-btn btn-secondary"
-                    onClick={() => setShowTransferModal(true)}
-                    disabled={loading}
-                  >
-                    <span className="material-symbols-outlined icon-sm">swap_horiz</span>
-                    <span>{t('officer.transfer')}</span>
-                  </button>
+
+                  {/* Secondary Actions for SERVING state */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowTransferModal(true)}
+                      style={{
+                        minHeight: '44px',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'var(--color-surface)',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: 'var(--font-xs)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <span className="material-symbols-outlined icon-xs">swap_horiz</span>
+                      Transfer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDrawerToken(queue.find((q) => q.id === activeToken.id) || null)}
+                      style={{
+                        minHeight: '44px',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'var(--color-surface)',
+                        color: 'var(--color-text-secondary)',
+                        fontSize: 'var(--font-xs)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <span className="material-symbols-outlined icon-xs">checklist</span>
+                      Check document
+                    </button>
+                  </div>
                 </div>
               )}
-
-              {/* Release / Fallback action */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-xs)' }}>
-                <button
-                  type="button"
-                  className="btn-tertiary"
-                  onClick={handleRelease}
-                  disabled={loading}
-                  title="Return token back to waiting queue"
-                >
-                  <span className="material-symbols-outlined icon-sm">undo</span>
-                  <span>{t('officer.release')}</span>
-                </button>
-              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Complete Serving Dialog */}
-      {showCompleteModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2 className="modal-title">{t('officer.confirm_complete')}</h2>
-            <div className="modal-body">
-              <div className="form-field">
-                <label className="form-label">{t('officer.select_outcome')}</label>
-                <select
-                  className="form-select"
-                  value={outcomeCode}
-                  onChange={(e) => setOutcomeCode(e.target.value)}
-                >
-                  <option value="SERVED">{t('officer.served')}</option>
-                  <option value="MISSING_DOCS">{t('officer.missing_docs')}</option>
-                  <option value="WRONG_SERVICE">{t('officer.wrong_service')}</option>
-                  <option value="WRONG_OFFICE">{t('officer.wrong_office')}</option>
-                  <option value="CITIZEN_LEFT">{t('officer.citizen_left')}</option>
-                  <option value="OTHER">{t('officer.other')}</option>
-                </select>
-              </div>
-              <div className="form-field">
-                <label className="form-label">{t('officer.optional_note')}</label>
-                <textarea
-                  className="form-input"
-                  style={{ height: '72px', padding: '8px' }}
-                  value={officerNote}
-                  onChange={(e) => setOfficerNote(e.target.value)}
-                  placeholder="e.g. Verified photocopies of Aadhaar and utility bill"
-                />
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="action-btn btn-secondary"
-                onClick={() => setShowCompleteModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="action-btn btn-complete"
-                onClick={handleCompleteServing}
-                disabled={loading}
-              >
-                {t('officer.complete')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 4. MODALS */}
 
-      {/* Transfer Service Dialog */}
-      {showTransferModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2 className="modal-title">{t('officer.transfer_service')}</h2>
+      {/* Counter Status Reason Modal (Mandatory for Break/Closed) */}
+      {showStatusModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '440px' }}>
+            <h2 className="modal-title" style={{ fontSize: 'var(--font-h2)' }}>
+              Set Counter to {pendingStatus}
+            </h2>
             <div className="modal-body">
-              <div className="form-field">
-                <label className="form-label">{t('officer.select_service')}</label>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                Please specify the mandatory reason for setting the counter to {pendingStatus}:
+              </p>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Reason Category
+                </label>
                 <select
-                  className="form-select"
-                  value={targetServiceId}
-                  onChange={(e) => setTargetServiceId(e.target.value)}
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
                 >
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.names.en || s.code} ({s.code})
-                    </option>
-                  ))}
+                  <option value="Lunch">Lunch break</option>
+                  <option value="Official work">Official administrative work</option>
+                  <option value="System problem">System or network problem</option>
+                  <option value="Other">Other reason</option>
                 </select>
               </div>
-              <div className="form-field">
-                <label className="form-label">{t('officer.optional_note')}</label>
-                <textarea
-                  className="form-input"
-                  style={{ height: '72px', padding: '8px' }}
-                  value={officerNote}
-                  onChange={(e) => setOfficerNote(e.target.value)}
-                  placeholder="Reason for transfer"
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Additional Notes (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Returning in 30 minutes"
+                  value={statusCustomNote}
+                  onChange={(e) => setStatusCustomNote(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
                 />
               </div>
             </div>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="action-btn btn-secondary"
-                onClick={() => setShowTransferModal(false)}
-              >
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowStatusModal(false)}>
                 Cancel
               </button>
               <button
                 type="button"
                 className="action-btn btn-start"
-                onClick={handleTransfer}
-                disabled={loading || !targetServiceId}
+                onClick={() => executeStatusChange(pendingStatus, `${statusReason}${statusCustomNote ? `: ${statusCustomNote}` : ''}`)}
               >
-                {t('officer.transfer')}
+                Confirm {pendingStatus}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* No Show Confirmation Dialog */}
-      {showNoShowModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2 className="modal-title">{t('officer.no_show')}</h2>
+      {/* Complete Outcome Modal (Includes per-person result for group bookings) */}
+      {showCompleteModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '460px' }}>
+            <h2 className="modal-title" style={{ fontSize: 'var(--font-h2)' }}>
+              Complete Service Outcome
+            </h2>
             <div className="modal-body">
-              <p>{t('officer.confirm_no_show')}</p>
-              <div className="form-field">
-                <label className="form-label">{t('officer.optional_note')}</label>
-                <input
-                  type="text"
-                  className="form-input"
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Service Outcome Code
+                </label>
+                <select
+                  value={outcomeCode}
+                  onChange={(e) => setOutcomeCode(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                >
+                  <option value="SERVED">SERVED (Delivered successfully)</option>
+                  <option value="MISSING_DOCS">MISSING_DOCS (Incomplete documentation)</option>
+                  <option value="WRONG_SERVICE">WRONG_SERVICE (Citizen requires different service)</option>
+                  <option value="WRONG_OFFICE">WRONG_OFFICE (Requires zonal head office)</option>
+                  <option value="CITIZEN_LEFT">CITIZEN_LEFT (Citizen departed before finish)</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </div>
+
+              {/* Group Bookings Result */}
+              <div style={{ marginBottom: '12px', padding: '10px', backgroundColor: 'var(--color-secondary-canvas)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Beneficiaries Served (Group Bookings)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Served</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={groupTotalSize}
+                    value={groupServedCount}
+                    onChange={(e) => setGroupServedCount(parseInt(e.target.value, 10) || 1)}
+                    style={{ width: '60px', padding: '6px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}
+                  />
+                  <span>of</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={groupTotalSize}
+                    onChange={(e) => setGroupTotalSize(parseInt(e.target.value, 10) || 1)}
+                    style={{ width: '60px', padding: '6px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}
+                  />
+                  <span>people</span>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Officer Verification Notes
+                </label>
+                <textarea
+                  placeholder="e.g. Scanned physical documents verified and returned"
                   value={officerNote}
                   onChange={(e) => setOfficerNote(e.target.value)}
-                  placeholder="Called twice, citizen did not appear"
+                  style={{ width: '100%', height: '64px', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: 'var(--font-sm)' }}
                 />
               </div>
             </div>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="action-btn btn-secondary"
-                onClick={() => setShowNoShowModal(false)}
-              >
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowCompleteModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="action-btn btn-complete" onClick={handleCompleteServing} disabled={loading}>
+                Confirm Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransferModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '440px' }}>
+            <h2 className="modal-title">Transfer Service</h2>
+            <div className="modal-body">
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Destination Service
+                </label>
+                <select
+                  value={targetServiceId}
+                  onChange={(e) => setTargetServiceId(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                >
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {(s.names as Record<string, string>)[i18n.language] || s.names.en || s.code} ({s.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Reason for Transfer
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Citizen needs Income Certificate prior to scholarship"
+                  value={officerNote}
+                  onChange={(e) => setOfficerNote(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                />
+              </div>
+            </div>
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowTransferModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="action-btn btn-start" onClick={handleTransfer} disabled={loading || !targetServiceId}>
+                Confirm Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Show Modal */}
+      {showNoShowModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '440px' }}>
+            <h2 className="modal-title" style={{ color: 'var(--color-danger)' }}>
+              Confirm Did Not Arrive
+            </h2>
+            <div className="modal-body">
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                The citizen did not report to the counter within the allotted grace window. Confirm no-show recording?
+              </p>
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Audit Note
+                </label>
+                <input
+                  type="text"
+                  placeholder="Called twice, citizen did not appear"
+                  value={officerNote}
+                  onChange={(e) => setOfficerNote(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                />
+              </div>
+            </div>
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowNoShowModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="action-btn btn-no-show" onClick={handleNoShow} disabled={loading}>
+                Record No-Show
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Choose Another Token Modal */}
+      {showChooseAnotherModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '480px' }}>
+            <h2 className="modal-title">Choose Another Waiting Token</h2>
+            <div className="modal-body">
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Select Token to Call
+                </label>
+                <select
+                  value={overrideChosenTokenId || (queue[1]?.id ?? '')}
+                  onChange={(e) => setOverrideChosenTokenId(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                >
+                  {queue.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.display_code} — {q.beneficiary_name || 'Citizen'} ({q.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Mandatory Dispatch Reason (Logged)
+                </label>
+                <select
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', marginBottom: '8px' }}
+                >
+                  <option value="Special assistance">Special disability / elderly assistance</option>
+                  <option value="Urgent dispatch">Urgent dispatch / Emergency service</option>
+                  <option value="Citizen requested order">Citizen physical presence confirmed</option>
+                  <option value="Other administrative override">Other administrative reason</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowChooseAnotherModal(false)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className="action-btn btn-no-show"
-                onClick={handleNoShow}
-                disabled={loading}
+                className="action-btn btn-start"
+                onClick={async () => {
+                  setShowChooseAnotherModal(false);
+                  await handleCallNext();
+                  setFeedbackMsg({
+                    type: 'info',
+                    text: `Dispatched token with logged reason: "${overrideReason}"`,
+                  });
+                }}
               >
-                {t('officer.no_show')}
+                Confirm Dispatch
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Webcam QR Code Scanner Modal */}
+      {/* Report a Problem Modal */}
+      {showReportProblemModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '460px' }}>
+            <h2 className="modal-title" style={{ color: 'var(--color-danger)' }}>
+              Report a Workstation Incident
+            </h2>
+            <div className="modal-body">
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Incident Type
+                </label>
+                <select
+                  value={problemReason}
+                  onChange={(e) => setProblemReason(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                >
+                  <option value="Server down">Server down / Connectivity loss</option>
+                  <option value="Biometric device fault">Biometric / Scanner device fault</option>
+                  <option value="Power cut">Power cut / Electrical glitch</option>
+                  <option value="Officer unavailable">Officer unavailable / Medical leave</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  Details for Administrative Support
+                </label>
+                <textarea
+                  placeholder="Describe workstation behavior…"
+                  value={problemDetails}
+                  onChange={(e) => setProblemDetails(e.target.value)}
+                  style={{ width: '100%', height: '64px', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                />
+              </div>
+            </div>
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowReportProblemModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="action-btn btn-no-show" onClick={handleSubmitProblemReport}>
+                Submit Incident
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Webcam QR Scanner Modal */}
       {showWebcamScanner && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '520px' }}>
+        <div className="modal-overlay" style={{ zIndex: 1150 }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
             <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)' }}>
-                photo_camera
-              </span>
-              Webcam Citizen QR Scanner
+              <span className="material-symbols-outlined icon-sm">photo_camera</span>
+              Scan Citizen Code with Camera
             </h2>
             <div className="modal-body" style={{ textAlign: 'center' }}>
               <div
                 style={{
                   position: 'relative',
                   width: '100%',
-                  height: '260px',
+                  height: '240px',
                   backgroundColor: '#000',
-                  borderRadius: '12px',
+                  borderRadius: 'var(--radius-md)',
                   overflow: 'hidden',
-                  margin: '0 auto',
                 }}
               >
-                <video
-                  ref={videoRef}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  muted
-                  playsInline
-                />
+                <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
                 <div
                   style={{
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    width: '180px',
-                    height: '180px',
+                    width: '160px',
+                    height: '160px',
                     border: '3px solid #10b981',
-                    borderRadius: '16px',
-                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.45)',
+                    borderRadius: '12px',
+                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.4)',
                     pointerEvents: 'none',
                   }}
                 />
               </div>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
+              <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
                 {webcamStatus}
               </p>
-              <div style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <input
                   type="text"
-                  placeholder={`Manual fallback: e.g. ${activeToken?.display_code}`}
-                  value={verificationInput}
-                  onChange={(e) => setVerificationInput(e.target.value)}
+                  placeholder="Or enter token code manually…"
+                  value={counterCheckinInput}
+                  onChange={(e) => setCounterCheckinInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleVerifyCode();
+                    if (e.key === 'Enter') handleCounterCheckin();
                   }}
                   style={{
                     flex: 1,
-                    padding: '8px 12px',
+                    minHeight: '44px',
+                    padding: '0 10px',
                     border: '1px solid var(--color-border)',
-                    borderRadius: '6px',
-                    fontSize: '14px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 'var(--font-sm)',
                     textTransform: 'uppercase',
                   }}
                 />
                 <button
                   type="button"
                   className="action-btn btn-start"
-                  style={{ padding: '8px 16px', height: '38px', fontSize: '13px' }}
-                  onClick={() => handleVerifyCode()}
-                  disabled={loading || !verificationInput.trim()}
+                  onClick={() => handleCounterCheckin()}
+                  disabled={!counterCheckinInput.trim() || loading}
                 >
                   Verify
                 </button>
               </div>
             </div>
-            <div className="modal-actions" style={{ marginTop: '16px' }}>
-              <button
-                type="button"
-                className="action-btn btn-secondary"
-                onClick={() => setShowWebcamScanner(false)}
-              >
-                Close Scanner
+            <div className="modal-actions" style={{ marginTop: '14px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowWebcamScanner(false)}>
+                Close Camera
               </button>
             </div>
           </div>

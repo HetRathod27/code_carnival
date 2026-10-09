@@ -3,13 +3,43 @@
   "lang": "हिन्दी",
   "nav": {
     "queue": "कतार",
+    "my_queue": "मेरी कतार",
+    "today_activity": "आज की गतिविधि",
     "counter": "मेरा काउंटर",
     "desk": "डेस्क और पर्ची",
+    "new_token": "नया टोकन",
     "admin": "एडमिन",
+    "overview": "अवलोकन",
+    "counters_services": "काउंटर और सेवाएं",
+    "settings": "सेटिंग्स",
     "reports": "रिपोर्ट",
     "sim": "सिम्युलेटर",
+    "simulation_demo": "सिमुलेशन (डेमो)",
     "display": "लॉबी डिस्प्ले",
-    "sign_out": "साइन आउट"
+    "lobby_display": "लॉबी डिस्प्ले",
+    "account": "मेरा खाता",
+    "my_account": "मेरा खाता",
+    "sign_out": "साइन आउट",
+    "confirm_sign_out": "साइन आउट पुष्टि",
+    "confirm_sign_out_desc": "क्या आप वास्तव में स्टाफ पोर्टल से साइन आउट करना चाहते हैं?",
+    "section_workspace": "कार्यस्थल",
+    "section_activity": "गतिविधि",
+    "section_tools": "उपकरण",
+    "section_account": "खाता",
+    "section_analysis": "विश्लेषण"
+  },
+  "activity": {
+    "title": "आज की गतिविधि",
+    "subtitle": "आपके काउंटर पर आज संभाले गए टोकन और सेवा परिणामों का ऑडिट लॉग।",
+    "kpi_served": "सेवा प्रदान की गई",
+    "kpi_avg_time": "औसत सेवा समय",
+    "kpi_noshow": "अनुपस्थित",
+    "search_placeholder": "टोकन कोड या नागरिक के नाम से खोजें…",
+    "no_records": "आपके फ़िल्टर से कोई गतिविधि मेल नहीं खाती।"
+  },
+  "account": {
+    "title": "मेरा खाता",
+    "subtitle": "आधिकारिक स्टाफ पहचान प्रमाण पत्र, वर्कस्टेशन प्राथमिकताएं और सुरक्षा नियंत्रण।"
   },
   "login": {
     "title": "QueueLess डैशबोर्ड",

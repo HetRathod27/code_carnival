@@ -206,7 +206,7 @@ async def officer_verify_counter(
     ]
     if not any(v in code or code in v for v in valid_codes):
         raise AppException(
-            ErrorCode.INVALID_INPUT,
+            ErrorCode.VALIDATION_ERROR,
             f"Verification code does not match token '{token.display_code}'",
             status.HTTP_400_BAD_REQUEST,
         )

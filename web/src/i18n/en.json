@@ -3,13 +3,43 @@
   "lang": "English",
   "nav": {
     "queue": "Queue",
+    "my_queue": "My queue",
+    "today_activity": "Today's activity",
     "counter": "My Counter",
     "desk": "Desk & Slips",
+    "new_token": "New token",
     "admin": "Admin",
+    "overview": "Overview",
+    "counters_services": "Counters and services",
+    "settings": "Settings",
     "reports": "Reports",
     "sim": "Simulator",
+    "simulation_demo": "Simulation (demo only)",
     "display": "Lobby Display",
-    "sign_out": "Sign Out"
+    "lobby_display": "Lobby display",
+    "account": "My Account",
+    "my_account": "My account",
+    "sign_out": "Sign out",
+    "confirm_sign_out": "Confirm Sign Out",
+    "confirm_sign_out_desc": "Are you sure you want to sign out from the staff portal? Your active session credentials will be cleared.",
+    "section_workspace": "Workspace",
+    "section_activity": "Activity",
+    "section_tools": "Tools",
+    "section_account": "Account",
+    "section_analysis": "Analysis & Proof"
+  },
+  "activity": {
+    "title": "Today's Activity",
+    "subtitle": "Comprehensive audit log of tokens handled and service outcomes delivered at your counter today.",
+    "kpi_served": "Tokens Served",
+    "kpi_avg_time": "Average Service Time",
+    "kpi_noshow": "No-Shows",
+    "search_placeholder": "Search by token code, citizen name or service…",
+    "no_records": "No activity records match your filter."
+  },
+  "account": {
+    "title": "My Account",
+    "subtitle": "Official staff identity credentials, workstation preferences, and security controls."
   },
   "login": {
     "title": "QueueLess Dashboard",

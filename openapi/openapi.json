@@ -451,6 +451,74 @@
         }
       }
     },
+    "/v1/citizen/tokens/{token_id}/confirm-completion": {
+      "post": {
+        "tags": [
+          "Citizen"
+        ],
+        "summary": "Citizen Confirm Completion",
+        "operationId": "citizen_confirm_completion_v1_citizen_tokens__token_id__confirm_completion_post",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CitizenConfirmCompletionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/citizen/devices": {
       "post": {
         "tags": [
@@ -511,6 +579,53 @@
       }
     },
     "/v1/citizen/me": {
+      "get": {
+        "tags": [
+          "Citizen"
+        ],
+        "summary": "Get Profile",
+        "operationId": "get_profile_v1_citizen_me_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "Citizen"
@@ -769,6 +884,74 @@
                     }
                   ],
                   "title": "Response Officer Call Next V1 Officer Counters  Counter Id  Call Next Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/officer/tokens/{token_id}/verify-counter": {
+      "post": {
+        "tags": [
+          "Officer"
+        ],
+        "summary": "Officer Verify Counter",
+        "operationId": "officer_verify_counter_v1_officer_tokens__token_id__verify_counter_post",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounterVerifyIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
                 }
               }
             }
@@ -3263,6 +3446,46 @@
         ],
         "title": "CheckInIn"
       },
+      "CitizenConfirmCompletionIn": {
+        "properties": {
+          "service_completed": {
+            "type": "boolean",
+            "title": "Service Completed",
+            "default": true
+          },
+          "reason_if_not": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason If Not"
+          },
+          "rating": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "default": 5
+          },
+          "feedback_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Text"
+          }
+        },
+        "type": "object",
+        "title": "CitizenConfirmCompletionIn"
+      },
       "CompleteServingIn": {
         "properties": {
           "outcome_code": {
@@ -3405,6 +3628,19 @@
         },
         "type": "object",
         "title": "CounterUpdateIn"
+      },
+      "CounterVerifyIn": {
+        "properties": {
+          "verification_code": {
+            "type": "string",
+            "title": "Verification Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verification_code"
+        ],
+        "title": "CounterVerifyIn"
       },
       "DeskBookIn": {
         "properties": {
@@ -3963,6 +4199,67 @@
         ],
         "title": "PriorityCheckIn"
       },
+      "ProfileOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "en"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "CITIZEN"
+          },
+          "office_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Id"
+          },
+          "priority_strikes": {
+            "type": "integer",
+            "title": "Priority Strikes",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "ProfileOut"
+      },
       "ProfileUpdateIn": {
         "properties": {
           "language": {
@@ -4450,6 +4747,33 @@
             "type": "integer",
             "title": "Travel Minutes",
             "default": 0
+          },
+          "appointment_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointment Date"
+          },
+          "appointment_slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointment Slot"
+          },
+          "is_fixed": {
+            "type": "boolean",
+            "title": "Is Fixed",
+            "default": true
           }
         },
         "type": "object",

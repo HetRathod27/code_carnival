@@ -4,6 +4,8 @@ import { OfficerLoginPage } from './pages/OfficerLoginPage';
 import { DeskLoginPage } from './pages/DeskLoginPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { OfficerQueuePage } from './pages/OfficerQueuePage';
+import { TodayActivityPage } from './pages/TodayActivityPage';
+import { MyAccountPage } from './pages/MyAccountPage';
 import { DeskPage } from './pages/DeskPage';
 import { AdminPage } from './pages/AdminPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -12,7 +14,7 @@ import { DisplayPage } from './pages/DisplayPage';
 import { AppShell, type NavTab } from './components/AppShell';
 
 export function App() {
-  const { persona } = useAuth();
+  const { persona, logout } = useAuth();
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
   const [activeNav, setActiveNav] = useState<NavTab>('queue');
   const [displayOfficeId, setDisplayOfficeId] = useState<string>('ward-central-01');
@@ -73,6 +75,29 @@ export function App() {
     if (!persona) {
       return <DeskLoginPage onNavigate={navigate} />;
     }
+    // Route guard: Officer cannot access Desk portal
+    if (persona.role === 'OFFICER') {
+      return (
+        <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'var(--font-family)' }}>
+          <div style={{ maxWidth: '480px', margin: '0 auto', background: '#fff', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '32px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'var(--color-danger)' }}>
+              lock
+            </span>
+            <h2 style={{ color: 'var(--color-danger)', margin: '16px 0 8px 0' }}>Access Restricted</h2>
+            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+              Your account has the <strong>OFFICER</strong> role. Desk booking privileges are restricted to Help Desk and Admin staff.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/officer')}
+              style={{ padding: '12px 24px', background: 'var(--color-primary)', color: '#fff', borderRadius: '4px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+            >
+              Return to Officer Queue
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <AppShell
         activeNav={activeNav}
@@ -80,7 +105,8 @@ export function App() {
         onOpenDisplay={() => window.open(`/display/${persona.office_id || 'ward-central-01'}`, '_blank')}
       >
         {activeNav === 'desk' && <DeskPage />}
-        {activeNav === 'queue' && <OfficerQueuePage />}
+        {activeNav === 'desk_queue' && <OfficerQueuePage />}
+        {activeNav === 'account' && <MyAccountPage onSignOutRequested={logout} />}
         {activeNav === 'admin' && <AdminPage />}
         {activeNav === 'reports' && <ReportsPage />}
         {activeNav === 'sim' && <SimPage />}
@@ -93,15 +119,39 @@ export function App() {
     if (!persona) {
       return <AdminLoginPage onNavigate={navigate} />;
     }
+    // Route Guard: Officers cannot open Admin routes
+    if (persona.role === 'OFFICER' || persona.role === 'DESK') {
+      return (
+        <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'var(--font-family)' }}>
+          <div style={{ maxWidth: '480px', margin: '0 auto', background: '#fff', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '32px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'var(--color-danger)' }}>
+              gpp_bad
+            </span>
+            <h2 style={{ color: 'var(--color-danger)', margin: '16px 0 8px 0' }}>Unauthorized Access</h2>
+            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+              Your account with role <strong>{persona.role}</strong> does not have administrative privileges to access the Admin Management Portal.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(persona.role === 'DESK' ? '/desk' : '/officer')}
+              style={{ padding: '12px 24px', background: 'var(--color-primary)', color: '#fff', borderRadius: '4px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+            >
+              Return to Staff Portal
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <AppShell
         activeNav={activeNav}
         onNavChange={setActiveNav}
         onOpenDisplay={() => window.open(`/display/${persona.office_id || 'ward-central-01'}`, '_blank')}
       >
-        {activeNav === 'admin' && <AdminPage />}
+        {(activeNav === 'admin' || activeNav === 'admin_counters' || activeNav === 'admin_settings') && <AdminPage />}
         {activeNav === 'reports' && <ReportsPage />}
         {activeNav === 'sim' && <SimPage />}
+        {activeNav === 'account' && <MyAccountPage onSignOutRequested={logout} />}
         {activeNav === 'queue' && <OfficerQueuePage />}
         {activeNav === 'desk' && <DeskPage />}
       </AppShell>
@@ -110,7 +160,6 @@ export function App() {
 
   // --- 3. DEPARTMENT OFFICER PORTAL (/officer or default /) ---
   if (!persona) {
-    // If not signed in on /officer or root /, show Officer Login Page
     return <OfficerLoginPage onNavigate={navigate} />;
   }
 
@@ -121,10 +170,13 @@ export function App() {
       onOpenDisplay={() => window.open(`/display/${persona?.office_id || 'ward-central-01'}`, '_blank')}
     >
       {activeNav === 'queue' && <OfficerQueuePage />}
-      {activeNav === 'desk' && <DeskPage />}
-      {activeNav === 'admin' && <AdminPage />}
-      {activeNav === 'reports' && <ReportsPage />}
-      {activeNav === 'sim' && <SimPage />}
+      {activeNav === 'activity' && <TodayActivityPage />}
+      {activeNav === 'account' && <MyAccountPage onSignOutRequested={logout} />}
+      {/* Desk and Admin tabs fallbacks for universal view if permitted */}
+      {activeNav === 'desk' && (persona.role !== 'OFFICER' ? <DeskPage /> : <OfficerQueuePage />)}
+      {activeNav === 'admin' && (persona.role === 'ADMIN' || persona.role === 'SUPER_ADMIN' ? <AdminPage /> : <OfficerQueuePage />)}
+      {activeNav === 'reports' && (persona.role === 'ADMIN' || persona.role === 'SUPER_ADMIN' ? <ReportsPage /> : <TodayActivityPage />)}
+      {activeNav === 'sim' && (persona.role === 'ADMIN' || persona.role === 'SUPER_ADMIN' ? <SimPage /> : <OfficerQueuePage />)}
     </AppShell>
   );
 }
