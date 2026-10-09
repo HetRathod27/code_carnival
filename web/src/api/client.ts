@@ -160,6 +160,13 @@ export async function fetchQueue(
   return req<QueueItem[]>('GET', `/v1/officer/counters/${counterId}/queue`, token);
 }
 
+export async function fetchCounterActiveToken(
+  token: string,
+  counterId: string,
+): Promise<TokenOut | null> {
+  return req<TokenOut | null>('GET', `/v1/officer/counters/${counterId}/active-token`, token);
+}
+
 export interface CounterActivityItem {
   id: string;
   display_code: string;

@@ -374,6 +374,12 @@ async def test_officer_full_lifecycle_and_guards(client, dev_auth, vclock):
     assert called["id"] == booked_token_id
     assert called["state"] == "CALLED"
 
+    # 4a. Verify active-token endpoint returns called token on refresh/poll
+    resp_active_tok = await client.get(f"/v1/officer/counters/{counter_id}/active-token", headers=off_headers)
+    assert resp_active_tok.status_code == 200
+    assert resp_active_tok.json()["id"] == booked_token_id
+    assert resp_active_tok.json()["state"] == "CALLED"
+
     # 4b. Verify unverified start attempt is rejected
     resp_unverified = await client.post(f"/v1/officer/tokens/{booked_token_id}/start", headers=off_headers)
     assert resp_unverified.status_code == 400
@@ -409,6 +415,11 @@ async def test_officer_full_lifecycle_and_guards(client, dev_auth, vclock):
     )
     assert resp_comp.status_code == 200
     assert resp_comp.json()["state"] == "COMPLETED"
+
+    # 7a. Verify active-token endpoint returns null after service completion
+    resp_active_none = await client.get(f"/v1/officer/counters/{counter_id}/active-token", headers=off_headers)
+    assert resp_active_none.status_code == 200
+    assert resp_active_none.json() is None
 
     # 8. Counter can now be closed
     resp_close = await client.post(

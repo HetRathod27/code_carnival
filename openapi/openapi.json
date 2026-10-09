@@ -746,6 +746,72 @@
         }
       }
     },
+    "/v1/officer/counters/{counter_id}/active-token": {
+      "get": {
+        "tags": [
+          "Officer"
+        ],
+        "summary": "Get Counter Active Token",
+        "operationId": "get_counter_active_token_v1_officer_counters__counter_id__active_token_get",
+        "parameters": [
+          {
+            "name": "counter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Counter Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TokenOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Counter Active Token V1 Officer Counters  Counter Id  Active Token Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/officer/counters/{counter_id}/status": {
       "post": {
         "tags": [

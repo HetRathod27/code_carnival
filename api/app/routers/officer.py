@@ -132,6 +132,37 @@ async def get_counter_queue(
     return items
 
 
+@router.get("/counters/{counter_id}/active-token", response_model=TokenOut | None)
+async def get_counter_active_token(
+    counter_id: str,
+    user: UserClaims = Depends(require_role(["OFFICER", "ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> TokenOut | None:
+    counter = await _get_counter_or_auto_create(session, counter_id, user.office_id or "ward-central-01")
+    if not counter:
+        raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    require_office_access(user, counter.office_id)
+    b_date = clock.business_date()
+
+    stmt = (
+        select(Token)
+        .where(
+            Token.counter_id == counter_id,
+            Token.business_date == b_date,
+            Token.state.in_(["CALLED", "SERVING"]),
+        )
+        .order_by(Token.called_at.desc().nullslast())
+        .limit(1)
+    )
+    res = await session.execute(stmt)
+    active_tok = res.scalar_one_or_none()
+    if not active_tok:
+        return None
+    return await build_token_out(active_tok, session, clock)
+
+
 @router.post("/counters/{counter_id}/status")
 async def update_counter_status(
     counter_id: str,

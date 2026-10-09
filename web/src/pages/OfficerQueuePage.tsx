@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchQueue,
+  fetchCounterActiveToken,
   updateCounterStatus,
   callNext,
   verifyCounter,
@@ -111,15 +112,19 @@ export function OfficerQueuePage() {
     }
   }, [persona?.office_id]);
 
-  // Polling Waiting Queue
+  // Polling Waiting Queue & Active Token
   const loadQueue = useCallback(async () => {
     if (!token) return;
     try {
-      const items = await fetchQueue(token, counterId);
+      const [items, currentActive] = await Promise.all([
+        fetchQueue(token, counterId),
+        fetchCounterActiveToken(token, counterId),
+      ]);
       setQueue(items);
+      setActiveToken(currentActive || null);
     } catch (err: unknown) {
       const e = err as Error;
-      console.warn('Queue fetch error:', e.message);
+      console.warn('Queue/active token fetch error:', e.message);
     }
   }, [token, counterId]);
 
@@ -229,6 +234,7 @@ export function OfficerQueuePage() {
     } catch (err: unknown) {
       const e = err as Error;
       setFeedbackMsg({ type: 'error', text: e.message });
+      await loadQueue();
     } finally {
       setLoading(false);
     }
