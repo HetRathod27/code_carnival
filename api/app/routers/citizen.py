@@ -44,6 +44,7 @@ async def build_token_out(
     session: AsyncSession,
     clock: Clock,
     include_secret: bool = False,
+    include_children: bool = True,
 ) -> TokenOut:
     counter_label = None
     if token.counter_id:
@@ -80,6 +81,31 @@ async def build_token_out(
         else None
     )
 
+    appointment_date_str = None
+    appointment_slot_str = None
+    if token.eta_features:
+        appointment_date_str = token.eta_features.get("appointment_date")
+        appointment_slot_str = token.eta_features.get("appointment_slot")
+
+    child_outs: list[TokenOut] = []
+    if include_children and token.parent_token_id is None:
+        children_stmt = (
+            select(Token)
+            .where(Token.parent_token_id == token.id)
+            .order_by(Token.seq.asc())
+        )
+        children_result = await session.execute(children_stmt)
+        children_list: list[Token] = list(children_result.scalars().all())
+        for child_token in children_list:
+            child_out = await build_token_out(
+                child_token,
+                session,
+                clock,
+                include_secret=include_secret,
+                include_children=False,
+            )
+            child_outs.append(child_out)
+
     return TokenOut(
         id=token.id,
         office_id=token.office_id,
@@ -93,6 +119,9 @@ async def build_token_out(
         created_via=token.created_via,
         phone=token.phone,
         beneficiary_name=token.beneficiary_name,
+        parent_token_id=token.parent_token_id,
+        appointment_date=appointment_date_str,
+        appointment_slot=appointment_slot_str,
         counter_id=token.counter_id,
         counter_label=counter_label,
         arrived_at=token.arrived_at,
@@ -110,6 +139,7 @@ async def build_token_out(
         is_verified=bool(token.verification_verified),
         verification_secret=verification_sec,
         verification_qr=verification_qr_str,
+        child_tokens=child_outs,
         server_time=clock.now(),
     )
 
@@ -185,6 +215,13 @@ async def create_token(
     if not phone:
         raise AppException(ErrorCode.VALIDATION_ERROR, "Phone number is required to book a token")
 
+    accompanying_list = None
+    if payload.accompanying_members:
+        accompanying_list = [
+            {"name": m.name, "reason": m.reason, "slot_time": m.slot_time}
+            for m in payload.accompanying_members
+        ]
+
     book_res = await book_token(
         session=session,
         clock=clock,
@@ -200,6 +237,7 @@ async def create_token(
         appointment_date=payload.appointment_date,
         appointment_slot=payload.appointment_slot,
         is_fixed=payload.is_fixed,
+        accompanying_members=accompanying_list,
     )
     t_stmt = select(Token).where(Token.id == book_res["token_id"])
     res_t = await session.execute(t_stmt)
@@ -220,6 +258,8 @@ async def get_my_active_token(
         conditions.append(Token.phone == user.phone)
     else:
         conditions.append(Token.citizen_id == user.user_id)
+
+    conditions.append(Token.parent_token_id.is_(None))
 
     stmt = select(Token).where(*conditions).order_by(Token.created_at.desc()).limit(1)
     result = await session.execute(stmt)
@@ -321,6 +361,16 @@ async def citizen_check_in(
         token_id=token_id,
         qr_payload=payload.qr_payload,
     )
+    if checked.parent_token_id is None and checked.arrived_at:
+        await session.execute(
+            select(Token).where(Token.parent_token_id == checked.id)
+        )
+        from sqlalchemy import update
+        await session.execute(
+            update(Token)
+            .where(Token.parent_token_id == checked.id, Token.arrived_at.is_(None))
+            .values(arrived_at=checked.arrived_at)
+        )
     await session.commit()
     return await build_token_out(checked, session, clock)
 

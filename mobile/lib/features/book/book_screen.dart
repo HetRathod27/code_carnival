@@ -116,6 +116,42 @@ class _BookScreenState extends State<BookScreen> {
     return null;
   }
 
+  String _calculateStaggeredSlotTime(String baseSlot, int offsetIndex) {
+    try {
+      final dash = baseSlot.contains('–') ? '–' : (baseSlot.contains('-') ? '-' : null);
+      final startPart = dash != null ? baseSlot.split(dash)[0].trim() : baseSlot.trim();
+      final regex = RegExp(r'(\d{1,2}):(\d{2})\s*(AM|PM)', caseSensitive: false);
+      final match = regex.firstMatch(startPart);
+      if (match != null) {
+        var hour = int.parse(match.group(1)!);
+        final minute = int.parse(match.group(2)!);
+        final meridiem = match.group(3)!.toUpperCase();
+        if (meridiem == 'PM' && hour != 12) {
+          hour += 12;
+        } else if (meridiem == 'AM' && hour == 12) {
+          hour = 0;
+        }
+        final totalMinutes = hour * 60 + minute + offsetIndex * 15;
+        final sHour = (totalMinutes ~/ 60) % 24;
+        final sMin = totalMinutes % 60;
+        final eTotal = totalMinutes + 15;
+        final eHour = (eTotal ~/ 60) % 24;
+        final eMin = eTotal % 60;
+
+        String fmt(int h, int m) {
+          final med = h < 12 ? 'AM' : 'PM';
+          var h12 = h % 12;
+          if (h12 == 0) h12 = 12;
+          return '${h12.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')} $med';
+        }
+
+        return '${fmt(sHour, sMin)} – ${fmt(eHour, eMin)}';
+      }
+    } catch (_) {}
+    if (offsetIndex == 0) return baseSlot;
+    return '$baseSlot (+${offsetIndex * 15}m)';
+  }
+
   String _getDayLabel(
     int index, [
     String currentLang = 'en',
@@ -293,22 +329,17 @@ class _BookScreenState extends State<BookScreen> {
       final dateStr =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-      String? beneficiarySummary = _beneficiaryController.text.trim().isNotEmpty
-          ? _beneficiaryController.text.trim()
-          : null;
+      final accompanyingMembers = <Map<String, dynamic>>[];
       if (_familyCount > 1) {
-        final partyList = <String>[];
-        if (beneficiarySummary != null) {
-          partyList.add(beneficiarySummary);
-        }
         for (int i = 0; i < _familyCount - 1; i++) {
           final accName = _accompanyingNameControllers[i].text.trim();
-          if (accName.isNotEmpty) {
-            partyList.add(accName);
-          }
-        }
-        if (partyList.isNotEmpty) {
-          beneficiarySummary = partyList.join(', ');
+          final accReason = _accompanyingReasonKeys[i] ?? '';
+          final childSlot = _calculateStaggeredSlotTime(_selectedSlotTime, i + 1);
+          accompanyingMembers.add({
+            'name': accName,
+            'reason': accReason,
+            'slot_time': childSlot,
+          });
         }
       }
 
@@ -319,13 +350,16 @@ class _BookScreenState extends State<BookScreen> {
         serviceId: widget.serviceId,
         category: _category,
         phone: phone,
-        beneficiaryName: beneficiarySummary,
+        beneficiaryName: _beneficiaryController.text.trim().isNotEmpty
+            ? _beneficiaryController.text.trim()
+            : null,
         priorityDocType: _category == 'PRIORITY'
             ? (_priorityDocType ?? 'SENIOR_CITIZEN')
             : null,
         appointmentDate: dateStr,
         appointmentSlot: _selectedSlotTime,
         isFixed: true,
+        accompanyingMembers: accompanyingMembers.isNotEmpty ? accompanyingMembers : null,
         idempotencyKey: idempotencyKey,
       );
 
@@ -549,52 +583,140 @@ class _BookScreenState extends State<BookScreen> {
                       ],
                     ),
                     if (_familyCount > 1) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: CivicTheme.primarySoft,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: CivicTheme.primary.withValues(alpha: 0.3)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              l10n.accompanyingPersonsSummary,
-                              style: const TextStyle(
-                                color: CivicTheme.primary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                            Row(
+                              children: [
+                                const Icon(Icons.confirmation_number_outlined, size: 16, color: CivicTheme.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  l10n.allottedTokensTitle,
+                                  style: const TextStyle(
+                                    color: CivicTheme.primary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Primary Ticket
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: CivicTheme.border),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          token.displayCode,
+                                          style: const TextStyle(fontWeight: FontWeight.w900, color: CivicTheme.primary, fontSize: 13),
+                                        ),
+                                        Text(
+                                          _beneficiaryController.text.trim().isNotEmpty
+                                              ? _beneficiaryController.text.trim()
+                                              : 'Primary Citizen',
+                                          style: const TextStyle(fontSize: 11, color: CivicTheme.textSecondary),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: CivicTheme.successSoft,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      token.appointmentSlot ?? _calculateStaggeredSlotTime(_selectedSlotTime, 0),
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CivicTheme.success),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            // Child Tickets
                             ...List.generate(_familyCount - 1, (i) {
                               final name = _accompanyingNameControllers[i].text.trim();
                               final reasonLabel = _getReasonLabel(
                                 _accompanyingReasonKeys[i],
                                 l10n,
                               );
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 3),
+                              final childCode = token.childTokens.length > i
+                                  ? token.childTokens[i].displayCode
+                                  : '${token.displayCode.split('-').first}-${(token.seq + i + 1).toString().padLeft(3, '0')}';
+                              final childSlot = token.childTokens.length > i && token.childTokens[i].appointmentSlot != null
+                                  ? token.childTokens[i].appointmentSlot!
+                                  : _calculateStaggeredSlotTime(_selectedSlotTime, i + 1);
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: CivicTheme.border),
+                                ),
                                 child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                                     Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            childCode,
+                                            style: const TextStyle(fontWeight: FontWeight.w900, color: CivicTheme.primary, fontSize: 13),
+                                          ),
+                                          Text(
+                                            '$name ($reasonLabel)',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 11, color: CivicTheme.textSecondary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: CivicTheme.primarySoft,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
                                       child: Text(
-                                        '$name ($reasonLabel)',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: CivicTheme.textPrimary,
-                                        ),
+                                        childSlot,
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CivicTheme.primary),
                                       ),
                                     ),
                                   ],
                                 ),
                               );
                             }),
+                            const SizedBox(height: 4),
+                            Text(
+                              l10n.distinctTokensNotice,
+                              style: const TextStyle(fontSize: 10, color: CivicTheme.textSecondary, fontStyle: FontStyle.italic),
+                            ),
                           ],
                         ),
                       ),
@@ -1827,6 +1949,17 @@ class _BookScreenState extends State<BookScreen> {
                                   );
                                 }).toList(),
                               ),
+                              const SizedBox(height: 6),
+                              Text(
+                                l10n.queueSlotsReservedCount(familyCount),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: familyCount > 1
+                                      ? CivicTheme.primary
+                                      : CivicTheme.textSecondary,
+                                ),
+                              ),
                               if (familyCount > 1) ...[
                                 const SizedBox(height: 18),
                                 Container(
@@ -1915,13 +2048,36 @@ class _BookScreenState extends State<BookScreen> {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.stretch,
                                             children: [
-                                              Text(
-                                                l10n.personIndexLabel(personNumber),
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: CivicTheme.primary,
-                                                ),
+                                              Wrap(
+                                                alignment: WrapAlignment.spaceBetween,
+                                                crossAxisAlignment: WrapCrossAlignment.center,
+                                                spacing: 8,
+                                                runSpacing: 4,
+                                                children: [
+                                                  Text(
+                                                    l10n.personIndexLabel(personNumber),
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: CivicTheme.primary,
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: CivicTheme.primarySoft,
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Text(
+                                                      '${l10n.allottedSlotTimeLabel}: ${_calculateStaggeredSlotTime(selectedSlotTime, k + 1)}',
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: CivicTheme.primary,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                               const SizedBox(height: 8),
                                               // Full Name

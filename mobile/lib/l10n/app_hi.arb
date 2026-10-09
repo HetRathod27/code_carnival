@@ -369,5 +369,16 @@
   "reasonOtherCounterWork": "अन्य काउंटर/विभाग का कार्य (अलग बुकिंग आवश्यक)",
   "invalidCounterReasonError": "अनुमति नहीं है: साथ आने वाले व्यक्ति को अन्य काउंटर का कार्य है। कृपया उस काउंटर के लिए अलग अपॉइंटमेंट बुक करें।",
   "missingAccompanyingDetailsPrompt": "कृपया साथ आने वाले सभी व्यक्तियों का पूरा नाम और मान्य कारण दर्ज करें।",
-  "accompanyingPersonsSummary": "साथ आने वाले व्यक्ति:"
+  "accompanyingPersonsSummary": "साथ आने वाले व्यक्ति:",
+  "allottedSlotTimeLabel": "आवंटित कतार समय",
+  "allottedTokensTitle": "आवंटित टोकन और कतार समय",
+  "distinctTokensNotice": "काउंटर कतार में प्रत्येक सदस्य को अपना अलग टोकन नंबर और निर्धारित समय आवंटित किया गया है।",
+  "queueSlotsReservedCount": "आपके समूह के लिए {count} कतार स्लॉट आवंटित किए जाएंगे।",
+  "@queueSlotsReservedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

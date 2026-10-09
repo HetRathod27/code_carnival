@@ -1184,4 +1184,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accompanyingPersonsSummary => 'Accompanying Persons:';
+
+  @override
+  String get allottedSlotTimeLabel => 'Allotted Queue Time';
+
+  @override
+  String get allottedTokensTitle => 'Allotted Tokens & Queue Times';
+
+  @override
+  String get distinctTokensNotice =>
+      'Each member is allotted their own individual token number and scheduled time in the counter queue.';
+
+  @override
+  String queueSlotsReservedCount(int count) {
+    return '$count queue slots will be allotted for your group.';
+  }
 }

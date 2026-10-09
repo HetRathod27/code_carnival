@@ -369,5 +369,16 @@
   "reasonOtherCounterWork": "અન્ય કાઉન્ટર/વિભાગનું કામ (અલગ બુકિંગ જરૂરી)",
   "invalidCounterReasonError": "મંજૂરી નથી: સાથે આવનાર વ્યક્તિને અન્ય કાઉન્ટરનું કામ છે. કૃપા કરીને તે કાઉન્ટર માટે અલગ એપોઇન્ટમેન્ટ બુક કરો.",
   "missingAccompanyingDetailsPrompt": "કૃપા કરીને સાથે આવનાર તમામ વ્યક્તિઓનું પૂરું નામ અને માન્ય કારણ ભરો.",
-  "accompanyingPersonsSummary": "સાથે આવનાર વ્યક્તિઓ:"
+  "accompanyingPersonsSummary": "સાથે આવનાર વ્યક્તિઓ:",
+  "allottedSlotTimeLabel": "ફાળવેલ કતાર સમય",
+  "allottedTokensTitle": "ફાળવેલ ટોકન અને કતાર સમય",
+  "distinctTokensNotice": "કાઉન્ટર કતારમાં દરેક સભ્યને પોતાનો અલગ ટોકન નંબર અને નિર્ધારિત સમય ફાળવવામાં આવેલ છે.",
+  "queueSlotsReservedCount": "તમારા જૂથ માટે {count} કતાર સ્લોટ ફાળવવામાં આવશે.",
+  "@queueSlotsReservedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

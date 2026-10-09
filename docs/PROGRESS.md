@@ -650,3 +650,41 @@ Running log of milestones, completed tasks, verifications, and status.
   - `flutter analyze` in `mobile/`: 0 errors / no issues found.
   - `flutter test` in `mobile/`: 34/34 tests passed.
   - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit 0 (All 67 pytest tests passed, web typecheck and build passed, flutter analyze clean, all checks green).
+
+---
+
+## M-CHILD-TOKENS: Child/Accompanying Member Tokens Allotment & Queue Slot Management
+- **Date**: 2026-10-10
+- **Built**:
+  - `api/app/schemas/citizen.py`:
+    - Added `AccompanyingMemberIn` schema with `name`, `reason`, and optional `slot_time`.
+    - Added `accompanying_members: list[AccompanyingMemberIn] | None` to `TokenBookIn`.
+    - Added `parent_token_id`, `appointment_date`, `appointment_slot`, and `child_tokens: list[TokenOut] = []` to `TokenOut`.
+  - `api/app/services/token_service.py`:
+    - Implemented `calculate_staggered_slot_time(base_slot, offset_index)` staggering base 60-minute window into 15-minute sub-slots (e.g. `09:30 AM – 09:45 AM` primary, `09:45 AM – 10:00 AM` child 1, `10:00 AM – 10:15 AM` child 2, `10:15 AM – 10:30 AM` child 3).
+    - Updated `book_token`: atomically creates child tokens with incremented sequence numbers, distinct display codes, `parent_token_id=token_id`, unique verification secrets, `phone=None` (satisfying `idx_tokens_phone_service_active`), beneficiary names, and staggered queue slot times stored in `eta_features`.
+  - `api/app/routers/citizen.py`:
+    - Updated `create_token` to accept and pass `accompanying_members` to `book_token`.
+    - Updated `build_token_out` to query and nest child tokens (`where parent_token_id == token.id`).
+    - Updated `citizen_check_in` to mark child tokens arrived alongside the parent token.
+  - `api/tests/api/test_routes.py`:
+    - Added `test_citizen_booking_with_accompanying_children_allots_tokens_and_times` verifying end-to-end token and slot allotment for primary + accompanying members.
+  - `openapi/openapi.json` & `web/src/api/client.ts`:
+    - Regenerated OpenAPI specs and updated TypeScript client definitions.
+  - `mobile/lib/api/client.dart`:
+    - Updated `TokenModel` with `parentTokenId`, `appointmentSlot`, and `childTokens`.
+    - Updated `ApiClient.bookToken` to serialize `accompanyingMembers`.
+  - `mobile/lib/l10n/app_{en,gu,hi}.arb`:
+    - Added localized strings for `allottedSlotTimeLabel`, `allottedTokensTitle`, `distinctTokensNotice`, and `queueSlotsReservedCount`.
+  - `mobile/lib/features/book/book_screen.dart`:
+    - Added party size queue slot counter badge (`queueSlotsReservedCount(familyCount)`).
+    - Added staggered queue slot time badge for each accompanying person in the booking sheet.
+    - Updated confirmation dialog to display separate cards for the primary token and all child tokens with their individual codes, names, and allotted queue times.
+  - `mobile/test/f1_citizen_test.dart`:
+    - Enhanced automated tests to verify queue slots reservation count, staggered time display, child token generation (`TAX-002`), and confirmation dialog card rendering.
+- **Verification**:
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 68 pytest tests passed in 66.74s, Ruff: OK, Mypy: OK on 54 source files, Web typecheck & build: OK, Flutter analyze: OK, Flutter test: 34/34 passed).
+- **Assumptions**:
+  - Child tokens belong to the primary booking and inherit the parent's contact/cancellation channel with `phone=None` to avoid phone uniqueness collisions on the active queue index.
+- **Git Commit & Tag**: `m-child-tokens-done`
+

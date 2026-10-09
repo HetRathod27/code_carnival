@@ -89,6 +89,10 @@ export interface TokenOut {
   is_verified?: boolean;
   verification_secret?: string | null;
   verification_qr?: string | null;
+  parent_token_id?: string | null;
+  appointment_date?: string | null;
+  appointment_slot?: string | null;
+  child_tokens?: TokenOut[];
 }
 
 export interface CounterStatusResult {

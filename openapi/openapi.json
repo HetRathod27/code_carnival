@@ -3675,6 +3675,35 @@
   },
   "components": {
     "schemas": {
+      "AccompanyingMemberIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "slot_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "reason"
+        ],
+        "title": "AccompanyingMemberIn"
+      },
       "CallNextIn": {
         "properties": {
           "service_id": {
@@ -5151,6 +5180,20 @@
             "type": "boolean",
             "title": "Is Fixed",
             "default": true
+          },
+          "accompanying_members": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AccompanyingMemberIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accompanying Members"
           }
         },
         "type": "object",
@@ -5224,6 +5267,39 @@
               }
             ],
             "title": "Beneficiary Name"
+          },
+          "parent_token_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Token Id"
+          },
+          "appointment_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointment Date"
+          },
+          "appointment_slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointment Slot"
           },
           "counter_id": {
             "anyOf": [
@@ -5405,6 +5481,14 @@
               }
             ],
             "title": "Verification Qr"
+          },
+          "child_tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenOut"
+            },
+            "type": "array",
+            "title": "Child Tokens",
+            "default": []
           },
           "server_time": {
             "type": "string",

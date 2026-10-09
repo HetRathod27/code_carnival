@@ -1178,4 +1178,19 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get accompanyingPersonsSummary => 'साथ आने वाले व्यक्ति:';
+
+  @override
+  String get allottedSlotTimeLabel => 'आवंटित कतार समय';
+
+  @override
+  String get allottedTokensTitle => 'आवंटित टोकन और कतार समय';
+
+  @override
+  String get distinctTokensNotice =>
+      'काउंटर कतार में प्रत्येक सदस्य को अपना अलग टोकन नंबर और निर्धारित समय आवंटित किया गया है।';
+
+  @override
+  String queueSlotsReservedCount(int count) {
+    return 'आपके समूह के लिए $count कतार स्लॉट आवंटित किए जाएंगे।';
+  }
 }

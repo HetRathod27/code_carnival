@@ -42,9 +42,32 @@ class FakeApiClient extends ApiClient {
     String? appointmentDate,
     String? appointmentSlot,
     bool isFixed = true,
+    List<Map<String, dynamic>>? accompanyingMembers,
     required String idempotencyKey,
   }) async {
     if (tokenToReturn != null) return tokenToReturn!;
+    final childTokens = <TokenModel>[];
+    if (accompanyingMembers != null) {
+      for (int i = 0; i < accompanyingMembers.length; i++) {
+        final cSeq = i + 2;
+        childTokens.add(TokenModel(
+          id: 'tok-child-${i + 1}',
+          officeId: officeId,
+          serviceId: serviceId,
+          businessDate: '2026-10-05',
+          seq: cSeq,
+          displayCode: 'TAX-00$cSeq',
+          state: 'WAITING',
+          category: category,
+          priorityStatus: category == 'PRIORITY' ? 'PRIORITY' : 'NONE',
+          createdVia: 'ONLINE',
+          waitingAhead: i + 1,
+          beneficiaryName: accompanyingMembers[i]['name'] as String?,
+          appointmentSlot: accompanyingMembers[i]['slot_time'] as String?,
+          parentTokenId: 'tok-123',
+        ));
+      }
+    }
     return TokenModel(
       id: 'tok-123',
       officeId: officeId,
@@ -57,6 +80,9 @@ class FakeApiClient extends ApiClient {
       priorityStatus: category == 'PRIORITY' ? 'PRIORITY' : 'NONE',
       createdVia: 'ONLINE',
       waitingAhead: 0,
+      beneficiaryName: beneficiaryName,
+      appointmentSlot: appointmentSlot,
+      childTokens: childTokens,
     );
   }
 }
@@ -342,6 +368,10 @@ void main() {
       expect(find.textContaining('Single Counter Policy: All accompanying members must attend for this same counter service'), findsOneWidget);
       expect(find.text('Accompanying Person #2'), findsOneWidget);
 
+      // Verify queue slots notice and staggered queue time for accompanying member #2
+      expect(find.textContaining('2 queue slots will be allotted for your group'), findsOneWidget);
+      expect(find.textContaining('Allotted Queue Time: 09:45 AM – 10:00 AM'), findsOneWidget);
+
       // Confirm button must be DISABLED because name & reason are missing
       final confirmBtnFinder = find.widgetWithText(ElevatedButton, 'Confirm Appointment • Standard Fee: ₹20');
       expect(confirmBtnFinder, findsOneWidget);
@@ -390,10 +420,14 @@ void main() {
       await tester.tap(confirmBtnFinder);
       await tester.pumpAndSettle();
 
-      // Verify confirmation dialog shows accompanying person Ramesh Patel with reason
+      // Verify confirmation dialog shows individual allotted tokens and times
       expect(find.textContaining('Appointment Confirmed!'), findsOneWidget);
       expect(find.text('2 People'), findsOneWidget);
+      expect(find.textContaining('Allotted Tokens & Queue Times'), findsOneWidget);
+      expect(find.text('TAX-001'), findsAtLeast(1));
+      expect(find.text('TAX-002'), findsOneWidget);
       expect(find.textContaining('Ramesh Patel'), findsOneWidget);
+      expect(find.textContaining('09:45 AM – 10:00 AM'), findsAtLeast(1));
     });
   });
 }

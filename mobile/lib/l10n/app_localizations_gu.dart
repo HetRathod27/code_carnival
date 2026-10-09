@@ -1173,4 +1173,19 @@ class AppLocalizationsGu extends AppLocalizations {
 
   @override
   String get accompanyingPersonsSummary => 'સાથે આવનાર વ્યક્તિઓ:';
+
+  @override
+  String get allottedSlotTimeLabel => 'ફાળવેલ કતાર સમય';
+
+  @override
+  String get allottedTokensTitle => 'ફાળવેલ ટોકન અને કતાર સમય';
+
+  @override
+  String get distinctTokensNotice =>
+      'કાઉન્ટર કતારમાં દરેક સભ્યને પોતાનો અલગ ટોકન નંબર અને નિર્ધારિત સમય ફાળવવામાં આવેલ છે.';
+
+  @override
+  String queueSlotsReservedCount(int count) {
+    return 'તમારા જૂથ માટે $count કતાર સ્લોટ ફાળવવામાં આવશે.';
+  }
 }

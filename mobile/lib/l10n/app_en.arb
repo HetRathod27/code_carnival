@@ -369,5 +369,16 @@
   "reasonOtherCounterWork": "Work at a different counter/department (Separate booking required)",
   "invalidCounterReasonError": "Not allowed: Accompanying person has work at another counter. Please book a separate appointment for that counter.",
   "missingAccompanyingDetailsPrompt": "Please provide full name and select a valid counter reason for all accompanying persons.",
-  "accompanyingPersonsSummary": "Accompanying Persons:"
+  "accompanyingPersonsSummary": "Accompanying Persons:",
+  "allottedSlotTimeLabel": "Allotted Queue Time",
+  "allottedTokensTitle": "Allotted Tokens & Queue Times",
+  "distinctTokensNotice": "Each member is allotted their own individual token number and scheduled time in the counter queue.",
+  "queueSlotsReservedCount": "{count} queue slots will be allotted for your group.",
+  "@queueSlotsReservedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

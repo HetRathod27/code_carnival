@@ -217,6 +217,66 @@ async def test_citizen_booking_and_lifecycle(client, dev_auth, vclock):
     assert resp_cancel.json()["state"] == "CANCELLED"
 
 
+@pytest.mark.asyncio
+async def test_citizen_booking_with_accompanying_children_allots_tokens_and_times(client, dev_auth, vclock):
+    """
+    Booking with multiple accompanying members creates distinct child tokens with staggered times.
+    """
+    office_id = "ward-central-01"
+    service_id = "srv-bc"
+    phone = f"+9198{uuid.uuid4().hex[:8]}"
+    cit_id = f"user-{uuid.uuid4().hex[:6]}"
+    cit_token = dev_auth.create_token(UserClaims(user_id=cit_id, role="CITIZEN", phone=phone))
+    auth_headers = {"Authorization": f"Bearer {cit_token}"}
+
+    payload = {
+        "office_id": office_id,
+        "service_id": service_id,
+        "phone": phone,
+        "beneficiary_name": "Primary Parent",
+        "appointment_date": "2026-10-15",
+        "appointment_slot": "09:30 AM – 10:30 AM",
+        "is_fixed": True,
+        "accompanying_members": [
+            {"name": "Child One", "reason": "Joint Applicant"},
+            {"name": "Child Two", "reason": "Assistance"},
+        ],
+    }
+
+    resp = await client.post("/v1/citizen/tokens", json=payload, headers=auth_headers)
+    assert resp.status_code == 201
+    data = resp.json()
+
+    # Primary token assertions
+    assert data["beneficiary_name"] == "Primary Parent"
+    assert data["appointment_slot"] == "09:30 AM – 09:45 AM"
+    assert len(data["child_tokens"]) == 2
+
+    # Child token 1 assertions
+    child1 = data["child_tokens"][0]
+    assert child1["beneficiary_name"] == "Child One"
+    assert child1["parent_token_id"] == data["id"]
+    assert child1["seq"] == data["seq"] + 1
+    assert child1["display_code"] == f"BC-{child1['seq']:03d}"
+    assert child1["appointment_slot"] == "09:45 AM – 10:00 AM"
+
+    # Child token 2 assertions
+    child2 = data["child_tokens"][1]
+    assert child2["beneficiary_name"] == "Child Two"
+    assert child2["parent_token_id"] == data["id"]
+    assert child2["seq"] == data["seq"] + 2
+    assert child2["display_code"] == f"BC-{child2['seq']:03d}"
+    assert child2["appointment_slot"] == "10:00 AM – 10:15 AM"
+
+    # Active token check returns parent with children populated
+    resp_active = await client.get("/v1/citizen/tokens/me/active", headers=auth_headers)
+    assert resp_active.status_code == 200
+    active_data = resp_active.json()
+    assert active_data["id"] == data["id"]
+    assert len(active_data["child_tokens"]) == 2
+    assert active_data["child_tokens"][0]["display_code"] == child1["display_code"]
+    assert active_data["child_tokens"][1]["display_code"] == child2["display_code"]
+
 
 @pytest.mark.asyncio
 async def test_officer_full_lifecycle_and_guards(client, dev_auth, vclock):

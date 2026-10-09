@@ -103,6 +103,11 @@ class TokenModel {
   final String? verificationSecret;
   final String? verificationQr;
   final bool? isVerified;
+  final String? beneficiaryName;
+  final String? parentTokenId;
+  final String? appointmentDate;
+  final String? appointmentSlot;
+  final List<TokenModel> childTokens;
 
   TokenModel({
     required this.id,
@@ -132,6 +137,11 @@ class TokenModel {
     this.verificationSecret,
     this.verificationQr,
     this.isVerified,
+    this.beneficiaryName,
+    this.parentTokenId,
+    this.appointmentDate,
+    this.appointmentSlot,
+    this.childTokens = const [],
   });
 
   factory TokenModel.fromJson(Map<String, dynamic> json) {
@@ -163,6 +173,14 @@ class TokenModel {
       verificationSecret: json['verification_secret'] as String?,
       verificationQr: json['verification_qr'] as String?,
       isVerified: json['is_verified'] as bool?,
+      beneficiaryName: json['beneficiary_name'] as String?,
+      parentTokenId: json['parent_token_id'] as String?,
+      appointmentDate: json['appointment_date'] as String?,
+      appointmentSlot: json['appointment_slot'] as String?,
+      childTokens: (json['child_tokens'] as List<dynamic>?)
+              ?.map((item) => TokenModel.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 }
@@ -309,6 +327,7 @@ class ApiClient {
     String? appointmentDate,
     String? appointmentSlot,
     bool isFixed = true,
+    List<Map<String, dynamic>>? accompanyingMembers,
     required String idempotencyKey,
   }) async {
     final res = await _safePost(
@@ -328,6 +347,8 @@ class ApiClient {
         'appointment_date': appointmentDate,
         'appointment_slot': appointmentSlot,
         'is_fixed': isFixed,
+        if (accompanyingMembers != null && accompanyingMembers.isNotEmpty)
+          'accompanying_members': accompanyingMembers,
       }),
     );
     if (res.statusCode != 201) {

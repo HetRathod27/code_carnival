@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
@@ -28,6 +30,12 @@ class OfficeOut(BaseModel):
     close_time: str
 
 
+class AccompanyingMemberIn(BaseModel):
+    name: str
+    reason: str
+    slot_time: str | None = None
+
+
 class TokenBookIn(BaseModel):
     office_id: str
     service_id: str
@@ -39,6 +47,7 @@ class TokenBookIn(BaseModel):
     appointment_date: str | None = None
     appointment_slot: str | None = None
     is_fixed: bool = True
+    accompanying_members: list[AccompanyingMemberIn] | None = None
 
 
 class TokenOut(BaseModel):
@@ -54,6 +63,9 @@ class TokenOut(BaseModel):
     created_via: str
     phone: str | None = None
     beneficiary_name: str | None = None
+    parent_token_id: str | None = None
+    appointment_date: str | None = None
+    appointment_slot: str | None = None
     counter_id: str | None = None
     counter_label: str | None = None
     arrived_at: datetime | None = None
@@ -71,6 +83,7 @@ class TokenOut(BaseModel):
     is_verified: bool = False
     verification_secret: str | None = None
     verification_qr: str | None = None
+    child_tokens: list[TokenOut] = []
     server_time: datetime = Field(default_factory=datetime.utcnow)
 
 

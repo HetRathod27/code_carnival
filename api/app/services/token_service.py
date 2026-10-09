@@ -33,6 +33,49 @@ class BookingError(Exception):
         self.status_code = status_code
 
 
+def calculate_staggered_slot_time(base_slot: str | None, offset_index: int) -> str | None:
+    if not base_slot:
+        return None
+    try:
+        dash = "–" if "–" in base_slot else ("-" if "-" in base_slot else None)
+        if dash:
+            start_part = base_slot.split(dash)[0].strip()
+        else:
+            start_part = base_slot.strip()
+
+        import re
+        m = re.match(r"(\d{1,2}):(\d{2})\s*(AM|PM)", start_part, re.IGNORECASE)
+        if m:
+            hour = int(m.group(1))
+            minute = int(m.group(2))
+            meridiem = m.group(3).upper()
+            if meridiem == "PM" and hour != 12:
+                hour += 12
+            elif meridiem == "AM" and hour == 12:
+                hour = 0
+
+            total_minutes = hour * 60 + minute + offset_index * 15
+            s_hour = (total_minutes // 60) % 24
+            s_min = total_minutes % 60
+            e_total = total_minutes + 15
+            e_hour = (e_total // 60) % 24
+            e_min = e_total % 60
+
+            def fmt(h: int, mi: int) -> str:
+                med = "AM" if h < 12 else "PM"
+                h12 = h % 12
+                if h12 == 0:
+                    h12 = 12
+                return f"{h12:02d}:{mi:02d} {med}"
+
+            return f"{fmt(s_hour, s_min)} – {fmt(e_hour, e_min)}"
+    except Exception:
+        pass
+    if offset_index == 0:
+        return base_slot
+    return f"{base_slot} (+{offset_index * 15}m)"
+
+
 async def book_token(
     session: AsyncSession,
     clock: Clock,
@@ -51,6 +94,7 @@ async def book_token(
     appointment_date: str | None = None,
     appointment_slot: str | None = None,
     is_fixed: bool = False,
+    accompanying_members: list[Any] | None = None,
 ) -> dict[str, Any]:
     """
     Booking (C3, O7) — atomic numbering, one transaction.
@@ -307,13 +351,94 @@ async def book_token(
     )
     session.add(eta_log_entry)
 
+    child_token_ids: list[str] = []
+    if accompanying_members:
+        primary_slot = calculate_staggered_slot_time(appointment_slot, 0)
+        if primary_slot and token.eta_features:
+            token.eta_features["appointment_slot"] = primary_slot
+
+        for idx, member in enumerate(accompanying_members):
+            m_name = member.get("name") if isinstance(member, dict) else getattr(member, "name", "")
+            m_reason = member.get("reason") if isinstance(member, dict) else getattr(member, "reason", "")
+            m_custom_slot = member.get("slot_time") if isinstance(member, dict) else getattr(member, "slot_time", None)
+            c_slot_time = m_custom_slot or calculate_staggered_slot_time(appointment_slot, idx + 1)
+
+            new_seq += 1
+            queue_state.last_seq = new_seq
+            queue_state.waiting_count += 1
+            queue_state.version += 1
+            queue_state.updated_at = now_dt
+
+            c_display_code = f"{service.code}-{new_seq:03d}"
+            c_token_id = str(uuid.uuid4())
+            c_secret = f"{secrets.randbelow(900000) + 100000:06d}"
+
+            c_eta_meta: dict[str, Any] = {
+                "low": low,
+                "high": high,
+                "naive_p50": n_p50,
+                "co_attendance_reason": m_reason,
+                "appointment_slot": c_slot_time,
+            }
+            if is_fixed_appointment:
+                c_eta_meta["is_fixed"] = True
+            if appointment_date:
+                c_eta_meta["appointment_date"] = appointment_date
+
+            c_token = Token(
+                id=c_token_id,
+                office_id=office_id,
+                service_id=service_id,
+                business_date=b_date,
+                seq=new_seq,
+                display_code=c_display_code,
+                citizen_id=citizen_id,
+                phone=None,
+                beneficiary_name=m_name,
+                parent_token_id=token_id,
+                category=db_category,
+                priority_status="VERIFIED" if (created_via in ["WALKIN", "ASSISTED", "DESK"] or db_category == "NORMAL") else "PENDING",
+                created_via=created_via,
+                state="WAITING",
+                sort_key=sort_key + (idx + 1) * 0.001,
+                travel_minutes=travel_minutes,
+                arrived_at=now_dt if created_via in ["WALKIN", "ASSISTED"] else None,
+                verification_secret=c_secret,
+                verification_verified=False,
+                failed_verification_attempts=0,
+                last_eta_minutes=int(p50),
+                last_eta_reason=reason,
+                eta_features=c_eta_meta,
+                created_at=now_dt,
+            )
+            session.add(c_token)
+            await session.flush()
+
+            c_event = TokenEvent(
+                token_id=c_token_id,
+                from_state=None,
+                to_state="WAITING",
+                actor_type=actor_type,
+                actor_id=citizen_id or phone,
+                at=now_dt,
+                meta={
+                    "created_via": created_via,
+                    "seq": new_seq,
+                    "parent_token_id": token_id,
+                    "co_attendance_reason": m_reason,
+                    "appointment_slot": c_slot_time,
+                },
+            )
+            session.add(c_event)
+            child_token_ids.append(c_token_id)
+
     response_data = {
         "token_id": token_id,
         "verification_secret": verification_secret,
         "office_id": office_id,
         "service_id": service_id,
         "display_code": display_code,
-        "seq": new_seq,
+        "seq": token.seq,
         "state": "WAITING",
         "category": category,
         "sort_key": sort_key,
@@ -323,6 +448,7 @@ async def book_token(
         "eta_high": high,
         "eta_reason": reason,
         "naive_p50": n_p50,
+        "child_token_ids": child_token_ids,
         "created_at": now_dt.isoformat(),
     }
 

@@ -2091,6 +2091,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Accompanying Persons:'**
   String get accompanyingPersonsSummary;
+
+  /// No description provided for @allottedSlotTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Allotted Queue Time'**
+  String get allottedSlotTimeLabel;
+
+  /// No description provided for @allottedTokensTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allotted Tokens & Queue Times'**
+  String get allottedTokensTitle;
+
+  /// No description provided for @distinctTokensNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Each member is allotted their own individual token number and scheduled time in the counter queue.'**
+  String get distinctTokensNotice;
+
+  /// No description provided for @queueSlotsReservedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} queue slots will be allotted for your group.'**
+  String queueSlotsReservedCount(int count);
 }
 
 class _AppLocalizationsDelegate
