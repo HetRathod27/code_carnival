@@ -564,6 +564,20 @@ Running log of milestones, completed tasks, verifications, and status.
   - Web Audio API synthesizer is utilized for audio feedback, avoiding external audio asset dependencies.
 - **Git Commit & Tag**: `officer-redesign-done`
 
+---
+
+## UI-ENHANCEMENT: Collapsible/Expandable Left Sidebar with Dedicated User Controls
+- **Date**: 2026-10-09
+- **Built**:
+  - `web/src/components/AppShell.tsx`: Added `sidebarOpen` state persisted in `localStorage` (`ql_sidebar_open`); integrated a universal toggle button (`.btn-sidebar-toggle`) in the top bar with dynamic icon (`menu` / `menu_open`), and a close button (`.btn-sidebar-toggle-close`) in the sidebar header. Users can seamlessly open and close the sidebar whenever desired.
+  - `web/src/index.css`: Styled smooth cubic-bezier width and opacity transition for `.gov-sidebar.closed`, expanding the workplace area to 100% full width when closed, while maintaining drawer behavior on viewports below 1024px.
+- **Verification**:
+  - `npm run typecheck` in `web/`: 0 errors.
+  - `npm run build` in `web/`: Built in 166ms.
+  - `npm test` in `web/`: 4/4 tests passed.
+  - `scripts/verify.ps1`: Exit 0 (All 57 pytest tests passed, Ruff: OK, Mypy: OK, Flutter: OK).
+- **Git Commit & Tag**: `sidebar-toggle-done`
+
 
 
 

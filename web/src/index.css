@@ -1559,7 +1559,18 @@ input, select, textarea {
   height: calc(100vh - 4px);
   overflow-y: auto;
   z-index: 900;
-  transition: width 0.2s ease, transform 0.25s ease;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, visibility 0.25s ease;
+}
+
+.gov-sidebar.closed {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border-right: none !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 /* Brand & Civic Office Block */
@@ -1593,6 +1604,28 @@ input, select, textarea {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
+}
+
+.btn-sidebar-toggle-close {
+  margin-left: auto;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-sidebar-toggle-close:hover {
+  background-color: var(--color-secondary-canvas);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .btn-drawer-close {
@@ -1857,10 +1890,10 @@ input, select, textarea {
   gap: 12px;
 }
 
-.btn-hamburger {
-  display: none;
-  min-height: 44px;
-  width: 44px;
+.btn-sidebar-toggle {
+  display: inline-flex;
+  min-height: 40px;
+  min-width: 40px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background-color: var(--color-surface);
@@ -1868,6 +1901,13 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-sidebar-toggle:hover {
+  background-color: var(--color-secondary-canvas);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .topbar-breadcrumbs {
@@ -2028,8 +2068,8 @@ input, select, textarea {
 
 /* 1024px: Sidebar becomes Drawer on small screens */
 @media (max-width: 1023px) {
-  .btn-hamburger {
-    display: flex;
+  .btn-sidebar-toggle {
+    display: inline-flex;
   }
 
   .btn-drawer-close {
@@ -2043,11 +2083,22 @@ input, select, textarea {
     left: -280px;
     height: 100vh;
     z-index: 1200;
-    width: 260px;
+    width: 260px !important;
+    min-width: 260px !important;
+    transition: transform 0.25s ease;
+  }
+
+  .gov-sidebar.closed {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    left: -280px !important;
   }
 
   .gov-sidebar.drawer-open {
-    transform: translateX(280px);
+    transform: translateX(280px) !important;
   }
 
   .gov-drawer-backdrop {

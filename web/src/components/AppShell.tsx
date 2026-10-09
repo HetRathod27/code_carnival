@@ -24,9 +24,25 @@ export function AppShell({
   const { t, i18n } = useTranslation();
   const { persona, logout } = useAuth();
 
+  // Desktop sidebar open/closed state (persisted in localStorage)
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    return localStorage.getItem('ql_sidebar_open') !== 'false';
+  });
   // Mobile drawer open state (<1024px)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+
+  const toggleSidebar = () => {
+    if (window.innerWidth < 1024) {
+      setMobileDrawerOpen((prev) => !prev);
+    } else {
+      setSidebarOpen((prev) => {
+        const next = !prev;
+        localStorage.setItem('ql_sidebar_open', String(next));
+        return next;
+      });
+    }
+  };
 
   // Live Clock & Sync timestamp
   const [currentTime, setCurrentTime] = useState<string>(() => {
@@ -117,9 +133,9 @@ export function AppShell({
           />
         )}
 
-        {/* 3. Left Sidebar (260px wide, light institutional background, no dark sidebar) */}
+        {/* 3. Left Sidebar (260px wide, can be closed and opened by user) */}
         <aside
-          className={`gov-sidebar${mobileDrawerOpen ? ' drawer-open' : ''}`}
+          className={`gov-sidebar${!sidebarOpen ? ' closed' : ''}${mobileDrawerOpen ? ' drawer-open' : ''}`}
           aria-label="Staff Navigation Sidebar"
         >
           {/* Top Brand & Office Identity */}
@@ -130,14 +146,15 @@ export function AppShell({
                 <div className="brand-app-name">QueueLess</div>
                 <div className="brand-sub-badge">Civic Governance</div>
               </div>
-              {/* Mobile Close Button */}
+              {/* Close Sidebar Button */}
               <button
                 type="button"
-                className="btn-drawer-close"
-                onClick={() => setMobileDrawerOpen(false)}
-                aria-label="Close navigation drawer"
+                className="btn-sidebar-toggle-close"
+                onClick={toggleSidebar}
+                title="Close sidebar"
+                aria-label="Close navigation sidebar"
               >
-                <span className="material-symbols-outlined icon-sm">close</span>
+                <span className="material-symbols-outlined icon-sm">menu_open</span>
               </button>
             </div>
 
@@ -251,14 +268,18 @@ export function AppShell({
           {/* Slim Top Bar: Breadcrumb, Live Clock, Sync status */}
           <header className="gov-slim-topbar">
             <div className="topbar-left">
-              {/* Mobile Drawer Hamburger */}
+              {/* Universal Sidebar Toggle Button (Click to Open/Close Sidebar) */}
               <button
                 type="button"
-                className="btn-hamburger"
-                onClick={() => setMobileDrawerOpen(true)}
-                aria-label="Open navigation menu"
+                className="btn-sidebar-toggle"
+                onClick={toggleSidebar}
+                title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+                aria-label="Toggle navigation sidebar"
+                aria-expanded={sidebarOpen}
               >
-                <span className="material-symbols-outlined icon-md">menu</span>
+                <span className="material-symbols-outlined icon-md">
+                  {sidebarOpen ? 'menu_open' : 'menu'}
+                </span>
               </button>
 
               {/* Breadcrumb Hierarchy */}
