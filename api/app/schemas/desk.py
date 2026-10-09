@@ -17,3 +17,4 @@ class DeskSlipOut(BaseModel):
     token: TokenOut
     printable_code: str
     qr_data: str
+    verification_code: str | None = None

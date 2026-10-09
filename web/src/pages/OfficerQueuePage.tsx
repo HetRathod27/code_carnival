@@ -6,6 +6,7 @@ import {
   updateCounterStatus,
   callNext,
   verifyCounter,
+  officerOverrideVerification,
   startServing,
   completeServing,
   markNoShow,
@@ -72,6 +73,10 @@ export function OfficerQueuePage() {
   const [showReportProblemModal, setShowReportProblemModal] = useState(false);
   const [problemReason, setProblemReason] = useState<string>('Server down');
   const [problemDetails, setProblemDetails] = useState<string>('');
+
+  // Officer Verification Override Dialog (Administrative Escape Hatch)
+  const [showVerificationOverrideModal, setShowVerificationOverrideModal] = useState(false);
+  const [verificationOverrideReason, setVerificationOverrideReason] = useState<string>('');
 
   // Keyboard Shortcuts Popover
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
@@ -268,6 +273,7 @@ export function OfficerQueuePage() {
         display_code: activeToken.display_code,
         service_id: activeToken.service_id,
         service_name: sName,
+        counter_id: counterId,
         beneficiary_name: activeToken.beneficiary_name,
         outcome_code: outcomeCode,
         duration_seconds: elapsedSeconds,
@@ -302,6 +308,7 @@ export function OfficerQueuePage() {
         display_code: activeToken.display_code,
         service_id: activeToken.service_id,
         service_name: 'Civic Service',
+        counter_id: counterId,
         beneficiary_name: activeToken.beneficiary_name,
         outcome_code: 'NO_SHOW',
         duration_seconds: 0,
@@ -393,30 +400,54 @@ export function OfficerQueuePage() {
     }
   };
 
-  // Counter Check-in (USB Barcode Wedge or manual typing)
+  // Counter Verification (Mandatory before service start: 6-digit numeric secret or QR)
   const handleCounterCheckin = async (codeToVerify?: string) => {
     const raw = (codeToVerify || counterCheckinInput).trim();
     if (!token || !raw) return;
 
+    if (!activeToken) {
+      setFeedbackMsg({ type: 'error', text: 'No active token called at this counter to verify.' });
+      return;
+    }
+
     try {
       setLoading(true);
-      const target = activeToken && (activeToken.display_code.toUpperCase() === raw.toUpperCase() || activeToken.id === raw)
-        ? activeToken
-        : queue.find((q) => q.display_code.toUpperCase() === raw.toUpperCase() || q.id === raw);
-
-      if (target) {
-        await verifyCounter(token, target.id, raw);
-        playCheckinChime();
-        setFeedbackMsg({ type: 'success', text: `✓ Verified check-in for token ${target.display_code}` });
-        setCounterCheckinInput('');
-        setShowWebcamScanner(false);
-        await loadQueue();
-      } else {
-        setFeedbackMsg({ type: 'error', text: `Token "${raw}" not found in current waiting queue.` });
-      }
+      await verifyCounter(token, activeToken.id, raw);
+      playCheckinChime();
+      setActiveToken({ ...activeToken, is_verified: true });
+      setFeedbackMsg({ type: 'success', text: `✓ Citizen ${activeToken.display_code} successfully verified at counter` });
+      setCounterCheckinInput('');
+      setShowWebcamScanner(false);
+      await loadQueue();
     } catch (err: unknown) {
       const e = err as Error;
-      setFeedbackMsg({ type: 'error', text: `Check-in verification failed: ${e.message}` });
+      setFeedbackMsg({ type: 'error', text: `Verification failed: ${e.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Counter Officer Verification Override
+  const handleOfficerVerificationOverride = async () => {
+    if (!token || !activeToken) return;
+    if (!verificationOverrideReason.trim()) {
+      setFeedbackMsg({ type: 'error', text: 'Override reason is mandatory' });
+      return;
+    }
+    try {
+      setLoading(true);
+      await officerOverrideVerification(token, activeToken.id, verificationOverrideReason.trim());
+      setActiveToken({ ...activeToken, is_verified: true });
+      setShowVerificationOverrideModal(false);
+      setVerificationOverrideReason('');
+      setFeedbackMsg({
+        type: 'success',
+        text: `✓ Verification manually overridden for ${activeToken.display_code}`,
+      });
+      await loadQueue();
+    } catch (err: unknown) {
+      const e = err as Error;
+      setFeedbackMsg({ type: 'error', text: `Override failed: ${e.message}` });
     } finally {
       setLoading(false);
     }
@@ -626,10 +657,11 @@ export function OfficerQueuePage() {
                 color: 'var(--color-text-primary)',
               }}
             >
-              <option value="cnt-1">{t('officer.counter_1_opt', 'Counter 1 · Birth certificate, Civic documents')}</option>
-              <option value="cnt-2">{t('officer.counter_2_opt', 'Counter 2 · Income certificate, Revenue')}</option>
-              <option value="cnt-3">{t('officer.counter_3_opt', 'Counter 3 · Property tax, Trade licenses')}</option>
-              <option value="cnt-all">{t('officer.counter_all_opt', 'Counter Universal · All civic services')}</option>
+              <option value="cnt-1">{t('officer.counter_1_opt', 'Counter 1 · Birth & Death Certificate')}</option>
+              <option value="cnt-2">{t('officer.counter_2_opt', 'Counter 2 · Property Tax Payment & Assessment')}</option>
+              <option value="cnt-3">{t('officer.counter_3_opt', 'Counter 3 · Property Tax Assessment & Payment')}</option>
+              <option value="cnt-4">{t('officer.counter_4_opt', 'Counter 4 · Trade License & Shop Registration')}</option>
+              <option value="cnt-5">{t('officer.counter_5_opt', 'Counter 5 · RTI Application & Civic Grievances')}</option>
             </select>
           </div>
 
@@ -1415,88 +1447,142 @@ export function OfficerQueuePage() {
                 </div>
               )}
 
-              {/* Counter Check-in (Wedge scanner & webcam) */}
-              <div
-                style={{
-                  padding: '12px',
-                  backgroundColor: 'var(--color-secondary-canvas)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-sm)',
-                }}
-              >
-                <div style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-                  {t('officer.counter_checkin_title', 'Check-in at Counter (Barcode wedge / Camera scan)')}
+              {/* Counter Citizen Verification Step (Mandatory before service start) */}
+              {activeToken.state === 'CALLED' && (
+                <div
+                  style={{
+                    padding: '14px',
+                    backgroundColor: activeToken.is_verified ? 'var(--color-success-soft, #e6f4ea)' : 'var(--color-secondary-canvas)',
+                    border: `1px solid ${activeToken.is_verified ? 'var(--color-success, #137333)' : 'var(--color-border)'}`,
+                    borderRadius: 'var(--radius-sm)',
+                    marginBottom: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: activeToken.is_verified ? '0' : '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="material-symbols-outlined icon-sm" style={{ color: activeToken.is_verified ? 'var(--color-success, #137333)' : 'var(--color-primary)' }}>
+                        {activeToken.is_verified ? 'verified_user' : 'lock'}
+                      </span>
+                      <strong style={{ fontSize: 'var(--font-sm)', color: activeToken.is_verified ? 'var(--color-success, #137333)' : 'var(--color-text-primary)' }}>
+                        {activeToken.is_verified ? t('officer.citizen_verified_title', 'Citizen Verified at Counter') : t('officer.verify_citizen_title', 'Verify Citizen (Mandatory)')}
+                      </strong>
+                    </div>
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        backgroundColor: activeToken.is_verified ? 'var(--color-success, #137333)' : 'var(--color-warning, #e37400)',
+                        color: '#fff',
+                      }}
+                    >
+                      {activeToken.is_verified ? t('officer.verified_badge', 'VERIFIED') : t('officer.unverified_badge', 'VERIFICATION REQUIRED')}
+                    </span>
+                  </div>
+
+                  {!activeToken.is_verified && (
+                    <>
+                      <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', marginBottom: '10px', lineHeight: 1.4 }}>
+                        {t('officer.verify_citizen_hint', 'Enter the 6-digit numeric verification code or scan the QR code from the citizen\'s mobile screen or physical Turn Slip.')}
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+                        <input
+                          type="text"
+                          maxLength={30}
+                          placeholder={t('officer.verify_code_placeholder', 'Enter 6-digit code or scan…')}
+                          value={counterCheckinInput}
+                          onChange={(e) => setCounterCheckinInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleCounterCheckin();
+                          }}
+                          style={{
+                            flex: 1,
+                            minHeight: '44px',
+                            padding: '0 12px',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--font-body)',
+                            letterSpacing: '1px',
+                            fontWeight: 600,
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleCounterCheckin()}
+                          disabled={!counterCheckinInput.trim() || loading}
+                          style={{
+                            minHeight: '44px',
+                            padding: '0 14px',
+                            borderRadius: 'var(--radius-sm)',
+                            backgroundColor: 'var(--color-primary)',
+                            color: '#fff',
+                            border: 'none',
+                            fontSize: 'var(--font-xs)',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {t('officer.verify_action_btn', 'Verify')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowWebcamScanner(true)}
+                          title={t('officer.scan_qr_tooltip', 'Scan Citizen QR with camera')}
+                          style={{
+                            minHeight: '44px',
+                            padding: '0 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid var(--color-border)',
+                            backgroundColor: 'var(--color-surface)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span className="material-symbols-outlined icon-sm">qr_code_scanner</span>
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVerificationOverrideReason('');
+                            setShowVerificationOverrideModal(true);
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-text-muted)',
+                            fontSize: 'var(--font-xs)',
+                            textDecoration: 'underline',
+                            cursor: 'pointer',
+                            padding: '4px',
+                          }}
+                        >
+                          {t('officer.manual_override_link', 'Officer Manual Override…')}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    placeholder={t('officer.counter_checkin_placeholder', 'Enter or scan code…')}
-                    value={counterCheckinInput}
-                    onChange={(e) => setCounterCheckinInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleCounterCheckin();
-                    }}
-                    style={{
-                      flex: 1,
-                      minHeight: '44px',
-                      padding: '0 10px',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: 'var(--font-sm)',
-                      textTransform: 'uppercase',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleCounterCheckin()}
-                    disabled={!counterCheckinInput.trim() || loading}
-                    style={{
-                      minHeight: '44px',
-                      padding: '0 12px',
-                      borderRadius: 'var(--radius-sm)',
-                      backgroundColor: 'var(--color-primary-soft)',
-                      color: 'var(--color-primary)',
-                      border: '1px solid var(--color-primary)',
-                      fontSize: 'var(--font-xs)',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {t('common.confirm', 'Confirm')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowWebcamScanner(true)}
-                    title={t('officer.scan_camera_tooltip', 'Scan with camera')}
-                    style={{
-                      minHeight: '44px',
-                      padding: '0 10px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--color-border)',
-                      backgroundColor: 'var(--color-surface)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <span className="material-symbols-outlined icon-sm">photo_camera</span>
-                  </button>
-                </div>
-              </div>
+              )}
 
               {/* ACTION BUTTONS (Single Primary Action Rule) */}
               {activeToken.state === 'CALLED' ? (
                 <div>
-                  {/* SINGLE PRIMARY ACTION: Start Service */}
+                  {/* SINGLE PRIMARY ACTION: Start Service (Gated on is_verified) */}
                   <button
                     type="button"
                     onClick={handleStartServing}
-                    disabled={loading}
+                    disabled={loading || !activeToken.is_verified}
                     style={{
                       width: '100%',
                       minHeight: '52px',
                       borderRadius: 'var(--radius-sm)',
-                      backgroundColor: 'var(--color-primary)',
-                      color: '#ffffff',
+                      backgroundColor: activeToken.is_verified ? 'var(--color-primary)' : 'var(--color-border)',
+                      color: activeToken.is_verified ? '#ffffff' : 'var(--color-text-muted)',
                       fontSize: 'var(--font-body)',
                       fontWeight: 700,
                       display: 'flex',
@@ -1504,14 +1590,23 @@ export function OfficerQueuePage() {
                       justifyContent: 'center',
                       gap: '8px',
                       marginBottom: '10px',
-                      cursor: 'pointer',
+                      cursor: activeToken.is_verified ? 'pointer' : 'not-allowed',
                     }}
+                    title={activeToken.is_verified ? '' : t('officer.verify_required_tooltip', 'Verification required before starting service')}
                   >
-                    <span className="material-symbols-outlined icon-md">play_arrow</span>
-                    <span>{t('officer.start_service_btn', 'Start service')}</span>
-                    <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 5px', borderRadius: '3px' }}>
-                      S
+                    <span className="material-symbols-outlined icon-md">
+                      {activeToken.is_verified ? 'play_arrow' : 'lock'}
                     </span>
+                    <span>
+                      {activeToken.is_verified
+                        ? t('officer.start_service_btn', 'Start service')
+                        : t('officer.start_service_locked_btn', 'Start service (Verify citizen first)')}
+                    </span>
+                    {activeToken.is_verified && (
+                      <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 5px', borderRadius: '3px' }}>
+                        S
+                      </span>
+                    )}
                   </button>
 
                   {/* Secondary Actions for CALLED state */}
@@ -2058,7 +2153,49 @@ export function OfficerQueuePage() {
             </div>
             <div className="modal-actions" style={{ marginTop: '14px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowWebcamScanner(false)}>
-                {t('officer.close_camera_btn')}
+                {t('officer.close_camera_btn', 'Close Camera')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Officer Verification Override Modal (Administrative Escape Hatch) */}
+      {showVerificationOverrideModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '460px' }}>
+            <h2 className="modal-title" style={{ color: 'var(--color-warning)' }}>
+              {t('officer.override_verification_title', 'Officer Verification Override')}
+            </h2>
+            <div className="modal-body">
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginBottom: '12px', lineHeight: 1.4 }}>
+                {t('officer.override_verification_desc', 'Exceptional administrative escape hatch. Enter a non-empty reason to proceed without citizen code verification. This event is recorded in the permanent audit trail.')}
+              </p>
+              <div>
+                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
+                  {t('officer.override_reason_label', 'Override Reason (Mandatory)')}
+                </label>
+                <input
+                  type="text"
+                  placeholder={t('officer.override_reason_placeholder', 'e.g., Citizen lost printed slip / phone battery dead')}
+                  value={verificationOverrideReason}
+                  onChange={(e) => setVerificationOverrideReason(e.target.value)}
+                  style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                />
+              </div>
+            </div>
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button type="button" className="action-btn btn-secondary" onClick={() => setShowVerificationOverrideModal(false)}>
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                className="action-btn btn-primary"
+                onClick={handleOfficerVerificationOverride}
+                disabled={loading || !verificationOverrideReason.trim()}
+                style={{ backgroundColor: 'var(--color-warning)', color: '#000', fontWeight: 700 }}
+              >
+                {t('officer.confirm_override_btn', 'Confirm Override')}
               </button>
             </div>
           </div>

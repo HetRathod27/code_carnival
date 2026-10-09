@@ -355,6 +355,53 @@ async def create_counter(
     )
 
 
+@router.get("/offices/{office_id}/counters", response_model=list[CounterOut])
+async def list_office_counters(
+    office_id: str,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN", "DESK", "OFFICER"])),
+    session: AsyncSession = Depends(get_db),
+) -> list[CounterOut]:
+    require_office_access(user, office_id)
+    res = await session.execute(
+        select(Counter).where(Counter.office_id == office_id).order_by(Counter.label.asc())
+    )
+    counters = res.scalars().all()
+    if not counters:
+        return []
+    counter_ids = [c.id for c in counters]
+    mappings_res = await session.execute(
+        select(CounterService).where(CounterService.counter_id.in_(counter_ids))
+    )
+    mappings = mappings_res.scalars().all()
+    mapping_dict: dict[str, list[str]] = {}
+    for m in mappings:
+        mapping_dict.setdefault(m.counter_id, []).append(m.service_id)
+
+    return [
+        CounterOut(
+            id=c.id,
+            office_id=c.office_id,
+            label=c.label,
+            status=c.status,
+            officer_id=c.officer_id,
+            service_ids=mapping_dict.get(c.id, []),
+        )
+        for c in counters
+    ]
+
+
+@router.get("/counters", response_model=list[CounterOut])
+async def list_counters(
+    office_id: str | None = None,
+    user: UserClaims = Depends(require_role(["ADMIN", "SUPER_ADMIN", "DESK", "OFFICER"])),
+    session: AsyncSession = Depends(get_db),
+) -> list[CounterOut]:
+    target_office = office_id or user.office_id
+    if not target_office:
+        raise AppException(ErrorCode.VALIDATION_ERROR, "office_id is required", 400)
+    return await list_office_counters(target_office, user, session)
+
+
 @router.get("/counters/{counter_id}", response_model=CounterOut)
 async def get_counter(
     counter_id: str,
@@ -366,12 +413,17 @@ async def get_counter(
     if not counter:
         raise AppException(ErrorCode.NOT_FOUND, f"Counter '{counter_id}' not found", 404)
     require_office_access(user, counter.office_id)
+    mappings_res = await session.execute(
+        select(CounterService).where(CounterService.counter_id == counter_id)
+    )
+    mappings = mappings_res.scalars().all()
     return CounterOut(
         id=counter.id,
         office_id=counter.office_id,
         label=counter.label,
         status=counter.status,
         officer_id=counter.officer_id,
+        service_ids=[m.service_id for m in mappings],
     )
 
 

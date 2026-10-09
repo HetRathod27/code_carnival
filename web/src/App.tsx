@@ -148,7 +148,9 @@ export function App() {
         onNavChange={setActiveNav}
         onOpenDisplay={() => window.open(`/display/${persona.office_id || 'ward-central-01'}`, '_blank')}
       >
-        {(activeNav === 'admin' || activeNav === 'admin_counters' || activeNav === 'admin_settings') && <AdminPage />}
+        {(activeNav === 'admin' || activeNav === 'admin_counters' || activeNav === 'admin_settings') && (
+          <AdminPage activeNav={activeNav} onNavChange={setActiveNav} />
+        )}
         {activeNav === 'reports' && <ReportsPage />}
         {activeNav === 'sim' && <SimPage />}
         {activeNav === 'account' && <MyAccountPage onSignOutRequested={logout} />}

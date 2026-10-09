@@ -24,6 +24,7 @@ from api.app.services.officer_service import (
     mark_no_show,
     set_counter_status,
     start_serving,
+    verify_token_at_counter,
 )
 from api.app.services.scheduler_service import run_tick
 from api.app.services.token_service import book_token, cancel_token
@@ -331,8 +332,18 @@ async def run_simulation(
                             pass
                         serving[counter_id] = None
                     else:
-                        # Start serving
+                        # Verify and Start serving
                         try:
+                            t_called = (await session.execute(select(Token).where(Token.id == called_token_id))).scalar_one_or_none()
+                            if t_called and t_called.verification_secret:
+                                await verify_token_at_counter(
+                                    session=session,
+                                    clock=clock,
+                                    token_id=called_token_id,
+                                    verification_code=t_called.verification_secret,
+                                    counter_id=counter_id,
+                                    officer_id=f"sim-officer-{counter_id}",
+                                )
                             await start_serving(
                                 session=session,
                                 clock=clock,

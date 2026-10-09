@@ -219,21 +219,33 @@ void main() {
       final initialButton = tester.widget<ElevatedButton>(bookButtonFinder);
       expect(initialButton.onPressed, isNull, reason: 'Book button must be disabled until documents confirmed');
 
-      // Tap the mandatory confirmation checkbox
+      // Tap the mandatory confirmation checkbox first
       await tester.tap(checkboxFinder);
       await tester.pumpAndSettle();
 
-      // Assert button is now ENABLED
+      // Assert button is STILL DISABLED because individual document checkboxes are not yet checked
+      final stillDisabledButton = tester.widget<ElevatedButton>(bookButtonFinder);
+      expect(stillDisabledButton.onPressed, isNull, reason: 'Book button must remain disabled until every document checkbox is also selected');
+
+      // Check all 3 document checkboxes
+      for (int i = 0; i < 3; i++) {
+        final docCheckboxFinder = find.byKey(Key('doc_checkbox_$i'));
+        expect(docCheckboxFinder, findsOneWidget);
+        await tester.tap(docCheckboxFinder);
+        await tester.pumpAndSettle();
+      }
+
+      // Assert button is now ENABLED (every document + final confirmation checked)
       final enabledButton = tester.widget<ElevatedButton>(bookButtonFinder);
-      expect(enabledButton.onPressed, isNotNull, reason: 'Book button must be enabled once documents confirmed');
+      expect(enabledButton.onPressed, isNotNull, reason: 'Book button must be enabled once all documents and final confirmation are confirmed');
 
       // Tap Book Fixed Appointment to open bottom sheet
       await tester.tap(bookButtonFinder);
       await tester.pumpAndSettle();
       expect(find.text('Choose an Available Appointment Slot'), findsOneWidget);
 
-      // Verify standard slot fee starts at Free / ₹0
-      expect(find.textContaining('Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee'), findsOneWidget);
+      // Verify standard slot fee starts at ₹20
+      expect(find.textContaining('Normal Slot (Within 2 Days) • ₹20 Standard Fee'), findsOneWidget);
 
       // Select 'In 2 Days' chip -> should switch to higher fee (₹50)
       final in2DaysFinder = find.text('In 2 Days');
@@ -283,6 +295,105 @@ void main() {
       final bookButtonFinder = find.widgetWithText(ElevatedButton, 'Book Fixed Appointment');
       final size = tester.getSize(bookButtonFinder);
       expect(size.height, greaterThanOrEqualTo(56.0), reason: 'Rule 11 touch target requires >= 56px height');
+    });
+
+    testWidgets('Party size capped at max 4 people and gates accompanying person details', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final fakeClient = FakeApiClient(services: sampleServices);
+      await tester.pumpWidget(createTestApp(
+        BookScreen(officeId: 'off-1', serviceId: 'srv-1', client: fakeClient),
+      ));
+      await tester.pumpAndSettle();
+
+      // Check all documents to enable booking sheet
+      await tester.tap(find.byKey(const Key('mandatory_document_checkbox')));
+      await tester.pumpAndSettle();
+      for (int i = 0; i < 3; i++) {
+        await tester.tap(find.byKey(Key('doc_checkbox_$i')));
+        await tester.pumpAndSettle();
+      }
+
+      // Open time selection sheet
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Book Fixed Appointment'));
+      await tester.pumpAndSettle();
+
+      // Assert chips: 1 Person, 2 People, 3 People, 4 People exist, 5 People does NOT
+      expect(find.text('1 Person'), findsOneWidget);
+      final twoPeopleFinder = find.text('2 People');
+      expect(twoPeopleFinder, findsOneWidget);
+      expect(find.text('3 People'), findsOneWidget);
+      expect(find.text('4 People'), findsOneWidget);
+      expect(find.text('5 People'), findsNothing, reason: 'Max 4 people allowed for now');
+
+      // Scroll to and select '2 People'
+      await tester.ensureVisible(twoPeopleFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(twoPeopleFinder);
+      await tester.pumpAndSettle();
+
+      // Scroll down if needed to see Accompanying Persons section
+      final sectionTitleFinder = find.text('Accompanying Persons Details (Max 4 Total)');
+      await tester.ensureVisible(sectionTitleFinder);
+      await tester.pumpAndSettle();
+      expect(sectionTitleFinder, findsOneWidget);
+      expect(find.textContaining('Single Counter Policy: All accompanying members must attend for this same counter service'), findsOneWidget);
+      expect(find.text('Accompanying Person #2'), findsOneWidget);
+
+      // Confirm button must be DISABLED because name & reason are missing
+      final confirmBtnFinder = find.widgetWithText(ElevatedButton, 'Confirm Appointment • Standard Fee: ₹20');
+      expect(confirmBtnFinder, findsOneWidget);
+      var confirmBtn = tester.widget<ElevatedButton>(confirmBtnFinder);
+      expect(confirmBtn.onPressed, isNull, reason: 'Confirm button must be disabled when accompanying details missing');
+      expect(find.text('Please provide full name and select a valid counter reason for all accompanying persons.'), findsOneWidget);
+
+      // Enter name for accompanying person #2
+      final nameFieldFinder = find.byKey(const Key('accompanying_name_0'));
+      await tester.ensureVisible(nameFieldFinder);
+      await tester.pumpAndSettle();
+      await tester.enterText(nameFieldFinder, 'Ramesh Patel');
+      await tester.pumpAndSettle();
+
+      // Button still disabled because reason is not selected
+      confirmBtn = tester.widget<ElevatedButton>(confirmBtnFinder);
+      expect(confirmBtn.onPressed, isNull);
+
+      // Select reason: Invalid 'Work at a different counter/department'
+      final reasonFieldFinder = find.byKey(const Key('accompanying_reason_0'));
+      await tester.ensureVisible(reasonFieldFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(reasonFieldFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Work at a different counter/department (Separate booking required)').last);
+      await tester.pumpAndSettle();
+
+      // Verify error notice displayed and button STILL disabled
+      expect(find.textContaining('Not allowed: Accompanying person has work at another counter'), findsAtLeast(1));
+      confirmBtn = tester.widget<ElevatedButton>(confirmBtnFinder);
+      expect(confirmBtn.onPressed, isNull, reason: 'Must block booking when work is for another counter');
+
+      // Select valid reason: 'Joint Property Owner / Co-applicant for this service'
+      await tester.ensureVisible(reasonFieldFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(reasonFieldFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Joint Property Owner / Co-applicant for this service').last);
+      await tester.pumpAndSettle();
+
+      // Button must now be ENABLED
+      confirmBtn = tester.widget<ElevatedButton>(confirmBtnFinder);
+      expect(confirmBtn.onPressed, isNotNull, reason: 'Confirm button must be enabled once valid name and counter reason provided');
+
+      // Tap Confirm Appointment
+      await tester.tap(confirmBtnFinder);
+      await tester.pumpAndSettle();
+
+      // Verify confirmation dialog shows accompanying person Ramesh Patel with reason
+      expect(find.textContaining('Appointment Confirmed!'), findsOneWidget);
+      expect(find.text('2 People'), findsOneWidget);
+      expect(find.textContaining('Ramesh Patel'), findsOneWidget);
     });
   });
 }

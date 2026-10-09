@@ -31,6 +31,15 @@ export function AppShell({
   // Mobile drawer open state (<1024px)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const toggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -204,7 +213,7 @@ export function AppShell({
             ))}
           </nav>
 
-          {/* Bottom Sidebar Footer: User Card, Language Switcher, Sign Out */}
+          {/* Bottom Sidebar Footer: User Card, Sign Out */}
           <div className="sidebar-bottom-block">
             {/* User Card: clicking opens My Account */}
             <button
@@ -228,28 +237,6 @@ export function AppShell({
               </div>
             </button>
 
-            {/* Language Switcher */}
-            <div className="sidebar-lang-strip" aria-label="Select interface language">
-              {(
-                [
-                  { code: 'en', label: 'EN' },
-                  { code: 'gu', label: 'ગુજરાતી' },
-                  { code: 'hi', label: 'हिन्दी' },
-                ] as const
-              ).map(({ code, label }) => (
-                <button
-                  key={code}
-                  type="button"
-                  className={`lang-btn${i18n.language === code ? ' active' : ''}`}
-                  onClick={() => {
-                    i18n.changeLanguage(code);
-                    localStorage.setItem('ql_lang', code);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
 
             {/* Sign Out Button with Confirm Dialog */}
             <button
@@ -268,19 +255,21 @@ export function AppShell({
           {/* Slim Top Bar: Breadcrumb, Live Clock, Sync status */}
           <header className="gov-slim-topbar">
             <div className="topbar-left">
-              {/* Universal Sidebar Toggle Button (Click to Open/Close Sidebar) */}
-              <button
-                type="button"
-                className="btn-sidebar-toggle"
-                onClick={toggleSidebar}
-                title={sidebarOpen ? t('shell.close_sidebar', 'Close sidebar') : t('shell.open_sidebar', 'Open sidebar')}
-                aria-label={sidebarOpen ? t('shell.close_sidebar', 'Close sidebar') : t('shell.open_sidebar', 'Open sidebar')}
-                aria-expanded={sidebarOpen}
-              >
-                <span className="material-symbols-outlined icon-md">
-                  {sidebarOpen ? 'menu_open' : 'menu'}
-                </span>
-              </button>
+              {/* Topbar Sidebar Toggle Button: only shown when sidebar is closed or on mobile to avoid duplication */}
+              {(isMobile || !sidebarOpen) && (
+                <button
+                  type="button"
+                  className="btn-sidebar-toggle"
+                  onClick={toggleSidebar}
+                  title={t('shell.open_sidebar', 'Open sidebar')}
+                  aria-label={t('shell.open_sidebar', 'Open sidebar')}
+                  aria-expanded={isMobile ? mobileDrawerOpen : sidebarOpen}
+                >
+                  <span className="material-symbols-outlined icon-md">
+                    menu
+                  </span>
+                </button>
+              )}
 
               {/* Breadcrumb Hierarchy */}
               <nav className="topbar-breadcrumbs" aria-label="Breadcrumb">

@@ -208,6 +208,18 @@ abstract class AppLocalizations {
   /// **'I confirm that I have all required original documents ready for this visit.'**
   String get confirmDocumentsPrompt;
 
+  /// No description provided for @checkAllDocsFirstNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Please tick every required document above first.'**
+  String get checkAllDocsFirstNotice;
+
+  /// No description provided for @docsVerifiedProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{checked} of {total} checked'**
+  String docsVerifiedProgress(int checked, int total);
+
   /// No description provided for @bookSlot.
   ///
   /// In en, this message translates to:
@@ -553,7 +565,7 @@ abstract class AppLocalizations {
   /// No description provided for @within2DaysFeeFree.
   ///
   /// In en, this message translates to:
-  /// **'Within 2 Days • ₹0 Fee'**
+  /// **'Within 2 Days • ₹20 Fee'**
   String get within2DaysFeeFree;
 
   /// No description provided for @customDateFee50.
@@ -565,7 +577,7 @@ abstract class AppLocalizations {
   /// No description provided for @normalSlotTitle.
   ///
   /// In en, this message translates to:
-  /// **'Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee'**
+  /// **'Normal Slot (Within 2 Days) • ₹20 Standard Fee'**
   String get normalSlotTitle;
 
   /// No description provided for @customSlotTitle.
@@ -583,7 +595,7 @@ abstract class AppLocalizations {
   /// No description provided for @standardNearTermNotice.
   ///
   /// In en, this message translates to:
-  /// **'Standard near-term booking within 2 days carries no additional fee.'**
+  /// **'Standard near-term booking within 2 days carries a ₹20 booking fee.'**
   String get standardNearTermNotice;
 
   /// No description provided for @availableTimeSlotsTitle.
@@ -595,7 +607,7 @@ abstract class AppLocalizations {
   /// No description provided for @slotsFullWarning.
   ///
   /// In en, this message translates to:
-  /// **'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries zero extra fees.'**
+  /// **'Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries a ₹20 standard fee.'**
   String get slotsFullWarning;
 
   /// No description provided for @slotsFullBadge.
@@ -619,7 +631,7 @@ abstract class AppLocalizations {
   /// No description provided for @confirmAppointmentStandard.
   ///
   /// In en, this message translates to:
-  /// **'Confirm Appointment • Standard Fee: ₹0'**
+  /// **'Confirm Appointment • Standard Fee: ₹20'**
   String get confirmAppointmentStandard;
 
   /// No description provided for @confirmAppointmentHigher.
@@ -661,7 +673,7 @@ abstract class AppLocalizations {
   /// No description provided for @standardFreeTier.
   ///
   /// In en, this message translates to:
-  /// **'Standard / Free (₹0)'**
+  /// **'Standard Slot (₹20)'**
   String get standardFreeTier;
 
   /// No description provided for @customPaidTier.
@@ -913,7 +925,7 @@ abstract class AppLocalizations {
   /// No description provided for @feeFreeNotice.
   ///
   /// In en, this message translates to:
-  /// **'Standard civic appointment • ₹0 Free'**
+  /// **'Standard civic appointment • ₹20 Fee'**
   String get feeFreeNotice;
 
   /// No description provided for @liveQueueActiveNotice.
@@ -933,6 +945,1152 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancellation cutoff has passed. This appointment cannot be cancelled online.'**
   String get cancelNotAllowedNotice;
+
+  /// No description provided for @searchServicesPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search services'**
+  String get searchServicesPlaceholder;
+
+  /// No description provided for @searchServicesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Search services'**
+  String get searchServicesTooltip;
+
+  /// No description provided for @clearSearchTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get clearSearchTooltip;
+
+  /// No description provided for @centresOfferService.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 centre offers this service} other{{count} centres offer this service}}'**
+  String centresOfferService(int count);
+
+  /// No description provided for @serviceAvailableNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'→ {serviceName} available'**
+  String serviceAvailableNotice(String serviceName);
+
+  /// No description provided for @noCentresOfferService.
+  ///
+  /// In en, this message translates to:
+  /// **'No civic centre in this city offers this service.'**
+  String get noCentresOfferService;
+
+  /// No description provided for @clearSearchAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Search'**
+  String get clearSearchAction;
+
+  /// No description provided for @rulesAndPoliciesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules & Policies'**
+  String get rulesAndPoliciesTitle;
+
+  /// No description provided for @rulesAndPoliciesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What to do in different situations while using QueueLess'**
+  String get rulesAndPoliciesSubtitle;
+
+  /// No description provided for @rulesAndPoliciesAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules & Policies'**
+  String get rulesAndPoliciesAction;
+
+  /// No description provided for @viewAppointmentPoliciesAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View Appointment Policies'**
+  String get viewAppointmentPoliciesAction;
+
+  /// No description provided for @policyFooterHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'QueueLess Appointment & Service Policies'**
+  String get policyFooterHeading;
+
+  /// No description provided for @policyFooterVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Official Civic System v1.1.0 • Gujarat e-Gov'**
+  String get policyFooterVersion;
+
+  /// No description provided for @policyTapToExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to view rules'**
+  String get policyTapToExpand;
+
+  /// No description provided for @policyTapToCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to collapse'**
+  String get policyTapToCollapse;
+
+  /// No description provided for @categoryBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Booking an Appointment'**
+  String get categoryBooking;
+
+  /// No description provided for @categoryOnTheDay.
+  ///
+  /// In en, this message translates to:
+  /// **'2. On the Day of Visit'**
+  String get categoryOnTheDay;
+
+  /// No description provided for @categoryChangesProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Changes & Problem Handling'**
+  String get categoryChangesProblems;
+
+  /// No description provided for @categorySpecialCases.
+  ///
+  /// In en, this message translates to:
+  /// **'4. Special Categories & Walk-ins'**
+  String get categorySpecialCases;
+
+  /// No description provided for @policyBookingFlowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking an Appointment & Document Checklist'**
+  String get policyBookingFlowTitle;
+
+  /// No description provided for @policyBookingFlowP1.
+  ///
+  /// In en, this message translates to:
+  /// **'To schedule an appointment, first select your city, your nearest civic centre, and the required municipal service.'**
+  String get policyBookingFlowP1;
+
+  /// No description provided for @policyBookingFlowP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the mandatory document checklist before booking. You must confirm that all required original documents are ready before the booking button is enabled.'**
+  String get policyBookingFlowP2;
+
+  /// No description provided for @policyBookingFlowP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your preferred available date (Today, Tomorrow, or an upcoming working day) and a fixed time slot.'**
+  String get policyBookingFlowP3;
+
+  /// No description provided for @policyBookingFlowP4.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the number of people coming with the booking (1 to 5+). Your appointment is strictly locked to the chosen date and time window.'**
+  String get policyBookingFlowP4;
+
+  /// No description provided for @policyConfirmationDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Confirmation Details'**
+  String get policyConfirmationDetailsTitle;
+
+  /// No description provided for @policyConfirmationDetailsP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Once confirmed, your token display code (e.g. TAX-001), appointment date, fixed time slot, civic centre, and party size will be registered.'**
+  String get policyConfirmationDetailsP1;
+
+  /// No description provided for @policyConfirmationDetailsP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Your appointment is visible on the Home screen and Live Token screen, showing live queue status and waiting count if scheduled for today.'**
+  String get policyConfirmationDetailsP2;
+
+  /// No description provided for @policyConfirmationDetailsP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember to carry all original documents, copies, and your registered mobile phone when visiting the centre.'**
+  String get policyConfirmationDetailsP3;
+
+  /// No description provided for @policySlotFeesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed Appointment Slots & Pricing'**
+  String get policySlotFeesTitle;
+
+  /// No description provided for @policySlotFeesP1.
+  ///
+  /// In en, this message translates to:
+  /// **'QueueLess appointments are fixed slots. Your appointment time is never automatically shifted merely because another person is absent.'**
+  String get policySlotFeesP1;
+
+  /// No description provided for @policySlotFeesP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard appointments within 2 days carry a standard fee of ₹20.'**
+  String get policySlotFeesP2;
+
+  /// No description provided for @policySlotFeesP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Advance custom slots (3+ days ahead) display a ₹50 slot fee in the app. Currently, all fee displays are demo/system-simulated, and no real monetary deduction occurs.'**
+  String get policySlotFeesP3;
+
+  /// No description provided for @policySlotFeesP4.
+  ///
+  /// In en, this message translates to:
+  /// **'Statutory Disclosure: A booked slot does not protect against unexpected government emergency closures, gazetted holidays, or server interruptions.'**
+  String get policySlotFeesP4;
+
+  /// No description provided for @policyArrivalAndCheckinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrival & Physical Presence Check-In'**
+  String get policyArrivalAndCheckinTitle;
+
+  /// No description provided for @policyArrivalAndCheckinP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Citizens must physically arrive at the civic centre at or slightly before their designated appointment slot.'**
+  String get policyArrivalAndCheckinP1;
+
+  /// No description provided for @policyArrivalAndCheckinP2.
+  ///
+  /// In en, this message translates to:
+  /// **'To verify physical presence, scan the official QR code at the entrance using the app. Remote or fake check-in is strictly prevented.'**
+  String get policyArrivalAndCheckinP2;
+
+  /// No description provided for @policyArrivalAndCheckinP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Note the difference: Your appointment slot is your official scheduled time, while live queue position and estimated wait show real-time counter pace.'**
+  String get policyArrivalAndCheckinP3;
+
+  /// No description provided for @policyOnMyWayGraceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'\"I\'m On My Way\" & Grace Period'**
+  String get policyOnMyWayGraceTitle;
+
+  /// No description provided for @policyOnMyWayGraceP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If you are briefly delayed in transit, you can tap the \"I\'m On My Way\" button while your token is in Waiting or Called state.'**
+  String get policyOnMyWayGraceP1;
+
+  /// No description provided for @policyOnMyWayGraceP2.
+  ///
+  /// In en, this message translates to:
+  /// **'This grants a configured one-time 5-minute extension to your arrival grace deadline.'**
+  String get policyOnMyWayGraceP2;
+
+  /// No description provided for @policyOnMyWayGraceP3.
+  ///
+  /// In en, this message translates to:
+  /// **'This extension can only be used once per appointment. A second attempt is rejected by the system.'**
+  String get policyOnMyWayGraceP3;
+
+  /// No description provided for @policyOnMyWayGraceP4.
+  ///
+  /// In en, this message translates to:
+  /// **'Using this extension provides extra arrival time but does not permanently change your booked appointment slot.'**
+  String get policyOnMyWayGraceP4;
+
+  /// No description provided for @policyServiceCompletionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Delivery & Double-Verification'**
+  String get policyServiceCompletionTitle;
+
+  /// No description provided for @policyServiceCompletionP1.
+  ///
+  /// In en, this message translates to:
+  /// **'When called, proceed to the assigned counter. The officer will physically examine your documents and provide the requested civic service.'**
+  String get policyServiceCompletionP1;
+
+  /// No description provided for @policyServiceCompletionP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Upon service conclusion, the counter officer records the outcome and the actual number of individuals served.'**
+  String get policyServiceCompletionP2;
+
+  /// No description provided for @policyServiceCompletionP3.
+  ///
+  /// In en, this message translates to:
+  /// **'For online appointments, a double-confirmation prompt appears in your app to confirm successful service completion.'**
+  String get policyServiceCompletionP3;
+
+  /// No description provided for @policyServiceCompletionP4.
+  ///
+  /// In en, this message translates to:
+  /// **'You can submit a 1 to 5 star rating and optional comments to help improve civic service standards.'**
+  String get policyServiceCompletionP4;
+
+  /// No description provided for @policyCantAttendDelayClosureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellations, Office Delays & Closures'**
+  String get policyCantAttendDelayClosureTitle;
+
+  /// No description provided for @policyCantAttendDelayClosureP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If you cannot attend, you can cancel your appointment from the app while it is in Waiting or Called state. No cancellation penalties apply.'**
+  String get policyCantAttendDelayClosureP1;
+
+  /// No description provided for @policyCantAttendDelayClosureP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Self-service rescheduling is not currently available. To choose a different time, cancel your active token and book a new available slot.'**
+  String get policyCantAttendDelayClosureP2;
+
+  /// No description provided for @policyCantAttendDelayClosureP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation is not permitted once service delivery has begun (Serving state) or after the service is completed.'**
+  String get policyCantAttendDelayClosureP3;
+
+  /// No description provided for @policyCantAttendDelayClosureP4.
+  ///
+  /// In en, this message translates to:
+  /// **'Official delays: Government counter delays are not the citizen\'s fault. The app displays real-time delay notices. Appointments are not falsely moved.'**
+  String get policyCantAttendDelayClosureP4;
+
+  /// No description provided for @policyCantAttendDelayClosureP5.
+  ///
+  /// In en, this message translates to:
+  /// **'Centre closures: If an office or service is temporarily closed for emergencies or holidays, new bookings are blocked. Affected citizens should re-book when reopened or visit the Help Desk.'**
+  String get policyCantAttendDelayClosureP5;
+
+  /// No description provided for @policyNoShowDispatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Late Arrival & No-Show Policy'**
+  String get policyNoShowDispatchTitle;
+
+  /// No description provided for @policyNoShowDispatchP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If an appointment holder fails to arrive or check in before the grace deadline expires, the token may be passed over or marked No-Show.'**
+  String get policyNoShowDispatchP1;
+
+  /// No description provided for @policyNoShowDispatchP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Counters do not sit idle waiting for absent citizens. When an online appointment holder is absent, waiting physical walk-in citizens may be served according to fair dispatch rules.'**
+  String get policyNoShowDispatchP2;
+
+  /// No description provided for @policyTroubleshootingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Troubleshooting (What Should I Do?)'**
+  String get policyTroubleshootingTitle;
+
+  /// No description provided for @policyTroubleshootingP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot documents: Counter officers cannot process incomplete applications. You will need to cancel and book again once original documents are ready.'**
+  String get policyTroubleshootingP1;
+
+  /// No description provided for @policyTroubleshootingP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked wrong service: Cancel the active appointment in the app and immediately select the correct service from the directory.'**
+  String get policyTroubleshootingP2;
+
+  /// No description provided for @policyTroubleshootingP3.
+  ///
+  /// In en, this message translates to:
+  /// **'System or network issue: Refresh your active token screen or seek immediate assistance at the Civic Centre Help Desk.'**
+  String get policyTroubleshootingP3;
+
+  /// No description provided for @policyTroubleshootingP4.
+  ///
+  /// In en, this message translates to:
+  /// **'Need help? Call the official toll-free citizen helpline: 1800-233-5500 (8:00 AM – 8:00 PM).'**
+  String get policyTroubleshootingP4;
+
+  /// No description provided for @policyMultipleServicesDuplicatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple Services & Duplicate Bookings'**
+  String get policyMultipleServicesDuplicatesTitle;
+
+  /// No description provided for @policyMultipleServicesDuplicatesP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Different services are handled by specialized counters. If you require multiple distinct civic services, each must be booked separately.'**
+  String get policyMultipleServicesDuplicatesP1;
+
+  /// No description provided for @policyMultipleServicesDuplicatesP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Unified multi-service family bundles are not currently supported by the system.'**
+  String get policyMultipleServicesDuplicatesP2;
+
+  /// No description provided for @policyMultipleServicesDuplicatesP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate booking prevention: QueueLess allows only one active token per phone number for the same service on the same date. Attempting a second active booking is blocked.'**
+  String get policyMultipleServicesDuplicatesP3;
+
+  /// No description provided for @policyFamilyGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Family & Group Booking Rules'**
+  String get policyFamilyGroupTitle;
+
+  /// No description provided for @policyFamilyGroupP1.
+  ///
+  /// In en, this message translates to:
+  /// **'A citizen can book on behalf of family members by specifying the group size (1 to 5+ people) during booking.'**
+  String get policyFamilyGroupP1;
+
+  /// No description provided for @policyFamilyGroupP2.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected party size must represent the people who will actually attend the civic centre together.'**
+  String get policyFamilyGroupP2;
+
+  /// No description provided for @policyFamilyGroupP3.
+  ///
+  /// In en, this message translates to:
+  /// **'When completing the service, the officer records the exact count of people who were actually served.'**
+  String get policyFamilyGroupP3;
+
+  /// No description provided for @policyPhysicalWalkinsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical Walk-In Citizens (No Smartphone)'**
+  String get policyPhysicalWalkinsTitle;
+
+  /// No description provided for @policyPhysicalWalkinsP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Citizens who do not have a smartphone or internet access can visit the Civic Centre Help Desk in person.'**
+  String get policyPhysicalWalkinsP1;
+
+  /// No description provided for @policyPhysicalWalkinsP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Help desk staff will issue a physical paper token (e.g. P-001) printed with an estimated turn time.'**
+  String get policyPhysicalWalkinsP2;
+
+  /// No description provided for @policyPhysicalWalkinsP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical walk-in citizens join the same unified queue and are served fairly alongside online appointments.'**
+  String get policyPhysicalWalkinsP3;
+
+  /// No description provided for @policyPriorityAssistanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority Assistance Policy'**
+  String get policyPriorityAssistanceTitle;
+
+  /// No description provided for @policyPriorityAssistanceP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Online booking no longer allows self-selecting priority access, ensuring fair queue access for all citizens.'**
+  String get policyPriorityAssistanceP1;
+
+  /// No description provided for @policyPriorityAssistanceP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Eligible citizens (seniors aged 60+, pregnant women, and persons with disabilities) receive priority verification in person at the Help Desk or counter upon showing valid proof.'**
+  String get policyPriorityAssistanceP2;
+
+  /// No description provided for @helpAndRulesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Rules'**
+  String get helpAndRulesTitle;
+
+  /// No description provided for @helpAndRulesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Important information about appointments, arrival, cancellation and service.'**
+  String get helpAndRulesSubtitle;
+
+  /// No description provided for @helpAndRulesAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Rules'**
+  String get helpAndRulesAction;
+
+  /// No description provided for @helpAndPoliciesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Policies'**
+  String get helpAndPoliciesSection;
+
+  /// No description provided for @viewAppointmentRulesAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View appointment & cancellation rules'**
+  String get viewAppointmentRulesAction;
+
+  /// No description provided for @importantCivicNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Important Notice'**
+  String get importantCivicNoticeTitle;
+
+  /// No description provided for @importantCivicNoticeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'QueueLess helps manage appointments and queues. Final service decisions, document acceptance, eligibility, government deadlines, and official closures remain under the responsibility of the concerned civic authority.'**
+  String get importantCivicNoticeBody;
+
+  /// No description provided for @categoryBookingRules.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Booking Rules'**
+  String get categoryBookingRules;
+
+  /// No description provided for @categoryArrivalService.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Arrival & Service Delivery'**
+  String get categoryArrivalService;
+
+  /// No description provided for @categoryChangesDelays.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Problems & What To Do'**
+  String get categoryChangesDelays;
+
+  /// No description provided for @categorySpecialRules.
+  ///
+  /// In en, this message translates to:
+  /// **'4. Special Categories & System Rules'**
+  String get categorySpecialRules;
+
+  /// No description provided for @secHowAppointmentsWorkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How QueueLess Appointments Work'**
+  String get secHowAppointmentsWorkTitle;
+
+  /// No description provided for @secHowAppointmentsWorkP1.
+  ///
+  /// In en, this message translates to:
+  /// **'To schedule a civic service: Select your city, choose your nearest civic centre, and pick the required municipal service.'**
+  String get secHowAppointmentsWorkP1;
+
+  /// No description provided for @secHowAppointmentsWorkP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the required document checklist and confirm all originals are ready. Then pick an available working date and fixed time slot.'**
+  String get secHowAppointmentsWorkP2;
+
+  /// No description provided for @secHowAppointmentsWorkP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the number of people coming (1 to 5+), confirm your booking, and receive an instant token confirmation with your assigned date and time window.'**
+  String get secHowAppointmentsWorkP3;
+
+  /// No description provided for @secHowAppointmentsWorkP4.
+  ///
+  /// In en, this message translates to:
+  /// **'QueueLess appointments use fixed time slots. You must arrive at the civic centre according to your booked slot.'**
+  String get secHowAppointmentsWorkP4;
+
+  /// No description provided for @secAppointmentConfirmationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Confirmation Details'**
+  String get secAppointmentConfirmationTitle;
+
+  /// No description provided for @secAppointmentConfirmationP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Upon booking, your confirmation displays: Appointment date, fixed time slot, civic centre location, service type, party size, token code, and fee tier.'**
+  String get secAppointmentConfirmationP1;
+
+  /// No description provided for @secAppointmentConfirmationP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation registers your appointment in the system. It does not guarantee that the government office will never experience operational delays or emergency closures.'**
+  String get secAppointmentConfirmationP2;
+
+  /// No description provided for @secRequiredDocumentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Required Document Checklist'**
+  String get secRequiredDocumentsTitle;
+
+  /// No description provided for @secRequiredDocumentsP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Every municipal service specifies mandatory required documents. Review this checklist carefully before scheduling.'**
+  String get secRequiredDocumentsP1;
+
+  /// No description provided for @secRequiredDocumentsP2.
+  ///
+  /// In en, this message translates to:
+  /// **'The confirmation checkbox confirms you have all original documents and copies ready in hand. The app does not electronically verify documents.'**
+  String get secRequiredDocumentsP2;
+
+  /// No description provided for @secRequiredDocumentsP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Visiting with missing or invalid documents will result in the counter officer being unable to deliver the service.'**
+  String get secRequiredDocumentsP3;
+
+  /// No description provided for @secSlotFeesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom & Future Appointment Fees'**
+  String get secSlotFeesTitle;
+
+  /// No description provided for @secSlotFeesP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard appointment slots within 2 days carry a standard fee of ₹20.'**
+  String get secSlotFeesP1;
+
+  /// No description provided for @secSlotFeesP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom advance slots (3+ days ahead) display a ₹50 slot fee in the app. All fees are currently system-simulated for demonstration; no real money is deducted.'**
+  String get secSlotFeesP2;
+
+  /// No description provided for @secSlotFeesP3.
+  ///
+  /// In en, this message translates to:
+  /// **'A fee never buys priority over other citizens and never guarantees service. It does not protect against official closures or system downtime.'**
+  String get secSlotFeesP3;
+
+  /// No description provided for @secAdvanceDeadlinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Advance Booking & Government Deadlines'**
+  String get secAdvanceDeadlinesTitle;
+
+  /// No description provided for @secAdvanceDeadlinesP1.
+  ///
+  /// In en, this message translates to:
+  /// **'The civic department or administrator may close online advance booking ahead of official government deadlines or holiday periods.'**
+  String get secAdvanceDeadlinesP1;
+
+  /// No description provided for @secAdvanceDeadlinesP2.
+  ///
+  /// In en, this message translates to:
+  /// **'When online booking is closed for a service, citizens must visit the civic centre in person and follow the physical counter process.'**
+  String get secAdvanceDeadlinesP2;
+
+  /// No description provided for @secArrivalCheckinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrival & Entrance QR Check-In'**
+  String get secArrivalCheckinTitle;
+
+  /// No description provided for @secArrivalCheckinP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrive at the civic centre on time for your scheduled appointment slot.'**
+  String get secArrivalCheckinP1;
+
+  /// No description provided for @secArrivalCheckinP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Upon entering the building, scan the official entrance QR code with your app to confirm physical presence.'**
+  String get secArrivalCheckinP2;
+
+  /// No description provided for @secArrivalCheckinP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote, premature, or invalid QR scans are rejected. Live queue position and waiting ahead count become active once you arrive.'**
+  String get secArrivalCheckinP3;
+
+  /// No description provided for @secOnMyWayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'\"I\'m On My Way\" (+5 Minutes Extension)'**
+  String get secOnMyWayTitle;
+
+  /// No description provided for @secOnMyWayP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If briefly delayed in transit, tap \"I\'m On My Way\" while your token is in Waiting or Called status.'**
+  String get secOnMyWayP1;
+
+  /// No description provided for @secOnMyWayP2.
+  ///
+  /// In en, this message translates to:
+  /// **'This feature provides a one-time 5-minute extension to your arrival grace buffer.'**
+  String get secOnMyWayP2;
+
+  /// No description provided for @secOnMyWayP3.
+  ///
+  /// In en, this message translates to:
+  /// **'It cannot be repeatedly claimed, does not change your original slot time, and does not guarantee immediate counter service upon arrival.'**
+  String get secOnMyWayP3;
+
+  /// No description provided for @secIfLateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'If I Am Late'**
+  String get secIfLateTitle;
+
+  /// No description provided for @secIfLateP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If you are running late, still proceed to the civic centre as quickly as possible.'**
+  String get secIfLateP1;
+
+  /// No description provided for @secIfLateP2.
+  ///
+  /// In en, this message translates to:
+  /// **'If you fail to arrive within the grace window, the officer may call another waiting citizen to keep counters productive.'**
+  String get secIfLateP2;
+
+  /// No description provided for @secIfLateP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Being late does not automatically push your appointment forward to a later time.'**
+  String get secIfLateP3;
+
+  /// No description provided for @secNoShowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No-Show & Fair Dispatch'**
+  String get secNoShowTitle;
+
+  /// No description provided for @secNoShowP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If an online appointment holder does not check in within the grace window, the counter officer manually calls the next eligible citizen.'**
+  String get secNoShowP1;
+
+  /// No description provided for @secNoShowP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting physical walk-in citizens may be served during unused capacity so government staff do not sit idle.'**
+  String get secNoShowP2;
+
+  /// No description provided for @secServiceCompletionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Service Completion & Double-Confirmation'**
+  String get secServiceCompletionTitle;
+
+  /// No description provided for @secServiceCompletionP1.
+  ///
+  /// In en, this message translates to:
+  /// **'At the counter, the officer examines physical documents and records the service outcome (Successful, Partial, or Missing Documents).'**
+  String get secServiceCompletionP1;
+
+  /// No description provided for @secServiceCompletionP2.
+  ///
+  /// In en, this message translates to:
+  /// **'For online appointments, a double-confirmation prompt appears in your mobile app so you can verify that service delivery occurred.'**
+  String get secServiceCompletionP2;
+
+  /// No description provided for @secRatingFeedbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating & Citizen Feedback'**
+  String get secRatingFeedbackTitle;
+
+  /// No description provided for @secRatingFeedbackP1.
+  ///
+  /// In en, this message translates to:
+  /// **'After confirming service completion, you can submit a 1 to 5 star rating and optional comments.'**
+  String get secRatingFeedbackP1;
+
+  /// No description provided for @secRatingFeedbackP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Your feedback helps the department improve civic service quality. Feedback does not impact queue priority or future bookings.'**
+  String get secRatingFeedbackP2;
+
+  /// No description provided for @secCancellationRulesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation Rules'**
+  String get secCancellationRulesTitle;
+
+  /// No description provided for @secCancellationRulesP1.
+  ///
+  /// In en, this message translates to:
+  /// **'You may cancel your appointment from the app anytime while your token is in Waiting or Called status before service starts.'**
+  String get secCancellationRulesP1;
+
+  /// No description provided for @secCancellationRulesP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Once the counter officer begins serving you (Serving status) or after service completion, cancellation is no longer permitted.'**
+  String get secCancellationRulesP2;
+
+  /// No description provided for @secCancellationRulesP3.
+  ///
+  /// In en, this message translates to:
+  /// **'QueueLess charges no cancellation fees or penalties for cancelling an active appointment.'**
+  String get secCancellationRulesP3;
+
+  /// No description provided for @secReschedulingPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescheduling Policy'**
+  String get secReschedulingPolicyTitle;
+
+  /// No description provided for @secReschedulingPolicyP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Self-service automatic rescheduling is currently NOT available in the system.'**
+  String get secReschedulingPolicyP1;
+
+  /// No description provided for @secReschedulingPolicyP2.
+  ///
+  /// In en, this message translates to:
+  /// **'If you cannot attend, cancel your active token in the app and book a fresh available slot for another day or time.'**
+  String get secReschedulingPolicyP2;
+
+  /// No description provided for @secOfficeDelaysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Government & Office Delays'**
+  String get secOfficeDelaysTitle;
+
+  /// No description provided for @secOfficeDelaysP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If the government office, counter, department network, or biometric system causes a delay, the citizen is not held responsible.'**
+  String get secOfficeDelaysP1;
+
+  /// No description provided for @secOfficeDelaysP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Your booked slot does not silently shift. The app displays real-time delay notices and queue status. Please follow in-office guidance.'**
+  String get secOfficeDelaysP2;
+
+  /// No description provided for @secOfficeClosuresTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Civic Centre & Counter Closures'**
+  String get secOfficeClosuresTitle;
+
+  /// No description provided for @secOfficeClosuresP1.
+  ///
+  /// In en, this message translates to:
+  /// **'A civic centre, service, or counter may close temporarily due to an emergency, administrative order, or gazetted holiday.'**
+  String get secOfficeClosuresP1;
+
+  /// No description provided for @secOfficeClosuresP2.
+  ///
+  /// In en, this message translates to:
+  /// **'When closed, new bookings are blocked. Premium or custom appointment fees do not guarantee service during official closures.'**
+  String get secOfficeClosuresP2;
+
+  /// No description provided for @secServerFailuresTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Server & Technical Outages'**
+  String get secServerFailuresTitle;
+
+  /// No description provided for @secServerFailuresP1.
+  ///
+  /// In en, this message translates to:
+  /// **'If a service or counter encounters technical issues, the office administrator may pause the affected queue while others continue.'**
+  String get secServerFailuresP1;
+
+  /// No description provided for @secServerFailuresP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic rescheduling for prolonged outages is not currently available. Please follow the instructions provided by the civic centre.'**
+  String get secServerFailuresP2;
+
+  /// No description provided for @secTroubleshootingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Troubleshooting (What To Do If Something Goes Wrong)'**
+  String get secTroubleshootingTitle;
+
+  /// No description provided for @secTroubleshootingP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment not showing: Ensure you are logged in with the mobile number used during booking and pull down to refresh.'**
+  String get secTroubleshootingP1;
+
+  /// No description provided for @secTroubleshootingP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot check in or QR failing: Verify camera permissions and ensure you are scanning the official QR displayed at the entrance.'**
+  String get secTroubleshootingP2;
+
+  /// No description provided for @secTroubleshootingP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Required document missing: Cancel your active token and re-book after obtaining all required original documents.'**
+  String get secTroubleshootingP3;
+
+  /// No description provided for @secTroubleshootingP4.
+  ///
+  /// In en, this message translates to:
+  /// **'Office delayed or counter closed: Check the live app queue status and consult the civic centre Help Desk.'**
+  String get secTroubleshootingP4;
+
+  /// No description provided for @secTroubleshootingP5.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate booking message: You already hold an active token for this service today; complete or cancel it before booking again.'**
+  String get secTroubleshootingP5;
+
+  /// No description provided for @secTroubleshootingP6.
+  ///
+  /// In en, this message translates to:
+  /// **'Citizen Helpline: For urgent questions, call the official toll-free helpline: 1800-233-5500 (8:00 AM – 8:00 PM).'**
+  String get secTroubleshootingP6;
+
+  /// No description provided for @secFamilyGroupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Family & Group Bookings'**
+  String get secFamilyGroupTitle;
+
+  /// No description provided for @secFamilyGroupP1.
+  ///
+  /// In en, this message translates to:
+  /// **'One citizen can book on behalf of family members by selecting group size (1 to 4 people).'**
+  String get secFamilyGroupP1;
+
+  /// No description provided for @secFamilyGroupP2.
+  ///
+  /// In en, this message translates to:
+  /// **'All group members must attend together with their respective required documents. The officer records the count of persons actually served.'**
+  String get secFamilyGroupP2;
+
+  /// No description provided for @secFamilyGroupP3.
+  ///
+  /// In en, this message translates to:
+  /// **'One booking does not create a multi-service bundle; it covers the selected service only.'**
+  String get secFamilyGroupP3;
+
+  /// No description provided for @secMultipleServicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple Services Booking'**
+  String get secMultipleServicesTitle;
+
+  /// No description provided for @secMultipleServicesP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Different municipal services are handled by distinct specialized counters.'**
+  String get secMultipleServicesP1;
+
+  /// No description provided for @secMultipleServicesP2.
+  ///
+  /// In en, this message translates to:
+  /// **'If you require multiple separate services, you must make a separate booking for each service.'**
+  String get secMultipleServicesP2;
+
+  /// No description provided for @secDuplicateBookingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate Booking Prevention'**
+  String get secDuplicateBookingTitle;
+
+  /// No description provided for @secDuplicateBookingP1.
+  ///
+  /// In en, this message translates to:
+  /// **'QueueLess strictly prevents duplicate active bookings for the same citizen/phone for the same service on the same date.'**
+  String get secDuplicateBookingP1;
+
+  /// No description provided for @secDuplicateBookingP2.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot hold two concurrent active tokens for the same service. Cancel your existing booking first if you need to change times.'**
+  String get secDuplicateBookingP2;
+
+  /// No description provided for @secPhysicalWalkinsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical Walk-In Citizens (Help Desk)'**
+  String get secPhysicalWalkinsTitle;
+
+  /// No description provided for @secPhysicalWalkinsP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Citizens without a smartphone or internet access can visit the civic centre Help Desk in person.'**
+  String get secPhysicalWalkinsP1;
+
+  /// No description provided for @secPhysicalWalkinsP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Help desk staff generate a physical paper token (e.g. P-001) printed with an estimated turn time.'**
+  String get secPhysicalWalkinsP2;
+
+  /// No description provided for @secPhysicalWalkinsP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical and online citizens share the same operational queue and are dispatched fairly by counter officers.'**
+  String get secPhysicalWalkinsP3;
+
+  /// No description provided for @secPriorityCitizensTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority Assistance Eligibility'**
+  String get secPriorityCitizensTitle;
+
+  /// No description provided for @secPriorityCitizensP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority access is reserved for senior citizens (60+), pregnant women, and persons with disabilities (PwD).'**
+  String get secPriorityCitizensP1;
+
+  /// No description provided for @secPriorityCitizensP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Online booking does not allow self-selecting priority access. Eligibility is verified in-person at the Help Desk or counter upon showing valid proof.'**
+  String get secPriorityCitizensP2;
+
+  /// No description provided for @secPrivacyDisplayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & Lobby Display Policy'**
+  String get secPrivacyDisplayTitle;
+
+  /// No description provided for @secPrivacyDisplayP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Public TV and counter displays show token display codes only (e.g. TAX-001 at Counter 2).'**
+  String get secPrivacyDisplayP1;
+
+  /// No description provided for @secPrivacyDisplayP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Citizen names, phone numbers, and identity documents are never displayed publicly. Keep your registered phone secure.'**
+  String get secPrivacyDisplayP2;
+
+  /// No description provided for @showVerificationCodeToOfficer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show this QR code to the counter officer or provide your 6-digit verification code before service starts.'**
+  String get showVerificationCodeToOfficer;
+
+  /// No description provided for @counterVerificationSecretLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification Code'**
+  String get counterVerificationSecretLabel;
+
+  /// No description provided for @secCounterVerificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mandatory Counter Token Verification'**
+  String get secCounterVerificationTitle;
+
+  /// No description provided for @secCounterVerificationP1.
+  ///
+  /// In en, this message translates to:
+  /// **'Before beginning service, the counter officer must verify your token. Service cannot begin simply because your token was called.'**
+  String get secCounterVerificationP1;
+
+  /// No description provided for @secCounterVerificationP2.
+  ///
+  /// In en, this message translates to:
+  /// **'Provide the 6-digit verification code or show the QR code displayed on your app screen (or on your printed Turn Slip). The public token code shown on lobby screens cannot be used for verification.'**
+  String get secCounterVerificationP2;
+
+  /// No description provided for @secCounterVerificationP3.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification secrets are single-use and bound to your assigned counter. If you lose your slip or phone, an authorized officer can apply a logged administrative override with an official reason.'**
+  String get secCounterVerificationP3;
+
+  /// No description provided for @accompanyingPersonsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accompanying Persons Details (Max 4 Total)'**
+  String get accompanyingPersonsSectionTitle;
+
+  /// No description provided for @sameCounterOnlyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Single Counter Policy: All accompanying members must attend for this same counter service. Any person needing work at another counter or department must book a separate appointment.'**
+  String get sameCounterOnlyNotice;
+
+  /// No description provided for @personIndexLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Accompanying Person #{number}'**
+  String personIndexLabel(int number);
+
+  /// No description provided for @accompanyingPersonNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Name (as per identity proof)'**
+  String get accompanyingPersonNameHint;
+
+  /// No description provided for @coAttendanceReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason for Co-Attendance at this Counter'**
+  String get coAttendanceReasonLabel;
+
+  /// No description provided for @selectCoAttendanceReasonPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Select valid reason for this counter'**
+  String get selectCoAttendanceReasonPrompt;
+
+  /// No description provided for @reasonJointApplicant.
+  ///
+  /// In en, this message translates to:
+  /// **'Joint Property Owner / Co-applicant for this service'**
+  String get reasonJointApplicant;
+
+  /// No description provided for @reasonAssistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistance for Senior Citizen / Differently-Abled applicant'**
+  String get reasonAssistance;
+
+  /// No description provided for @reasonGuardian.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal Guardian / Authorized Representative'**
+  String get reasonGuardian;
+
+  /// No description provided for @reasonWitnessSignatory.
+  ///
+  /// In en, this message translates to:
+  /// **'Witness / Deponent / Signatory for document verification'**
+  String get reasonWitnessSignatory;
+
+  /// No description provided for @reasonFamilyVerification.
+  ///
+  /// In en, this message translates to:
+  /// **'Family member required for joint identity verification'**
+  String get reasonFamilyVerification;
+
+  /// No description provided for @reasonOtherCounterWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Work at a different counter/department (Separate booking required)'**
+  String get reasonOtherCounterWork;
+
+  /// No description provided for @invalidCounterReasonError.
+  ///
+  /// In en, this message translates to:
+  /// **'Not allowed: Accompanying person has work at another counter. Please book a separate appointment for that counter.'**
+  String get invalidCounterReasonError;
+
+  /// No description provided for @missingAccompanyingDetailsPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Please provide full name and select a valid counter reason for all accompanying persons.'**
+  String get missingAccompanyingDetailsPrompt;
+
+  /// No description provided for @accompanyingPersonsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Accompanying Persons:'**
+  String get accompanyingPersonsSummary;
 }
 
 class _AppLocalizationsDelegate

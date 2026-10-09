@@ -21,6 +21,7 @@ from api.app.services.officer_service import (
     set_counter_status,
     start_serving,
     transfer_token,
+    verify_token_at_counter,
 )
 from api.app.services.token_service import BookingError, book_token
 
@@ -85,6 +86,7 @@ async def test_counter_guards_and_status(session_factory, vclock):
 
             called_tok = await call_next(session, vclock, counter_id, officer_id)
             assert called_tok.id == token_id
+            await verify_token_at_counter(session, vclock, token_id, called_tok.verification_secret or "", counter_id, officer_id)
             await start_serving(session, vclock, token_id, counter_id, officer_id)
 
     # Attempting to close counter while token is SERVING must fail (O12)
@@ -206,6 +208,7 @@ async def test_priority_ratio_interleave(session_factory, vclock):
             async with session.begin():
                 tok = await call_next(session, test_clock, counter_id, officer_id)
                 called_categories.append(tok.category)
+                await verify_token_at_counter(session, test_clock, tok.id, tok.verification_secret or "", counter_id, officer_id)
                 await start_serving(session, test_clock, tok.id, counter_id, officer_id)
                 await complete_serving(session, test_clock, tok.id, counter_id, officer_id)
 
@@ -276,6 +279,7 @@ async def test_arrived_first_dispatch_and_pass_over(session_factory, vclock):
         async with session.begin():
             tok_call1 = await call_next(session, test_clock, counter_id, officer_id)
             assert tok_call1.id == t2["token_id"]
+            await verify_token_at_counter(session, test_clock, tok_call1.id, tok_call1.verification_secret or "", counter_id, officer_id)
             await start_serving(session, test_clock, tok_call1.id, counter_id, officer_id)
             await complete_serving(session, test_clock, tok_call1.id, counter_id, officer_id)
 
@@ -302,6 +306,7 @@ async def test_arrived_first_dispatch_and_pass_over(session_factory, vclock):
         async with session.begin():
             tok_call2 = await call_next(session, test_clock, counter_id, officer_id)
             assert tok_call2.id == t4["token_id"]
+            await verify_token_at_counter(session, test_clock, tok_call2.id, tok_call2.verification_secret or "", counter_id, officer_id)
             await start_serving(session, test_clock, tok_call2.id, counter_id, officer_id)
             await complete_serving(session, test_clock, tok_call2.id, counter_id, officer_id)
 

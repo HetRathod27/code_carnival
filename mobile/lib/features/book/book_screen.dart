@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/client.dart';
 import '../../core/theme.dart';
 import '../../core/office_names.dart';
+import '../policies/policies_screen.dart';
 
 String _generateUuidV4() {
   final random = Random.secure();
@@ -40,7 +41,24 @@ class _BookScreenState extends State<BookScreen> {
   String? _error;
 
   // Form state
+  final Set<int> _checkedDocIndices = {};
   bool _documentsConfirmed = false;
+
+  List<dynamic> _getRequiredDocs() {
+    if (_service == null) return const [];
+    return _service!.requiredDocs.isNotEmpty
+        ? _service!.requiredDocs
+        : const [
+            {'name': 'Valid Identity Proof (Voter ID / Driving License / PAN)'},
+            {'name': 'Proof of Address (Utility bill / Rent agreement)'},
+          ];
+  }
+
+  bool get _isChecklistComplete {
+    final docs = _getRequiredDocs();
+    final allDocsChecked = docs.isEmpty || _checkedDocIndices.length >= docs.length;
+    return _documentsConfirmed && allDocsChecked;
+  }
   final String _category = 'NORMAL';
   String? _priorityDocType;
   final TextEditingController _beneficiaryController = TextEditingController();
@@ -51,6 +69,52 @@ class _BookScreenState extends State<BookScreen> {
       DateTime.now().hour >= 18 ? 1 : 0; // If past 6 PM, default to Tomorrow
   String _selectedSlotTime = '09:30 AM – 10:30 AM';
   int _familyCount = 1;
+
+  // Accompanying persons state (Max 4 people total: primary applicant + up to 3 accompanying)
+  final List<TextEditingController> _accompanyingNameControllers = [
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController(),
+  ];
+  final List<String?> _accompanyingReasonKeys = [null, null, null];
+
+  String _getReasonLabel(String? key, AppLocalizations l10n) {
+    switch (key) {
+      case 'joint_applicant':
+        return l10n.reasonJointApplicant;
+      case 'assistance':
+        return l10n.reasonAssistance;
+      case 'guardian':
+        return l10n.reasonGuardian;
+      case 'witness':
+        return l10n.reasonWitnessSignatory;
+      case 'family_verification':
+        return l10n.reasonFamilyVerification;
+      case 'other_counter':
+        return l10n.reasonOtherCounterWork;
+      default:
+        return key ?? '';
+    }
+  }
+
+  String? _getAccompanyingValidationError(int count, AppLocalizations l10n) {
+    if (count <= 1) return null;
+    final needed = count - 1;
+    for (int i = 0; i < needed; i++) {
+      final name = _accompanyingNameControllers[i].text.trim();
+      final reason = _accompanyingReasonKeys[i];
+      if (name.isEmpty) {
+        return l10n.missingAccompanyingDetailsPrompt;
+      }
+      if (reason == null || reason.isEmpty) {
+        return l10n.missingAccompanyingDetailsPrompt;
+      }
+      if (reason == 'other_counter') {
+        return l10n.invalidCounterReasonError;
+      }
+    }
+    return null;
+  }
 
   String _getDayLabel(
     int index, [
@@ -158,6 +222,9 @@ class _BookScreenState extends State<BookScreen> {
   void dispose() {
     _beneficiaryController.dispose();
     _phoneController.dispose();
+    for (final c in _accompanyingNameControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -200,7 +267,7 @@ class _BookScreenState extends State<BookScreen> {
   }
 
   Future<void> _handleBook() async {
-    if (!_documentsConfirmed) return;
+    if (!_isChecklistComplete) return;
 
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
@@ -226,6 +293,25 @@ class _BookScreenState extends State<BookScreen> {
       final dateStr =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
+      String? beneficiarySummary = _beneficiaryController.text.trim().isNotEmpty
+          ? _beneficiaryController.text.trim()
+          : null;
+      if (_familyCount > 1) {
+        final partyList = <String>[];
+        if (beneficiarySummary != null) {
+          partyList.add(beneficiarySummary);
+        }
+        for (int i = 0; i < _familyCount - 1; i++) {
+          final accName = _accompanyingNameControllers[i].text.trim();
+          if (accName.isNotEmpty) {
+            partyList.add(accName);
+          }
+        }
+        if (partyList.isNotEmpty) {
+          beneficiarySummary = partyList.join(', ');
+        }
+      }
+
       final idempotencyKey = _generateUuidV4();
       final token = await _client.bookToken(
         token: authToken,
@@ -233,9 +319,7 @@ class _BookScreenState extends State<BookScreen> {
         serviceId: widget.serviceId,
         category: _category,
         phone: phone,
-        beneficiaryName: _beneficiaryController.text.trim().isNotEmpty
-            ? _beneficiaryController.text.trim()
-            : null,
+        beneficiaryName: beneficiarySummary,
         priorityDocType: _category == 'PRIORITY'
             ? (_priorityDocType ?? 'SENIOR_CITIZEN')
             : null,
@@ -464,6 +548,57 @@ class _BookScreenState extends State<BookScreen> {
                         ),
                       ],
                     ),
+                    if (_familyCount > 1) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: CivicTheme.primarySoft,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.accompanyingPersonsSummary,
+                              style: const TextStyle(
+                                color: CivicTheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ...List.generate(_familyCount - 1, (i) {
+                              final name = _accompanyingNameControllers[i].text.trim();
+                              final reasonLabel = _getReasonLabel(
+                                _accompanyingReasonKeys[i],
+                                l10n,
+                              );
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 3),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    Expanded(
+                                      child: Text(
+                                        '$name ($reasonLabel)',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: CivicTheme.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     // Fee Tier & Notice
                     Row(
@@ -643,7 +778,7 @@ class _BookScreenState extends State<BookScreen> {
                       const SizedBox(height: 20),
                     ],
 
-                    // Submit Button (Strictly gated on _documentsConfirmed)
+                    // Submit Button (Strictly gated on _isChecklistComplete)
                     ElevatedButton.icon(
                       icon: _submitting
                           ? const SizedBox(
@@ -658,14 +793,16 @@ class _BookScreenState extends State<BookScreen> {
                       label: Text(
                         _submitting ? 'Booking…' : l10n.bookAppointmentAction,
                       ),
-                      onPressed: (_documentsConfirmed && !_submitting)
+                      onPressed: (_isChecklistComplete && !_submitting)
                           ? () => _openTimeSelectionSheet(l10n, currentLang)
                           : null,
                     ),
-                    if (!_documentsConfirmed) ...[
+                    if (!_isChecklistComplete) ...[
                       const SizedBox(height: 8),
                       Text(
-                        l10n.confirmDocumentsPrompt,
+                        _checkedDocIndices.length < _getRequiredDocs().length
+                            ? l10n.checkAllDocsFirstNotice
+                            : l10n.confirmDocumentsPrompt,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 13,
@@ -673,6 +810,26 @@ class _BookScreenState extends State<BookScreen> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.info_outline, size: 16),
+                        label: Text(l10n.viewAppointmentRulesAction),
+                        style: TextButton.styleFrom(
+                          foregroundColor: CivicTheme.primary,
+                          minimumSize: const Size(0, 48),
+                        ),
+                        onPressed: () {
+                          try {
+                            context.push('/policies');
+                          } catch (_) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const PoliciesScreen()),
+                            );
+                          }
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -904,38 +1061,67 @@ class _BookScreenState extends State<BookScreen> {
     AppLocalizations l10n,
     String currentLang,
   ) {
-    final docs = service.requiredDocs.isNotEmpty
-        ? service.requiredDocs
-        : [
-            {'name': 'Valid Identity Proof (Voter ID / Driving License / PAN)'},
-            {'name': 'Proof of Address (Utility bill / Rent agreement)'},
-          ];
+    final docs = _getRequiredDocs();
+    final allDocsChecked = docs.isEmpty || _checkedDocIndices.length >= docs.length;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: CivicTheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: CivicTheme.border, width: 2),
+        border: Border.all(
+          color: _isChecklistComplete
+              ? CivicTheme.success.withValues(alpha: 0.5)
+              : CivicTheme.border,
+          width: 2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(
-                Icons.assignment_outlined,
-                color: CivicTheme.primary,
-                size: 24,
+              Row(
+                children: [
+                  Icon(
+                    Icons.assignment_outlined,
+                    color: _isChecklistComplete ? CivicTheme.success : CivicTheme.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.documentChecklistTitle,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: CivicTheme.textPrimary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
+              // Document count progress badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: allDocsChecked
+                      ? CivicTheme.successSoft
+                      : CivicTheme.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: allDocsChecked
+                        ? CivicTheme.success
+                        : CivicTheme.primary.withValues(alpha: 0.3),
+                  ),
+                ),
                 child: Text(
-                  l10n.documentChecklistTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  l10n.docsVerifiedProgress(_checkedDocIndices.length, docs.length),
+                  style: TextStyle(
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: CivicTheme.textPrimary,
+                    color: allDocsChecked
+                        ? CivicTheme.success
+                        : CivicTheme.primary,
                   ),
                 ),
               ),
@@ -950,36 +1136,79 @@ class _BookScreenState extends State<BookScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          ...docs.map((doc) {
+          // Every required document has its own interactive checkbox
+          ...docs.asMap().entries.map((entry) {
+            final index = entry.key;
+            final doc = entry.value;
             final docName = _getDocumentName(doc, currentLang);
+            final isChecked = _checkedDocIndices.contains(index);
+
             return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    size: 20,
-                    color: CivicTheme.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      docName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: CivicTheme.textPrimary,
-                      ),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: isChecked
+                    ? CivicTheme.primarySoft.withValues(alpha: 0.35)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    setState(() {
+                      if (isChecked) {
+                        _checkedDocIndices.remove(index);
+                      } else {
+                        _checkedDocIndices.add(index);
+                      }
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Checkbox(
+                            key: Key('doc_checkbox_$index'),
+                            value: isChecked,
+                            activeColor: CivicTheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            onChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  _checkedDocIndices.add(index);
+                                } else {
+                                  _checkedDocIndices.remove(index);
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            docName,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: isChecked ? FontWeight.w600 : FontWeight.w500,
+                              color: isChecked ? CivicTheme.textPrimary : CivicTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             );
           }),
+          const SizedBox(height: 4),
           const Divider(color: CivicTheme.border),
-          const SizedBox(height: 8),
-          // Mandatory confirmation checkbox
+          const SizedBox(height: 4),
+          // Mandatory declaration checkbox
           Material(
             color: Colors.transparent,
             child: CheckboxListTile(
@@ -993,6 +1222,16 @@ class _BookScreenState extends State<BookScreen> {
                   color: CivicTheme.textPrimary,
                 ),
               ),
+              subtitle: !allDocsChecked
+                  ? Text(
+                      l10n.checkAllDocsFirstNotice,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: CivicTheme.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  : null,
               value: _documentsConfirmed,
               activeColor: CivicTheme.primary,
               onChanged: (val) {
@@ -1550,7 +1789,7 @@ class _BookScreenState extends State<BookScreen> {
                               ),
                               const SizedBox(height: 18),
 
-                              // Party Size Selector
+                              // Party Size Selector (Max 4 People: primary + up to 3 accompanying)
                               Text(
                                 l10n.peopleCountPrompt,
                                 style: TextStyle(
@@ -1562,7 +1801,7 @@ class _BookScreenState extends State<BookScreen> {
                               const SizedBox(height: 8),
                               Wrap(
                                 spacing: 8,
-                                children: [1, 2, 3, 4, 5].map((count) {
+                                children: [1, 2, 3, 4].map((count) {
                                   final isSelected = familyCount == count;
                                   return ChoiceChip(
                                     label: Text(
@@ -1588,28 +1827,336 @@ class _BookScreenState extends State<BookScreen> {
                                   );
                                 }).toList(),
                               ),
+                              if (familyCount > 1) ...[
+                                const SizedBox(height: 18),
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: CivicTheme.surface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: CivicTheme.border),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      // Section Header
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.group_outlined,
+                                            color: CivicTheme.primary,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              l10n.accompanyingPersonsSectionTitle,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: CivicTheme.textPrimary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      // Single Counter Policy Notice
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: CivicTheme.warningSoft,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: CivicTheme.warning.withValues(alpha: 0.4),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Icon(
+                                              Icons.info_outline,
+                                              color: Color(0xFF8A5800),
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                l10n.sameCounterOnlyNotice,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF6B4500),
+                                                  height: 1.35,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      // Accompanying person details list
+                                      ...List.generate(familyCount - 1, (k) {
+                                        final personNumber = k + 2;
+                                        final hasOtherCounterError =
+                                            _accompanyingReasonKeys[k] == 'other_counter';
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: CivicTheme.canvas,
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: hasOtherCounterError
+                                                  ? CivicTheme.error
+                                                  : CivicTheme.border,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [
+                                              Text(
+                                                l10n.personIndexLabel(personNumber),
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: CivicTheme.primary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              // Full Name
+                                              TextField(
+                                                key: Key('accompanying_name_$k'),
+                                                controller: _accompanyingNameControllers[k],
+                                                decoration: InputDecoration(
+                                                  hintText: l10n.accompanyingPersonNameHint,
+                                                  isDense: true,
+                                                  contentPadding: const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                                  border: OutlineInputBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  prefixIcon: const Icon(Icons.person_outline, size: 18),
+                                                ),
+                                                onChanged: (_) {
+                                                  setSheetState(() {});
+                                                },
+                                              ),
+                                              const SizedBox(height: 10),
+                                              // Reason for Co-Attendance Dropdown
+                                              DropdownButtonFormField<String>(
+                                                key: Key('accompanying_reason_$k'),
+                                                isExpanded: true,
+                                                initialValue: _accompanyingReasonKeys[k],
+                                                decoration: InputDecoration(
+                                                  labelText: l10n.coAttendanceReasonLabel,
+                                                  isDense: true,
+                                                  contentPadding: const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                                  border: OutlineInputBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  prefixIcon: const Icon(
+                                                    Icons.assignment_ind_outlined,
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                                hint: Text(
+                                                  l10n.selectCoAttendanceReasonPrompt,
+                                                  style: const TextStyle(fontSize: 12),
+                                                ),
+                                                items: [
+                                                  DropdownMenuItem(
+                                                    value: 'joint_applicant',
+                                                    child: Text(
+                                                      l10n.reasonJointApplicant,
+                                                      style: const TextStyle(fontSize: 12),
+                                                    ),
+                                                  ),
+                                                  DropdownMenuItem(
+                                                    value: 'assistance',
+                                                    child: Text(
+                                                      l10n.reasonAssistance,
+                                                      style: const TextStyle(fontSize: 12),
+                                                    ),
+                                                  ),
+                                                  DropdownMenuItem(
+                                                    value: 'guardian',
+                                                    child: Text(
+                                                      l10n.reasonGuardian,
+                                                      style: const TextStyle(fontSize: 12),
+                                                    ),
+                                                  ),
+                                                  DropdownMenuItem(
+                                                    value: 'witness',
+                                                    child: Text(
+                                                      l10n.reasonWitnessSignatory,
+                                                      style: const TextStyle(fontSize: 12),
+                                                    ),
+                                                  ),
+                                                  DropdownMenuItem(
+                                                    value: 'family_verification',
+                                                    child: Text(
+                                                      l10n.reasonFamilyVerification,
+                                                      style: const TextStyle(fontSize: 12),
+                                                    ),
+                                                  ),
+                                                  DropdownMenuItem(
+                                                    value: 'other_counter',
+                                                    child: Text(
+                                                      l10n.reasonOtherCounterWork,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: CivicTheme.error,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                                onChanged: (val) {
+                                                  setSheetState(() {
+                                                    _accompanyingReasonKeys[k] = val;
+                                                  });
+                                                },
+                                              ),
+                                              if (hasOtherCounterError) ...[
+                                                const SizedBox(height: 8),
+                                                Container(
+                                                  padding: const EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    color: CivicTheme.errorSoft,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.error_outline,
+                                                        color: CivicTheme.error,
+                                                        size: 16,
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Expanded(
+                                                        child: Text(
+                                                          l10n.invalidCounterReasonError,
+                                                          style: const TextStyle(
+                                                            color: CivicTheme.error,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 14),
-                      // Confirmation Action Button
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.check_circle, size: 22),
-                        label: Text(
-                          isCustomSlot
-                              ? l10n.confirmAppointmentHigher
-                              : l10n.confirmAppointmentStandard,
-                        ),
-                        onPressed: () {
-                          Navigator.of(sheetContext).pop();
-                          setState(() {
-                            _selectedDayIndex = diffDays;
-                            _selectedSlotTime = selectedSlotTime;
-                            _familyCount = familyCount;
-                          });
-                          _handleBook();
+                      Builder(
+                        builder: (ctx) {
+                          final accompanyingError =
+                              _getAccompanyingValidationError(familyCount, l10n);
+                          final canConfirm = accompanyingError == null;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (accompanyingError != null) ...[
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: CivicTheme.errorSoft,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: CivicTheme.error.withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(
+                                        Icons.warning_amber_rounded,
+                                        color: CivicTheme.error,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          accompanyingError,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: CivicTheme.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.check_circle, size: 22),
+                                label: Text(
+                                  isCustomSlot
+                                      ? l10n.confirmAppointmentHigher
+                                      : l10n.confirmAppointmentStandard,
+                                ),
+                                onPressed: canConfirm
+                                    ? () {
+                                        Navigator.of(sheetContext).pop();
+                                        setState(() {
+                                          _selectedDayIndex = diffDays;
+                                          _selectedSlotTime = selectedSlotTime;
+                                          _familyCount = familyCount;
+                                        });
+                                        _handleBook();
+                                      }
+                                    : null,
+                              ),
+                            ],
+                          );
                         },
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.help_outline, size: 15),
+                          label: Text(
+                            l10n.viewAppointmentRulesAction,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: CivicTheme.primary,
+                            minimumSize: const Size(0, 48),
+                          ),
+                          onPressed: () {
+                            Navigator.of(sheetContext).pop();
+                            try {
+                              context.push('/policies');
+                            } catch (_) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const PoliciesScreen(),
+                                ),
+                              );
+                            }
+                          },
+                        ),
                       ),
                     ],
                   ),

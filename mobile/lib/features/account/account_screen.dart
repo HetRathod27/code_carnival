@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/client.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
+import '../policies/policies_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   final ApiClient? client;
@@ -769,7 +771,55 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
             const Divider(height: 24),
 
-            // Row 4: App Version Footer
+            // Row 4: Help & Rules Manual
+            InkWell(
+              onTap: () {
+                try {
+                  context.push('/policies');
+                } catch (_) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PoliciesScreen()),
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: CivicTheme.primarySoft,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.help_outline_rounded, color: CivicTheme.primary, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context)?.helpAndRulesAction ?? 'Help & Rules',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: CivicTheme.primary),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppLocalizations.of(context)?.helpAndRulesSubtitle ?? 'Important information about appointments, arrival, cancellation and service.',
+                            style: const TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: CivicTheme.primary),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 24),
+
+            // Row 5: App Version Footer
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

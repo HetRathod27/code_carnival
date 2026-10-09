@@ -39,7 +39,12 @@ from api.app.services.token_service import book_token, cancel_token
 router = APIRouter(prefix="/v1/citizen", tags=["Citizen"])
 
 
-async def build_token_out(token: Token, session: AsyncSession, clock: Clock) -> TokenOut:
+async def build_token_out(
+    token: Token,
+    session: AsyncSession,
+    clock: Clock,
+    include_secret: bool = False,
+) -> TokenOut:
     counter_label = None
     if token.counter_id:
         c_res = await session.execute(select(Counter.label).where(Counter.id == token.counter_id))
@@ -68,6 +73,13 @@ async def build_token_out(token: Token, session: AsyncSession, clock: Clock) -> 
         )
         waiting_ahead = ahead_res.scalar_one() or 0
 
+    verification_sec = token.verification_secret if include_secret else None
+    verification_qr_str = (
+        f"VERIFY:{token.id}:{token.verification_secret}"
+        if (include_secret and token.verification_secret)
+        else None
+    )
+
     return TokenOut(
         id=token.id,
         office_id=token.office_id,
@@ -95,6 +107,9 @@ async def build_token_out(token: Token, session: AsyncSession, clock: Clock) -> 
         eta_high=float(token.eta_features["high"]) if token.eta_features and "high" in token.eta_features else None,
         waiting_ahead=waiting_ahead,
         now_serving=now_serving,
+        is_verified=bool(token.verification_verified),
+        verification_secret=verification_sec,
+        verification_qr=verification_qr_str,
         server_time=clock.now(),
     )
 
@@ -190,7 +205,7 @@ async def create_token(
     res_t = await session.execute(t_stmt)
     token_obj = res_t.scalar_one()
     await session.commit()
-    return await build_token_out(token_obj, session, clock)
+    return await build_token_out(token_obj, session, clock, include_secret=True)
 
 
 @router.get("/tokens/me/active", response_model=TokenOut | None)
@@ -222,9 +237,9 @@ async def get_my_active_token(
         c_res = await session.execute(c_stmt)
         c_token = c_res.scalar_one_or_none()
         if c_token and (not c_token.eta_features or not c_token.eta_features.get("citizen_confirmed")):
-            return await build_token_out(c_token, session, clock)
+            return await build_token_out(c_token, session, clock, include_secret=False)
         return None
-    return await build_token_out(token, session, clock)
+    return await build_token_out(token, session, clock, include_secret=True)
 
 
 @router.get("/tokens/{token_id}", response_model=TokenOut)
@@ -239,14 +254,15 @@ async def get_token_details(
     if not token:
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
 
+    is_owner = True
     if user.role == "CITIZEN":
-        is_owner = (token.citizen_id and token.citizen_id == user.user_id) or (
+        is_owner = bool((token.citizen_id and token.citizen_id == user.user_id) or (
             token.phone and user.phone and token.phone == user.phone
-        )
+        ))
         if not is_owner:
             raise AppException(ErrorCode.FORBIDDEN, "Access denied to token", status.HTTP_403_FORBIDDEN)
 
-    return await build_token_out(token, session, clock)
+    return await build_token_out(token, session, clock, include_secret=is_owner)
 
 
 @router.post("/tokens/{token_id}/cancel", response_model=TokenOut)

@@ -12,6 +12,7 @@ import 'features/browse/city_selection_screen.dart';
 import 'features/browse/services_screen.dart';
 import 'features/book/book_screen.dart';
 import 'features/account/account_screen.dart';
+import 'features/policies/policies_screen.dart';
 import 'core/notifications.dart';
 import 'api/client.dart';
 
@@ -103,6 +104,10 @@ class _QueueLessCitizenAppState extends State<QueueLessCitizenApp> {
       GoRoute(
         path: '/account',
         builder: (context, state) => AccountScreen(onLocaleChanged: _setLocale),
+      ),
+      GoRoute(
+        path: '/policies',
+        builder: (context, state) => const PoliciesScreen(),
       ),
     ],
   );

@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import datetime
 from typing import Any
@@ -88,7 +89,9 @@ async def book_token(
     if not service or not service.active:
         raise BookingError("SERVICE_NOT_FOUND_OR_INACTIVE", "Service is not active or found", 404)
 
-    if category == "PRIORITY":
+    db_category = "PRIORITY" if category in ["PRIORITY", "SENIOR", "PREGNANT", "DISABILITY"] else "NORMAL"
+
+    if db_category == "PRIORITY":
         if not service.priority_allowed:
             raise BookingError("PRIORITY_NOT_ALLOWED", "Priority booking not permitted for this service", 400)
         # Check strike limit per spec O6: at strike_limit priority claims are blocked for that phone
@@ -199,6 +202,7 @@ async def book_token(
     display_code = f"{service.code}-{new_seq:03d}"
     token_id = str(uuid.uuid4())
     sort_key = clock.now_epoch()
+    verification_secret = f"{secrets.randbelow(900000) + 100000:06d}"
 
     token = Token(
         id=token_id,
@@ -210,13 +214,16 @@ async def book_token(
         citizen_id=citizen_id,
         phone=phone,
         beneficiary_name=on_behalf_of,
-        category=category,
-        priority_status="PENDING" if category == "PRIORITY" else "VERIFIED",
+        category=db_category,
+        priority_status="VERIFIED" if (created_via in ["WALKIN", "ASSISTED", "DESK"] or db_category == "NORMAL") else "PENDING",
         created_via=created_via,
         state="WAITING",
         sort_key=sort_key,
         travel_minutes=travel_minutes,
         arrived_at=now_dt if created_via in ["WALKIN", "ASSISTED"] else None,
+        verification_secret=verification_secret,
+        verification_verified=False,
+        failed_verification_attempts=0,
         created_at=now_dt,
     )
     session.add(token)
@@ -225,6 +232,8 @@ async def book_token(
     # 4. Insert initial event in token_events
     actor_type = "DESK" if created_via in ["ASSISTED", "DESK"] else "CITIZEN"
     event_meta: dict[str, Any] = {"created_via": created_via, "seq": new_seq}
+    if category != db_category:
+        event_meta["priority_sub_category"] = category
     if is_desk_override and override_reason:
         event_meta["reason_code"] = override_reason
 
@@ -300,6 +309,7 @@ async def book_token(
 
     response_data = {
         "token_id": token_id,
+        "verification_secret": verification_secret,
         "office_id": office_id,
         "service_id": service_id,
         "display_code": display_code,
@@ -377,6 +387,12 @@ async def cancel_token(
         session=session,
         clock=clock,
     )
+
+    token.verification_secret = None
+    token.verification_verified = False
+    token.verified_counter_id = None
+    token.verified_officer_id = None
+    token.verified_at = None
 
     if was_waiting:
         queue_state.waiting_count = max(0, queue_state.waiting_count - 1)

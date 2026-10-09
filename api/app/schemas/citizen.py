@@ -68,6 +68,9 @@ class TokenOut(BaseModel):
     eta_high: float | None = None
     waiting_ahead: int = 0
     now_serving: str | None = None
+    is_verified: bool = False
+    verification_secret: str | None = None
+    verification_qr: str | None = None
     server_time: datetime = Field(default_factory=datetime.utcnow)
 
 

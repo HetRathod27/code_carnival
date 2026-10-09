@@ -622,3 +622,31 @@ Running log of milestones, completed tasks, verifications, and status.
 - **Assumptions**:
   - Operational priority handling remains accessible via Help Desk and Counter Officer interfaces as specified.
 - **Git Commit & Tag**: `citizen-flow-refine-done`
+
+---
+
+## M-ACCOMPANYING-PERSONS: Accompanying Persons Details, Single-Counter Policy & Reason Validation
+- **Date**: 2026-10-10
+- **Built**:
+  - `mobile/lib/features/book/book_screen.dart`:
+    - Capped appointment party size selector to a maximum of 4 people (`[1, 2, 3, 4]`).
+    - Added dynamic Accompanying Persons form section when party size > 1 (`familyCount` = 2, 3, or 4).
+    - Enforced Single Counter Policy: prominently displayed notification banner stating all accompanying members must attend for the same service counter, and work at other counters requires a separate appointment.
+    - Added dedicated inputs for each accompanying person:
+      - Full Name text input (with controller management and disposal).
+      - Reason for co-attendance dropdown with valid civic options (Joint Property Owner / Co-applicant, Assistance for Senior / Differently-Abled, Legal Guardian, Witness / Signatory for document verification, Family member for joint identification).
+      - Invalid option ("Work at a different counter/department") that explicitly warns and disables confirmation.
+    - Confirmation gating: Disabled the confirm button and showed explanatory alerts when any accompanying person's name or valid counter reason is missing, or if an other-counter reason is selected.
+    - Displayed accompanying person names and verified reasons in the post-booking confirmation dialog.
+    - Passed accompanying party details into booking request.
+  - `mobile/lib/l10n/app_en.arb`, `app_gu.arb`, `app_hi.arb`: Added full trilingual localization for accompanying persons section title, single-counter notice, accompanying person labels, full name hints, co-attendance reason dropdown labels, reason choices, and validation errors (Core Rule 7).
+  - `mobile/test/f1_citizen_test.dart`: Added widget test asserting:
+    1. Party size capped at max 4 (chips 1..4 present, 5 removed).
+    2. Selecting > 1 person reveals accompanying persons form and single-counter policy banner.
+    3. Missing name/reason keeps confirm button disabled.
+    4. Selecting invalid "other counter" reason shows error and blocks confirmation.
+    5. Providing full name and valid same-counter reason enables confirmation, submits booking, and displays accompanying details in confirmation dialog.
+- **Verification**:
+  - `flutter analyze` in `mobile/`: 0 errors / no issues found.
+  - `flutter test` in `mobile/`: 34/34 tests passed.
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit 0 (All 67 pytest tests passed, web typecheck and build passed, flutter analyze clean, all checks green).

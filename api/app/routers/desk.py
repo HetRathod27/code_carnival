@@ -48,14 +48,15 @@ async def desk_create_token(
     token.arrived_at = clock.now()
     await session.commit()
 
-    token_out = await build_token_out(token, session, clock)
+    token_out = await build_token_out(token, session, clock, include_secret=True)
     printable_code = token.display_code
-    qr_data = f"TOKEN:{token.id}:{token.display_code}"
+    qr_data = f"VERIFY:{token.id}:{token.verification_secret}" if token.verification_secret else f"TOKEN:{token.id}:{token.display_code}"
 
     return DeskSlipOut(
         token=token_out,
         printable_code=printable_code,
         qr_data=qr_data,
+        verification_code=token.verification_secret,
     )
 
 
@@ -104,10 +105,11 @@ async def desk_get_token_slip(
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
 
     require_office_access(user, token.office_id)
-    token_out = await build_token_out(token, session, clock)
+    token_out = await build_token_out(token, session, clock, include_secret=True)
     return DeskSlipOut(
         token=token_out,
         printable_code=token.display_code,
-        qr_data=f"TOKEN:{token.id}:{token.display_code}",
+        qr_data=f"VERIFY:{token.id}:{token.verification_secret}" if token.verification_secret else f"TOKEN:{token.id}:{token.display_code}",
+        verification_code=token.verification_secret,
     )
 

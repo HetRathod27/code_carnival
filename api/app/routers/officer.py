@@ -13,22 +13,27 @@ from api.app.schemas.common import SuccessResponse
 from api.app.schemas.officer import (
     CallNextIn,
     CompleteServingIn,
+    CounterActivityItemOut,
     CounterStatusIn,
     CounterVerifyIn,
     NoteIn,
+    OfficerOverrideIn,
     PriorityCheckIn,
     QueueItemOut,
     TransferIn,
 )
 from api.app.services.officer_service import (
+    OfficerOperationError,
     call_next,
     complete_serving,
     mark_no_show,
+    override_token_verification,
     priority_check,
     release_token,
     set_counter_status,
     start_serving,
     transfer_token,
+    verify_token_at_counter,
 )
 
 router = APIRouter(prefix="/v1/officer", tags=["Officer"])
@@ -198,35 +203,51 @@ async def officer_verify_counter(
 
     require_office_access(user, token.office_id)
 
-    code = payload.verification_code.strip().upper()
-    valid_codes = [
-        token.display_code.upper(),
-        token.id.upper(),
-        f"TOKEN:{token.id}:{token.display_code}".upper(),
-    ]
-    if not any(v in code or code in v for v in valid_codes):
-        raise AppException(
-            ErrorCode.VALIDATION_ERROR,
-            f"Verification code does not match token '{token.display_code}'",
-            status.HTTP_400_BAD_REQUEST,
+    try:
+        verified_token = await verify_token_at_counter(
+            session=session,
+            clock=clock,
+            token_id=token_id,
+            verification_code=payload.verification_code,
+            counter_id=token.counter_id or "",
+            officer_id=user.user_id,
         )
+        await session.commit()
+        return SuccessResponse(message=f"Citizen {verified_token.display_code} successfully verified at counter")
+    except OfficerOperationError as e:
+        await session.commit()
+        raise AppException(ErrorCode.VALIDATION_ERROR, e.message, e.status_code) from e
 
-    now = clock.now()
-    if token.arrived_at is None:
-        token.arrived_at = now
 
-    event = TokenEvent(
-        token_id=token.id,
-        from_state=token.state,
-        to_state=token.state,
-        actor_type="OFFICER",
-        actor_id=user.user_id,
-        at=now,
-        meta={"action": "OFFICER_COUNTER_VERIFICATION", "verified_code": payload.verification_code},
-    )
-    session.add(event)
-    await session.commit()
-    return SuccessResponse(message=f"Citizen {token.display_code} successfully verified at counter")
+@router.post("/tokens/{token_id}/override-verification", response_model=SuccessResponse)
+async def officer_override_verification(
+    token_id: str,
+    payload: OfficerOverrideIn,
+    user: UserClaims = Depends(require_role(["OFFICER", "ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> SuccessResponse:
+    t_res = await session.execute(select(Token).where(Token.id == token_id))
+    token = t_res.scalar_one_or_none()
+    if not token:
+        raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    require_office_access(user, token.office_id)
+
+    try:
+        overridden_token = await override_token_verification(
+            session=session,
+            clock=clock,
+            token_id=token_id,
+            counter_id=token.counter_id or "",
+            officer_id=user.user_id,
+            reason=payload.reason,
+        )
+        await session.commit()
+        return SuccessResponse(message=f"Citizen {overridden_token.display_code} verification manually overridden")
+    except OfficerOperationError as e:
+        await session.commit()
+        raise AppException(ErrorCode.VALIDATION_ERROR, e.message, e.status_code) from e
 
 
 @router.post("/tokens/{token_id}/start", response_model=TokenOut)
@@ -243,15 +264,19 @@ async def officer_start_serving(
 
     require_office_access(user, token.office_id)
 
-    started = await start_serving(
-        session=session,
-        clock=clock,
-        token_id=token_id,
-        counter_id=token.counter_id or "",
-        officer_id=user.user_id,
-    )
-    await session.commit()
-    return await build_token_out(started, session, clock)
+    try:
+        started = await start_serving(
+            session=session,
+            clock=clock,
+            token_id=token_id,
+            counter_id=token.counter_id or "",
+            officer_id=user.user_id,
+        )
+        await session.commit()
+        return await build_token_out(started, session, clock)
+    except OfficerOperationError as e:
+        await session.rollback()
+        raise AppException(ErrorCode.VALIDATION_ERROR, e.message, e.status_code) from e
 
 
 @router.post("/tokens/{token_id}/complete", response_model=TokenOut)
@@ -394,4 +419,71 @@ async def officer_priority_check(
     )
     await session.commit()
     return await build_token_out(token, session, clock)
+
+
+@router.get("/counters/{counter_id}/activity", response_model=list[CounterActivityItemOut])
+async def get_counter_activity(
+    counter_id: str,
+    user: UserClaims = Depends(require_role(["OFFICER", "ADMIN", "SUPER_ADMIN"])),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> list[CounterActivityItemOut]:
+    office_id = user.office_id or "ward-central-01"
+    b_date = clock.business_date()
+
+    stmt = (
+        select(Token, Service.code, Service.names)
+        .join(Service, Service.id == Token.service_id)
+        .where(
+            Token.office_id == office_id,
+            Token.business_date == b_date,
+            Token.state.in_(["COMPLETED", "NO_SHOW"]),
+        )
+    )
+    if counter_id != "all":
+        stmt = stmt.where(Token.counter_id == counter_id)
+
+    stmt = stmt.order_by(Token.completed_at.desc().nullslast(), Token.called_at.desc().nullslast())
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    token_ids = [t.id for t, _, _ in rows]
+    notes_map: dict[str, str] = {}
+    if token_ids:
+        events_res = await session.execute(
+            select(TokenEvent.token_id, TokenEvent.meta)
+            .where(TokenEvent.token_id.in_(token_ids), TokenEvent.to_state.in_(["COMPLETED", "NO_SHOW"]))
+            .order_by(TokenEvent.id.desc())
+        )
+        for t_id, meta in events_res.all():
+            if t_id not in notes_map and meta and isinstance(meta, dict) and "note" in meta:
+                notes_map[t_id] = meta["note"]
+
+    items: list[CounterActivityItemOut] = []
+    for token, srv_code, srv_names in rows:
+        s_name = srv_names.get("en", srv_code) if isinstance(srv_names, dict) else srv_code
+        dur_secs = 0
+        if token.completed_at and token.serving_started_at:
+            dur_secs = max(0, int((token.completed_at - token.serving_started_at).total_seconds()))
+
+        comp_time = (token.completed_at or token.called_at or token.created_at).isoformat()
+        outcome = token.outcome_code or token.state
+
+        items.append(
+            CounterActivityItemOut(
+                id=token.id,
+                display_code=token.display_code,
+                service_id=token.service_id,
+                service_name=s_name,
+                counter_id=token.counter_id,
+                beneficiary_name=token.beneficiary_name,
+                outcome_code=outcome,
+                duration_seconds=dur_secs,
+                completed_at=comp_time,
+                officer_note=notes_map.get(token.id),
+                group_size=1,
+                served_count=1,
+            )
+        )
+    return items
 

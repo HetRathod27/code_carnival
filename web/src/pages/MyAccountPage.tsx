@@ -375,10 +375,11 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                   backgroundColor: 'var(--color-surface)',
                 }}
               >
-                <option value="cnt-1">{t('account.counter_1_opt', 'Counter 1 · Birth certificate & Civic documents')}</option>
-                <option value="cnt-2">{t('account.counter_2_opt', 'Counter 2 · Income certificate & Revenue')}</option>
-                <option value="cnt-3">{t('account.counter_3_opt', 'Counter 3 · Property tax & Grievances')}</option>
-                <option value="cnt-all">{t('account.counter_all_opt', 'Counter Universal · All civic services')}</option>
+                <option value="cnt-1">{t('account.counter_1_opt', 'Counter 1 · Birth & Death Certificate')}</option>
+                <option value="cnt-2">{t('account.counter_2_opt', 'Counter 2 · Property Tax Payment & Assessment')}</option>
+                <option value="cnt-3">{t('account.counter_3_opt', 'Counter 3 · Property Tax Assessment & Payment')}</option>
+                <option value="cnt-4">{t('account.counter_4_opt', 'Counter 4 · Trade License & Shop Registration')}</option>
+                <option value="cnt-5">{t('account.counter_5_opt', 'Counter 5 · RTI Application & Civic Grievances')}</option>
               </select>
             </div>
           </div>

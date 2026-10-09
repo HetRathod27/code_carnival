@@ -86,6 +86,9 @@ export interface TokenOut {
   waiting_ahead: number;
   now_serving: string | null;
   server_time: string;
+  is_verified?: boolean;
+  verification_secret?: string | null;
+  verification_qr?: string | null;
 }
 
 export interface CounterStatusResult {
@@ -153,6 +156,29 @@ export async function fetchQueue(
   return req<QueueItem[]>('GET', `/v1/officer/counters/${counterId}/queue`, token);
 }
 
+export interface CounterActivityItem {
+  id: string;
+  display_code: string;
+  service_id: string;
+  service_name: string;
+  counter_id?: string | null;
+  beneficiary_name?: string | null;
+  outcome_code: string;
+  duration_seconds: number;
+  completed_at: string;
+  officer_note?: string | null;
+  group_size?: number;
+  served_count?: number;
+}
+
+export async function fetchCounterActivity(
+  token: string,
+  counterId: string,
+): Promise<CounterActivityItem[]> {
+  return req<CounterActivityItem[]>('GET', `/v1/officer/counters/${counterId}/activity`, token);
+}
+
+
 export async function updateCounterStatus(
   token: string,
   counterId: string,
@@ -189,6 +215,19 @@ export async function verifyCounter(
     `/v1/officer/tokens/${tokenId}/verify-counter`,
     token,
     { verification_code: verificationCode },
+  );
+}
+
+export async function officerOverrideVerification(
+  token: string,
+  tokenId: string,
+  reason: string,
+): Promise<{ message: string }> {
+  return req<{ message: string }>(
+    'POST',
+    `/v1/officer/tokens/${tokenId}/override-verification`,
+    token,
+    { reason },
   );
 }
 
@@ -270,6 +309,7 @@ export interface DeskSlipOut {
   token: TokenOut;
   printable_code: string;
   qr_data: string;
+  verification_code?: string | null;
 }
 
 export async function deskCreateToken(token: string, payload: DeskBookIn): Promise<DeskSlipOut> {
@@ -348,6 +388,7 @@ export interface CounterOut {
   label: string;
   status: string;
   officer_id?: string | null;
+  service_ids?: string[];
 }
 
 export interface CounterCreateIn {
@@ -402,6 +443,10 @@ export async function fetchAdminCounters(token: string, counterIds: string[]): P
   );
   const results = await Promise.all(promises);
   return results.filter((c): c is CounterOut => c !== null);
+}
+
+export async function fetchOfficeCounters(token: string, officeId: string): Promise<CounterOut[]> {
+  return req<CounterOut[]>('GET', `/v1/admin/offices/${officeId}/counters`, token).catch(() => []);
 }
 
 export async function createAdminCounter(token: string, payload: CounterCreateIn): Promise<CounterOut> {

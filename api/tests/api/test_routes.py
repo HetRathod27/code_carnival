@@ -34,11 +34,14 @@ def session_factory(test_engine):
     return async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
+_vclock_counter = 0
+
+
 @pytest.fixture
 def vclock():
-    run_day = (int(uuid.uuid4().hex[:4], 16) % 25) + 1
-    run_month = (int(uuid.uuid4().hex[4:6], 16) % 12) + 1
-    return VirtualClock(datetime(2042, run_month, run_day, 10, 0, 0, tzinfo=timezone.utc))
+    global _vclock_counter
+    _vclock_counter += 1
+    return VirtualClock(datetime(2042 + _vclock_counter, 1, 1, 10, 0, 0, tzinfo=timezone.utc))
 
 
 @pytest.fixture
@@ -247,6 +250,7 @@ async def test_officer_full_lifecycle_and_guards(client, dev_auth, vclock):
     assert resp_book.status_code == 201
 
     booked_token_id = resp_book.json()["id"]
+    verification_secret = resp_book.json()["verification_secret"]
 
     # 3. Officer views queue
     resp_q = await client.get(f"/v1/officer/counters/{counter_id}/queue", headers=off_headers)
@@ -260,6 +264,18 @@ async def test_officer_full_lifecycle_and_guards(client, dev_auth, vclock):
     called = resp_call.json()
     assert called["id"] == booked_token_id
     assert called["state"] == "CALLED"
+
+    # 4b. Verify unverified start attempt is rejected
+    resp_unverified = await client.post(f"/v1/officer/tokens/{booked_token_id}/start", headers=off_headers)
+    assert resp_unverified.status_code == 400
+
+    # 4c. Officer verifies citizen token code at counter
+    resp_verify = await client.post(
+        f"/v1/officer/tokens/{booked_token_id}/verify-counter",
+        json={"verification_code": verification_secret},
+        headers=off_headers,
+    )
+    assert resp_verify.status_code == 200
 
     # 5. Officer starts serving
     resp_start = await client.post(f"/v1/officer/tokens/{booked_token_id}/start", headers=off_headers)
@@ -330,6 +346,24 @@ async def test_desk_assisted_booking_and_admin_settings(client, dev_auth):
     resp_get_slip = await client.get(f"/v1/desk/tokens/{tok_id}/slip", headers=desk_headers)
     assert resp_get_slip.status_code == 200
     assert resp_get_slip.json()["printable_code"] == slip["printable_code"]
+
+    # Verify Desk priority category bookings (SENIOR, PREGNANT, DISABILITY)
+    for prio_cat in ["SENIOR", "PREGNANT", "DISABILITY"]:
+        resp_prio = await client.post(
+            "/v1/desk/tokens",
+            json={
+                "office_id": office_id,
+                "service_id": service_id,
+                "citizen_name": f"{prio_cat} Citizen",
+                "category": prio_cat,
+                "created_via": "WALKIN",
+            },
+            headers=desk_headers,
+        )
+        assert resp_prio.status_code == 201
+        prio_slip = resp_prio.json()
+        assert prio_slip["token"]["category"] == "PRIORITY"
+        assert prio_slip["token"]["priority_status"] == "VERIFIED"
 
     # 2. Admin settings
     admin_token = dev_auth.create_token(UserClaims(user_id="admin-user-1", role="ADMIN", office_id=office_id))

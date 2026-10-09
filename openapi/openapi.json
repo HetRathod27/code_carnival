@@ -969,6 +969,74 @@
         }
       }
     },
+    "/v1/officer/tokens/{token_id}/override-verification": {
+      "post": {
+        "tags": [
+          "Officer"
+        ],
+        "summary": "Officer Override Verification",
+        "operationId": "officer_override_verification_v1_officer_tokens__token_id__override_verification_post",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfficerOverrideIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/officer/tokens/{token_id}/start": {
       "post": {
         "tags": [
@@ -1364,6 +1432,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/officer/counters/{counter_id}/activity": {
+      "get": {
+        "tags": [
+          "Officer"
+        ],
+        "summary": "Get Counter Activity",
+        "operationId": "get_counter_activity_v1_officer_counters__counter_id__activity_get",
+        "parameters": [
+          {
+            "name": "counter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Counter Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CounterActivityItemOut"
+                  },
+                  "title": "Response Get Counter Activity V1 Officer Counters  Counter Id  Activity Get"
                 }
               }
             }
@@ -2135,6 +2265,135 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List Counters",
+        "operationId": "list_counters_v1_admin_counters_get",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CounterOut"
+                  },
+                  "title": "Response List Counters V1 Admin Counters Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/offices/{office_id}/counters": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List Office Counters",
+        "operationId": "list_office_counters_v1_admin_offices__office_id__counters_get",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CounterOut"
+                  },
+                  "title": "Response List Office Counters V1 Admin Offices  Office Id  Counters Get"
                 }
               }
             }
@@ -3508,6 +3767,92 @@
         "type": "object",
         "title": "CompleteServingIn"
       },
+      "CounterActivityItemOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_code": {
+            "type": "string",
+            "title": "Display Code"
+          },
+          "service_id": {
+            "type": "string",
+            "title": "Service Id"
+          },
+          "service_name": {
+            "type": "string",
+            "title": "Service Name"
+          },
+          "counter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counter Id"
+          },
+          "beneficiary_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beneficiary Name"
+          },
+          "outcome_code": {
+            "type": "string",
+            "title": "Outcome Code"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "title": "Duration Seconds"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          },
+          "officer_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Officer Note"
+          },
+          "group_size": {
+            "type": "integer",
+            "title": "Group Size",
+            "default": 1
+          },
+          "served_count": {
+            "type": "integer",
+            "title": "Served Count",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_code",
+          "service_id",
+          "service_name",
+          "outcome_code",
+          "duration_seconds",
+          "completed_at"
+        ],
+        "title": "CounterActivityItemOut"
+      },
       "CounterCreateIn": {
         "properties": {
           "id": {
@@ -3559,6 +3904,14 @@
               }
             ],
             "title": "Officer Id"
+          },
+          "service_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Service Ids",
+            "default": []
           }
         },
         "type": "object",
@@ -3715,6 +4068,17 @@
           "qr_data": {
             "type": "string",
             "title": "Qr Data"
+          },
+          "verification_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Code"
           }
         },
         "type": "object",
@@ -4169,6 +4533,19 @@
         },
         "type": "object",
         "title": "OfficeSettingsUpdate"
+      },
+      "OfficerOverrideIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "OfficerOverrideIn"
       },
       "PriorityCheckIn": {
         "properties": {
@@ -5001,6 +5378,33 @@
               }
             ],
             "title": "Now Serving"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified",
+            "default": false
+          },
+          "verification_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Secret"
+          },
+          "verification_qr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Qr"
           },
           "server_time": {
             "type": "string",

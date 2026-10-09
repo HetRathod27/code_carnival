@@ -48,3 +48,23 @@ class QueueItemOut(BaseModel):
 
 class CounterVerifyIn(BaseModel):
     verification_code: str
+
+
+class OfficerOverrideIn(BaseModel):
+    reason: str
+
+
+class CounterActivityItemOut(BaseModel):
+    id: str
+    display_code: str
+    service_id: str
+    service_name: str
+    counter_id: str | None = None
+    beneficiary_name: str | None = None
+    outcome_code: str
+    duration_seconds: int
+    completed_at: str
+    officer_note: str | None = None
+    group_size: int = 1
+    served_count: int = 1
+

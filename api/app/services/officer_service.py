@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import secrets
 from datetime import timedelta
 from typing import Any
 
@@ -19,8 +20,31 @@ from api.app.models.entities import (
     QueueState,
     Service,
     Token,
+    TokenEvent,
 )
 from api.app.services.token_service import book_token
+
+
+def generate_verification_secret() -> str:
+    """Generates a secure 6-digit numeric verification secret."""
+    return f"{secrets.randbelow(900000) + 100000:06d}"
+
+
+_officer_failed_attempts: dict[str, int] = {}
+
+
+def _get_officer_failed_attempts(officer_id: str) -> int:
+    return _officer_failed_attempts.get(officer_id, 0)
+
+
+def _increment_officer_failed_attempts(officer_id: str) -> int:
+    curr = _officer_failed_attempts.get(officer_id, 0) + 1
+    _officer_failed_attempts[officer_id] = curr
+    return curr
+
+
+def _reset_officer_failed_attempts(officer_id: str) -> None:
+    _officer_failed_attempts.pop(officer_id, None)
 
 
 class OfficerOperationError(Exception):
@@ -289,6 +313,12 @@ async def call_next(
             if cand.id == chosen_token.id:
                 break
             cand.pass_over_count += 1
+            cand.verification_secret = generate_verification_secret()
+            cand.verification_verified = False
+            cand.verified_counter_id = None
+            cand.verified_officer_id = None
+            cand.verified_at = None
+            cand.failed_verification_attempts = 0
             passed_over_tokens.append(cand)
 
     # 7. Transition chosen_token from WAITING -> CALLED
@@ -296,6 +326,13 @@ async def call_next(
     chosen_token.grace_deadline = grace_deadline
     chosen_token.called_at = now_dt
     chosen_token.counter_id = counter_id
+    if not chosen_token.verification_secret:
+        chosen_token.verification_secret = generate_verification_secret()
+    chosen_token.verification_verified = False
+    chosen_token.verified_counter_id = None
+    chosen_token.verified_officer_id = None
+    chosen_token.verified_at = None
+    chosen_token.failed_verification_attempts = 0
 
     await transition(
         token=chosen_token,
@@ -349,6 +386,212 @@ async def call_next(
     return chosen_token
 
 
+async def verify_token_at_counter(
+    session: AsyncSession,
+    clock: Clock,
+    token_id: str,
+    verification_code: str,
+    counter_id: str,
+    officer_id: str,
+) -> Token:
+    """
+    Mandatory Counter Token Verification before service start.
+    Binds verification to token, counter, and officer context.
+    Rate-limits failed attempts per token and per officer session.
+    Audit entries record result, officer, token ID, and timestamp only (never the code or secret).
+    """
+    stmt = select(Token).where(Token.id == token_id).with_for_update()
+    res = await session.execute(stmt)
+    token = res.scalar_one_or_none()
+    if not token:
+        raise OfficerOperationError("TOKEN_NOT_FOUND", "Token not found", 404)
+
+    now = clock.now()
+
+    # Rule: Gate only the called-to-serving transition
+    if token.state != "CALLED":
+        raise OfficerOperationError(
+            "INVALID_STATE",
+            f"Cannot verify token in state '{token.state}'. Token must be CALLED.",
+            400,
+        )
+
+    # Counter binding check
+    if token.counter_id and token.counter_id != counter_id:
+        raise OfficerOperationError(
+            "COUNTER_MISMATCH",
+            f"Token is assigned to counter '{token.counter_id}', not '{counter_id}'.",
+            409,
+        )
+
+    # Rate limiting check: per token and per officer session
+    stmt_settings = select(OfficeSettings).where(OfficeSettings.office_id == token.office_id)
+    res_settings = await session.execute(stmt_settings)
+    settings_obj = res_settings.scalar_one_or_none()
+    max_attempts = settings_obj.max_verification_attempts if settings_obj else 5
+
+    if token.failed_verification_attempts >= max_attempts:
+        event = TokenEvent(
+            token_id=token.id,
+            from_state=token.state,
+            to_state=token.state,
+            actor_type="OFFICER",
+            actor_id=officer_id,
+            counter_id=counter_id,
+            at=now,
+            meta={"action": "COUNTER_VERIFICATION", "result": "RATE_LIMITED"},
+        )
+        session.add(event)
+        raise OfficerOperationError(
+            "VERIFICATION_RATE_LIMITED",
+            "Verification attempts limit exceeded for this token. Officer override required.",
+            429,
+        )
+
+    if _get_officer_failed_attempts(officer_id) >= max_attempts:
+        event = TokenEvent(
+            token_id=token.id,
+            from_state=token.state,
+            to_state=token.state,
+            actor_type="OFFICER",
+            actor_id=officer_id,
+            counter_id=counter_id,
+            at=now,
+            meta={"action": "COUNTER_VERIFICATION", "result": "OFFICER_RATE_LIMITED"},
+        )
+        session.add(event)
+        raise OfficerOperationError(
+            "OFFICER_RATE_LIMITED",
+            "Verification attempts limit exceeded for this officer session.",
+            429,
+        )
+
+    # Clean verification code
+    clean = verification_code.strip()
+    if clean.upper().startswith("VERIFY:"):
+        parts = clean.split(":")
+        if len(parts) >= 3 and parts[1] == str(token.id):
+            clean = parts[2].strip()
+        elif len(parts) >= 2:
+            clean = parts[-1].strip()
+
+    # Security Rule: Do NOT verify against the publicly displayed token code.
+    # Must strictly match the separate per-token verification secret.
+    expected_secret = token.verification_secret or ""
+    if not expected_secret or clean.upper() != expected_secret.upper():
+        token.failed_verification_attempts += 1
+        _increment_officer_failed_attempts(officer_id)
+        # Audit record: result, officer, token ID, timestamp only. Never log code or secret!
+        event = TokenEvent(
+            token_id=token.id,
+            from_state=token.state,
+            to_state=token.state,
+            actor_type="OFFICER",
+            actor_id=officer_id,
+            counter_id=counter_id,
+            at=now,
+            meta={"action": "COUNTER_VERIFICATION", "result": "FAILED"},
+        )
+        session.add(event)
+        raise OfficerOperationError(
+            "VERIFICATION_FAILED",
+            "Verification failed. Please check the code and try again.",
+            400,
+        )
+
+    # Successful verification
+    token.verification_verified = True
+    token.verified_counter_id = counter_id
+    token.verified_officer_id = officer_id
+    token.verified_at = now
+    token.failed_verification_attempts = 0
+    _reset_officer_failed_attempts(officer_id)
+
+    if token.arrived_at is None:
+        token.arrived_at = now
+
+    event = TokenEvent(
+        token_id=token.id,
+        from_state=token.state,
+        to_state=token.state,
+        actor_type="OFFICER",
+        actor_id=officer_id,
+        counter_id=counter_id,
+        at=now,
+        meta={"action": "COUNTER_VERIFICATION", "result": "SUCCESS"},
+    )
+    session.add(event)
+    return token
+
+
+async def override_token_verification(
+    session: AsyncSession,
+    clock: Clock,
+    token_id: str,
+    counter_id: str,
+    officer_id: str,
+    reason: str,
+) -> Token:
+    """
+    Officer manual override requiring mandatory non-empty reason.
+    Records audit entry with reason without logging secrets.
+    """
+    clean_reason = reason.strip()
+    if not clean_reason:
+        raise OfficerOperationError(
+            "OVERRIDE_REASON_REQUIRED",
+            "Officer manual override requires a non-empty reason.",
+            400,
+        )
+
+    stmt = select(Token).where(Token.id == token_id).with_for_update()
+    res = await session.execute(stmt)
+    token = res.scalar_one_or_none()
+    if not token:
+        raise OfficerOperationError("TOKEN_NOT_FOUND", "Token not found", 404)
+
+    now = clock.now()
+
+    if token.state != "CALLED":
+        raise OfficerOperationError(
+            "INVALID_STATE",
+            f"Cannot override token in state '{token.state}'. Token must be CALLED.",
+            400,
+        )
+
+    if token.counter_id and token.counter_id != counter_id:
+        raise OfficerOperationError(
+            "COUNTER_MISMATCH",
+            f"Token is assigned to counter '{token.counter_id}', not '{counter_id}'.",
+            409,
+        )
+
+    token.verification_verified = True
+    token.verified_counter_id = counter_id
+    token.verified_officer_id = officer_id
+    token.verified_at = now
+
+    if token.arrived_at is None:
+        token.arrived_at = now
+
+    event = TokenEvent(
+        token_id=token.id,
+        from_state=token.state,
+        to_state=token.state,
+        actor_type="OFFICER",
+        actor_id=officer_id,
+        counter_id=counter_id,
+        at=now,
+        meta={
+            "action": "OFFICER_MANUAL_OVERRIDE",
+            "result": "OVERRIDDEN",
+            "reason": clean_reason,
+        },
+    )
+    session.add(event)
+    return token
+
+
 async def start_serving(
     session: AsyncSession,
     clock: Clock,
@@ -358,12 +601,38 @@ async def start_serving(
 ) -> Token:
     """
     Start serving a CALLED token (O4).
+    Security Rule: Rejects unverified tokens; verification is single-use and permanently consumed.
     """
     stmt = select(Token).where(Token.id == token_id).with_for_update()
     res = await session.execute(stmt)
     token = res.scalar_one_or_none()
     if not token:
         raise OfficerOperationError("TOKEN_NOT_FOUND", "Token not found", 404)
+
+    if token.state != "CALLED":
+        raise OfficerOperationError(
+            "INVALID_STATE",
+            f"Cannot start service: token is in state '{token.state}' (must be CALLED)",
+            400,
+        )
+
+    # Core Rule: The service session can start ONLY after successful token verification.
+    if not token.verification_verified:
+        raise OfficerOperationError(
+            "TOKEN_NOT_VERIFIED",
+            "Cannot start service for an unverified token. Citizen verification required.",
+            400,
+        )
+
+    # Counter binding: Token verification must match current assigned counter
+    if (token.counter_id and token.counter_id != counter_id) or (
+        token.verified_counter_id and token.verified_counter_id != counter_id
+    ):
+        raise OfficerOperationError(
+            "COUNTER_MISMATCH",
+            "Token verification is bound to another counter.",
+            409,
+        )
 
     now_dt = clock.now()
     token.serving_started_at = now_dt
@@ -377,6 +646,14 @@ async def start_serving(
         clock=clock,
         counter_id=counter_id,
     )
+
+    # Single-use: Permanently consume verification secret so it cannot be reused
+    token.verification_secret = None
+    token.verification_verified = False
+    token.verified_counter_id = None
+    token.verified_officer_id = None
+    token.verified_at = None
+
     return token
 
 
@@ -408,6 +685,13 @@ async def complete_serving(
 
     event_meta = meta or {}
     event_meta["outcome_code"] = outcome_code
+
+    # Invalidate verification on completion
+    token.verification_secret = None
+    token.verification_verified = False
+    token.verified_counter_id = None
+    token.verified_officer_id = None
+    token.verified_at = None
 
     await transition(
         token=token,
@@ -481,6 +765,14 @@ async def mark_no_show(
         else:
             token.sort_key = clock.now_epoch() + 1.0
 
+        # Fresh verification secret upon requeue
+        token.verification_secret = generate_verification_secret()
+        token.verification_verified = False
+        token.verified_counter_id = None
+        token.verified_officer_id = None
+        token.verified_at = None
+        token.failed_verification_attempts = 0
+
         # Transition: NO_SHOW -> WAITING
         await transition(
             token=token,
@@ -503,6 +795,13 @@ async def mark_no_show(
             qs.waiting_count += 1
             qs.version += 1
     else:
+        # Invalidate secret on cancellation
+        token.verification_secret = None
+        token.verification_verified = False
+        token.verified_counter_id = None
+        token.verified_officer_id = None
+        token.verified_at = None
+
         # Transition: NO_SHOW -> CANCELLED
         await transition(
             token=token,
@@ -551,6 +850,12 @@ async def release_token(
     token.counter_id = None
     token.called_at = None
     token.grace_deadline = None
+    token.verification_secret = generate_verification_secret()
+    token.verification_verified = False
+    token.verified_counter_id = None
+    token.verified_officer_id = None
+    token.verified_at = None
+    token.failed_verification_attempts = 0
 
     await transition(
         token=token,
@@ -586,6 +891,12 @@ async def transfer_token(
         raise OfficerOperationError("TOKEN_NOT_FOUND", "Token not found", 404)
 
     # Transition source token
+    token.verification_secret = None
+    token.verification_verified = False
+    token.verified_counter_id = None
+    token.verified_officer_id = None
+    token.verified_at = None
+
     await transition(
         token=token,
         to_state="TRANSFERRED",

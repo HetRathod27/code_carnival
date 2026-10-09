@@ -17,26 +17,88 @@ class OfficesScreen extends StatefulWidget {
 class _OfficesScreenState extends State<OfficesScreen> {
   late final ApiClient _client = widget.client ?? ApiClient();
   List<OfficeModel> _offices = [];
+  Map<String, List<ServiceModel>> _officeServices = {};
   TokenModel? _activeToken;
   String? _selectedCity;
   bool _loading = true;
   String? _error;
 
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _searchFocusNode.addListener(_onFocusChange);
     _loadOffices();
   }
 
-  List<OfficeModel> get _displayedOffices {
-    if (_selectedCity == null || _selectedCity!.isEmpty || _selectedCity == 'All') {
-      return _offices;
+  void _onFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.removeListener(_onFocusChange);
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<OfficeModel> _filterOfficesByCity(List<OfficeModel> offices, String? city) {
+    if (city == null || city.isEmpty || city == 'All') {
+      return offices;
     }
-    final filtered = _offices.where((o) {
+    return offices.where((o) {
       final text = '${o.name} ${o.address}'.toLowerCase();
-      return text.contains(_selectedCity!.toLowerCase());
+      return text.contains(city.toLowerCase());
     }).toList();
-    return filtered;
+  }
+
+  List<OfficeModel> get _cityOffices => _filterOfficesByCity(_offices, _selectedCity);
+
+  bool get _isSearchActive => _searchQuery.trim().isNotEmpty;
+
+  List<OfficeModel> get _displayedOffices {
+    final baseOffices = _cityOffices;
+    final trimmedQuery = _searchQuery.trim().toLowerCase();
+    if (trimmedQuery.isEmpty) {
+      return baseOffices;
+    }
+
+    return baseOffices.where((office) {
+      final services = _officeServices[office.id] ?? [];
+      return services.any((s) => _serviceMatchesQuery(s, trimmedQuery));
+    }).toList();
+  }
+
+  bool _serviceMatchesQuery(ServiceModel s, String query) {
+    if (s.code.toLowerCase().contains(query)) return true;
+    for (final val in s.names.values) {
+      if (val != null && val.toString().toLowerCase().contains(query)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  ServiceModel? _getMatchingServiceForOffice(String officeId, String query, String lang) {
+    final trimmedQuery = query.trim().toLowerCase();
+    if (trimmedQuery.isEmpty) return null;
+    final services = _officeServices[officeId] ?? [];
+    try {
+      return services.firstWhere((s) => _serviceMatchesQuery(s, trimmedQuery));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+    });
   }
 
   Future<void> _loadOffices() async {
@@ -69,12 +131,38 @@ class _OfficesScreenState extends State<OfficesScreen> {
           active = null;
         }
       }
+
+      // If city changed or upon fresh load with different city, reset search appropriately
+      if (city != _selectedCity) {
+        _searchController.clear();
+        _searchQuery = '';
+      }
+
       if (mounted) {
         setState(() {
           _offices = list;
           _selectedCity = city;
           _activeToken = active;
           _loading = false;
+        });
+      }
+
+      // Concurrently fetch services for offices in the selected city
+      final cityOffices = _filterOfficesByCity(list, city);
+      final serviceEntries = await Future.wait(
+        cityOffices.map((office) async {
+          try {
+            final services = await _client.fetchServices(office.id);
+            return MapEntry(office.id, services);
+          } catch (_) {
+            return MapEntry(office.id, <ServiceModel>[]);
+          }
+        }),
+      );
+
+      if (mounted) {
+        setState(() {
+          _officeServices = Map.fromEntries(serviceEntries);
         });
       }
     } catch (e) {
@@ -87,9 +175,88 @@ class _OfficesScreenState extends State<OfficesScreen> {
     }
   }
 
+  Widget _buildSearchField(BuildContext context, AppLocalizations l10n) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final double searchWidth = screenWidth > 700
+        ? 240.0
+        : screenWidth > 500
+            ? 190.0
+            : (screenWidth * 0.40).clamp(130.0, 170.0);
+
+    const outlineBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(20)),
+      borderSide: BorderSide(color: CivicTheme.border, width: 1.2),
+    );
+    const focusedOutlineBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(20)),
+      borderSide: BorderSide(color: CivicTheme.primary, width: 1.8),
+    );
+
+    return SizedBox(
+      width: searchWidth,
+      height: 38,
+      child: Semantics(
+        label: l10n.searchServicesTooltip,
+        textField: true,
+        child: TextField(
+          controller: _searchController,
+          focusNode: _searchFocusNode,
+          textInputAction: TextInputAction.search,
+          textAlignVertical: TextAlignVertical.center,
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value;
+            });
+          },
+          style: const TextStyle(
+            fontSize: 14,
+            color: CivicTheme.textPrimary,
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: CivicTheme.surface,
+            border: outlineBorder,
+            enabledBorder: outlineBorder,
+            focusedBorder: focusedOutlineBorder,
+            disabledBorder: outlineBorder,
+            errorBorder: outlineBorder,
+            focusedErrorBorder: focusedOutlineBorder,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+            hintText: l10n.searchServicesPlaceholder,
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: CivicTheme.textSecondary,
+            ),
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 18,
+              color: CivicTheme.textSecondary,
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 16, color: CivicTheme.textSecondary),
+                    tooltip: l10n.clearSearchTooltip,
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    onPressed: _clearSearch,
+                  )
+                : null,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final currentLocale = Localizations.localeOf(context).languageCode;
 
     return Scaffold(
       appBar: AppBar(
@@ -97,7 +264,10 @@ class _OfficesScreenState extends State<OfficesScreen> {
           _selectedCity != null && _selectedCity != 'All'
               ? '$_selectedCity Civic Centres'
               : l10n.officesTitle,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
+        titleSpacing: 8,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Select City / શહેર પસંદ કરો',
@@ -116,6 +286,10 @@ class _OfficesScreenState extends State<OfficesScreen> {
               tooltip: l10n.myToken,
               onPressed: () => context.push('/home'),
             ),
+          // Search field in top bar area, positioned to the left of Account button
+          Center(
+            child: _buildSearchField(context, l10n),
+          ),
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'My Account',
@@ -158,7 +332,7 @@ class _OfficesScreenState extends State<OfficesScreen> {
                       ),
                     ),
                   )
-                : _offices.isEmpty
+                : _cityOffices.isEmpty
                     ? Center(
                         child: Text(
                           l10n.noOfficesFound,
@@ -219,11 +393,13 @@ class _OfficesScreenState extends State<OfficesScreen> {
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            l10n.selectOfficePrompt,
-                                            style: const TextStyle(
-                                              fontSize: 18,
+                                            _isSearchActive
+                                                ? l10n.centresOfferService(_displayedOffices.length)
+                                                : l10n.selectOfficePrompt,
+                                            style: TextStyle(
+                                              fontSize: _isSearchActive ? 16 : 18,
                                               fontWeight: FontWeight.w600,
-                                              color: CivicTheme.textSecondary,
+                                              color: _isSearchActive ? CivicTheme.primary : CivicTheme.textSecondary,
                                             ),
                                           ),
                                         ),
@@ -250,6 +426,38 @@ class _OfficesScreenState extends State<OfficesScreen> {
                             }
 
                             if (_displayedOffices.isEmpty) {
+                              if (_isSearchActive) {
+                                return Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: CivicTheme.border),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Icon(Icons.search_off, size: 48, color: CivicTheme.textSecondary),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        l10n.noCentresOfferService,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: CivicTheme.textPrimary,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Try searching for another service name, or clear the search to view all civic centres in ${_selectedCity ?? "this city"}.',
+                                        style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
                               return Container(
                                 padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
@@ -291,8 +499,14 @@ class _OfficesScreenState extends State<OfficesScreen> {
                             }
 
                             final office = _displayedOffices[index - 1];
+                            final matchingService = _isSearchActive
+                                ? _getMatchingServiceForOffice(office.id, _searchQuery, currentLocale)
+                                : null;
+                            final matchingServiceName = matchingService?.localizedName(currentLocale);
+
                             return _OfficeCard(
                               office: office,
+                              matchingServiceName: matchingServiceName,
                               onTap: () {
                                 context.push('/offices/${office.id}/services');
                               },
@@ -307,9 +521,14 @@ class _OfficesScreenState extends State<OfficesScreen> {
 
 class _OfficeCard extends StatelessWidget {
   final OfficeModel office;
+  final String? matchingServiceName;
   final VoidCallback onTap;
 
-  const _OfficeCard({required this.office, required this.onTap});
+  const _OfficeCard({
+    required this.office,
+    this.matchingServiceName,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -413,6 +632,37 @@ class _OfficeCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (matchingServiceName != null && matchingServiceName!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: CivicTheme.primarySoft,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: CivicTheme.primary.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      size: 16,
+                      color: CivicTheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.serviceAvailableNotice(matchingServiceName!),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: CivicTheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

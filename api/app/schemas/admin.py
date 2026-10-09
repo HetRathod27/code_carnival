@@ -95,6 +95,7 @@ class CounterOut(BaseModel):
     label: str
     status: str
     officer_id: str | None = None
+    service_ids: list[str] = []
 
 
 class CounterServiceIn(BaseModel):

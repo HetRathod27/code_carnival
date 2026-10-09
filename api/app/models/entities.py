@@ -61,6 +61,7 @@ class OfficeSettings(Base):
     max_on_behalf_tokens: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     on_my_way_extension_minutes: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     retention_days: Mapped[int] = mapped_column(Integer, default=90, nullable=False)
+    max_verification_attempts: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
 
     office: Mapped["Office"] = relationship("Office", back_populates="settings")
 
@@ -196,6 +197,12 @@ class Token(Base):
     last_eta_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_eta_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     eta_features: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    verification_secret: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    verification_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    verified_counter_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("counters.id", ondelete="SET NULL"), nullable=True)
+    verified_officer_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failed_verification_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (

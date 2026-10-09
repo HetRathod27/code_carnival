@@ -32,6 +32,7 @@ export function DeskPage() {
 
   // Issued Slip Modal
   const [issuedSlip, setIssuedSlip] = useState<DeskSlipOut | null>(null);
+  const [issuedCategory, setIssuedCategory] = useState<string>('NORMAL');
   const [issuedAt, setIssuedAt] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,17 @@ export function DeskPage() {
         console.error('Failed to load services:', err);
       });
   }, [officeId]);
+
+  // Keyboard shortcut: Escape closes the Turn Slip modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && issuedSlip) {
+        setIssuedSlip(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [issuedSlip]);
 
   const handleIssueSlip = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,12 +77,14 @@ export function DeskPage() {
         override_reason: overrideCapacity ? overrideReason : null,
       });
       setIssuedSlip(res);
+      setIssuedCategory(category);
       setIssuedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       setSuccessMsg(`Token ${res.token.display_code} issued successfully!`);
       // Reset form
       setCitizenName('');
       setCitizenPhone('');
       setNoPhone(false);
+      setCategory('NORMAL');
       setOverrideCapacity(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to issue token';
@@ -398,8 +412,35 @@ export function DeskPage() {
 
       {/* Printable Slip Modal */}
       {issuedSlip && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '420px', textAlign: 'center', border: '2px dashed var(--color-border)' }}>
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIssuedSlip(null);
+            }
+          }}
+        >
+          <div
+            className="modal-content"
+            style={{
+              maxWidth: '420px',
+              textAlign: 'center',
+              border: '2px dashed var(--color-border)',
+              position: 'relative',
+            }}
+          >
+            {/* Top-Right Close (X) Button */}
+            <button
+              type="button"
+              className="modal-close-btn"
+              onClick={() => setIssuedSlip(null)}
+              aria-label={t('desk.close_slip', 'Close turn slip')}
+              title={t('desk.close_slip', 'Close turn slip')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+                close
+              </span>
+            </button>
             <div style={{ padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--color-border)', marginBottom: 'var(--space-md)' }}>
               <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-primary)', letterSpacing: '1px' }}>
                 QueueLess
@@ -421,7 +462,7 @@ export function DeskPage() {
                 {issuedSlip.printable_code}
               </div>
               <span className="badge-category" style={{ marginTop: 'var(--space-xs)' }}>
-                {issuedSlip.token.category}
+                {issuedCategory !== 'NORMAL' ? `PRIORITY (${issuedCategory})` : issuedSlip.token.category}
               </span>
             </div>
 
@@ -437,6 +478,49 @@ export function DeskPage() {
                 {t('desk.slip_sub')}
               </div>
             </div>
+
+            {/* Counter Officer Verification Secret & QR */}
+            {(issuedSlip.verification_code || issuedSlip.token.verification_secret) && (
+              <div
+                style={{
+                  margin: 'var(--space-sm) 0',
+                  padding: '12px',
+                  backgroundColor: '#f8fafc',
+                  border: '2px solid #0f172a',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+              >
+                <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#475569' }}>
+                  {t('desk.verification_code_label', 'Counter Verification Code')}
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '4px', color: '#0f172a', marginTop: '2px', fontFamily: 'monospace' }}>
+                  {issuedSlip.verification_code || issuedSlip.token.verification_secret}
+                </div>
+                {/* Visual QR element for thermal slip */}
+                <div
+                  style={{
+                    width: '90px',
+                    height: '90px',
+                    margin: '8px auto 4px',
+                    backgroundColor: '#0f172a',
+                    color: '#ffffff',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '48px' }}>
+                    qr_code
+                  </span>
+                  <span style={{ fontSize: '8px', letterSpacing: '0.5px' }}>OFFICER SCAN</span>
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                  {t('desk.verification_slip_hint', 'Officer will scan this QR or verify this code before starting service')}
+                </div>
+              </div>
+            )}
 
             {/* Details */}
             <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', padding: '0 var(--space-md)' }}>

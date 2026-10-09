@@ -560,7 +560,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     children: [
                       QrImageView(
-                        data: 'TOKEN:${token.id}:${token.displayCode}',
+                        data: token.verificationQr ?? 'VERIFY:${token.id}:${token.verificationSecret ?? ""}',
                         version: QrVersions.auto,
                         size: 150.0,
                         backgroundColor: Colors.white,
@@ -575,11 +575,45 @@ class _HomeScreenState extends State<HomeScreen> {
                           letterSpacing: 1.5,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Show this QR code to the officer\'s webcam or give this verification code.',
+                      if (token.verificationSecret != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: CivicTheme.primarySoft,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: CivicTheme.primary),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                l10n.counterVerificationSecretLabel.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: CivicTheme.textSecondary,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                token.verificationSecret!,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: CivicTheme.primary,
+                                  letterSpacing: 4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Text(
+                        l10n.showVerificationCodeToOfficer,
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
+                        style: const TextStyle(fontSize: 12, color: CivicTheme.textSecondary),
                       ),
                     ],
                   ),
@@ -778,6 +812,46 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
+                if (token.verificationSecret != null && token.state != 'CALLED') ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: CivicTheme.primarySoft.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: CivicTheme.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.key, size: 18, color: CivicTheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.counterVerificationSecretLabel,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: CivicTheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          token.verificationSecret!,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2,
+                            color: CivicTheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const Divider(color: CivicTheme.border),
                 const SizedBox(height: 12),

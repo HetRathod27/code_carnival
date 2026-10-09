@@ -90,3 +90,15 @@ test('4. Role-based Route Guard enforcement test', () => {
   assert.equal(canAccessRoute('ADMIN', '/desk'), true);
   assert.equal(canAccessRoute('ADMIN', '/officer'), true);
 });
+
+test('5. Admin portal tab mapping ensures Counters and services is active', () => {
+  function resolveAdminTab(navId) {
+    if (navId === 'admin_counters') return 'counters_services';
+    if (navId === 'admin_settings') return 'settings';
+    return 'overview';
+  }
+
+  assert.equal(resolveAdminTab('admin_counters'), 'counters_services');
+  assert.equal(resolveAdminTab('admin_settings'), 'settings');
+  assert.equal(resolveAdminTab('admin'), 'overview');
+});

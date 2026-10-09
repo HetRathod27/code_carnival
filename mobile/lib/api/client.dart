@@ -100,6 +100,9 @@ class TokenModel {
   final String? graceDeadline;
   final int waitingAhead;
   final String? nowServing;
+  final String? verificationSecret;
+  final String? verificationQr;
+  final bool? isVerified;
 
   TokenModel({
     required this.id,
@@ -126,6 +129,9 @@ class TokenModel {
     this.graceDeadline,
     required this.waitingAhead,
     this.nowServing,
+    this.verificationSecret,
+    this.verificationQr,
+    this.isVerified,
   });
 
   factory TokenModel.fromJson(Map<String, dynamic> json) {
@@ -154,6 +160,9 @@ class TokenModel {
       graceDeadline: json['grace_deadline'] as String?,
       waitingAhead: (json['waiting_ahead'] as num?)?.toInt() ?? 0,
       nowServing: json['now_serving'] as String?,
+      verificationSecret: json['verification_secret'] as String?,
+      verificationQr: json['verification_qr'] as String?,
+      isVerified: json['is_verified'] as bool?,
     );
   }
 }
