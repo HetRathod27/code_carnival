@@ -951,6 +951,138 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ],
+              if (token.childTokens.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Divider(color: CivicTheme.border),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: CivicTheme.primarySoft.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: CivicTheme.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.confirmation_number_outlined, size: 16, color: CivicTheme.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            l10n.allottedTokensTitle,
+                            style: const TextStyle(
+                              color: CivicTheme.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Primary Ticket
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: CivicTheme.border),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    token.displayCode,
+                                    style: const TextStyle(fontWeight: FontWeight.w900, color: CivicTheme.primary, fontSize: 13),
+                                  ),
+                                  Text(
+                                    token.beneficiaryName?.isNotEmpty == true
+                                        ? token.beneficiaryName!
+                                        : 'Primary Citizen',
+                                    style: const TextStyle(fontSize: 11, color: CivicTheme.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (token.appointmentSlot != null) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: CivicTheme.successSoft,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  token.appointmentSlot!,
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CivicTheme.success),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      // Child Tickets
+                      ...token.childTokens.map((child) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: CivicTheme.border),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      child.displayCode,
+                                      style: const TextStyle(fontWeight: FontWeight.w900, color: CivicTheme.primary, fontSize: 13),
+                                    ),
+                                    Text(
+                                      child.beneficiaryName ?? 'Accompanying Member',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 11, color: CivicTheme.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (child.appointmentSlot != null) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: CivicTheme.primarySoft,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    child.appointmentSlot!,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: CivicTheme.primary),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.distinctTokensNotice,
+                        style: const TextStyle(fontSize: 10, color: CivicTheme.textSecondary, fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

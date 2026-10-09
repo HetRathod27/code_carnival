@@ -76,7 +76,14 @@ class _BookScreenState extends State<BookScreen> {
     TextEditingController(),
     TextEditingController(),
   ];
-  final List<String?> _accompanyingReasonKeys = [null, null, null];
+  List<String?> _accompanyingReasonKeys = [null, null, null];
+
+  List<String?> get _safeAccompanyingReasonKeys {
+    if (_accompanyingReasonKeys.isEmpty || _accompanyingReasonKeys.length < 3) {
+      _accompanyingReasonKeys = [null, null, null];
+    }
+    return _accompanyingReasonKeys;
+  }
 
   String _getReasonLabel(String? key, AppLocalizations l10n) {
     switch (key) {
@@ -102,7 +109,7 @@ class _BookScreenState extends State<BookScreen> {
     final needed = count - 1;
     for (int i = 0; i < needed; i++) {
       final name = _accompanyingNameControllers[i].text.trim();
-      final reason = _accompanyingReasonKeys[i];
+      final reason = _safeAccompanyingReasonKeys[i];
       if (name.isEmpty) {
         return l10n.missingAccompanyingDetailsPrompt;
       }
@@ -333,7 +340,7 @@ class _BookScreenState extends State<BookScreen> {
       if (_familyCount > 1) {
         for (int i = 0; i < _familyCount - 1; i++) {
           final accName = _accompanyingNameControllers[i].text.trim();
-          final accReason = _accompanyingReasonKeys[i] ?? '';
+          final accReason = _safeAccompanyingReasonKeys[i] ?? '';
           final childSlot = _calculateStaggeredSlotTime(_selectedSlotTime, i + 1);
           accompanyingMembers.add({
             'name': accName,
@@ -400,10 +407,13 @@ class _BookScreenState extends State<BookScreen> {
               Expanded(child: Text(l10n.bookingConfirmationTitle)),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
               const SizedBox(height: 8),
               Text(
                 token.displayCode,
@@ -658,7 +668,7 @@ class _BookScreenState extends State<BookScreen> {
                             ...List.generate(_familyCount - 1, (i) {
                               final name = _accompanyingNameControllers[i].text.trim();
                               final reasonLabel = _getReasonLabel(
-                                _accompanyingReasonKeys[i],
+                                _safeAccompanyingReasonKeys[i],
                                 l10n,
                               );
                               final childCode = token.childTokens.length > i
@@ -806,7 +816,9 @@ class _BookScreenState extends State<BookScreen> {
               ],
             ],
           ),
-          actions: [
+        ),
+      ),
+      actions: [
             ElevatedButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
@@ -2032,7 +2044,7 @@ class _BookScreenState extends State<BookScreen> {
                                       ...List.generate(familyCount - 1, (k) {
                                         final personNumber = k + 2;
                                         final hasOtherCounterError =
-                                            _accompanyingReasonKeys[k] == 'other_counter';
+                                            _safeAccompanyingReasonKeys[k] == 'other_counter';
                                         return Container(
                                           margin: const EdgeInsets.only(bottom: 12),
                                           padding: const EdgeInsets.all(12),
@@ -2105,7 +2117,7 @@ class _BookScreenState extends State<BookScreen> {
                                               DropdownButtonFormField<String>(
                                                 key: Key('accompanying_reason_$k'),
                                                 isExpanded: true,
-                                                initialValue: _accompanyingReasonKeys[k],
+                                                initialValue: _safeAccompanyingReasonKeys[k],
                                                 decoration: InputDecoration(
                                                   labelText: l10n.coAttendanceReasonLabel,
                                                   isDense: true,
@@ -2175,7 +2187,7 @@ class _BookScreenState extends State<BookScreen> {
                                                 ],
                                                 onChanged: (val) {
                                                   setSheetState(() {
-                                                    _accompanyingReasonKeys[k] = val;
+                                                    _safeAccompanyingReasonKeys[k] = val;
                                                   });
                                                 },
                                               ),
