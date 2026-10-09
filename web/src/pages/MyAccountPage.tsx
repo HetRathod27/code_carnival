@@ -45,13 +45,13 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
   };
 
   const role = persona?.role || 'OFFICER';
-  const humanOffice = getHumanOfficeName(persona?.office_id);
+  const humanOffice = getHumanOfficeName(persona?.office_id, undefined, i18n.language);
 
   const getDesignation = () => {
-    if (role === 'OFFICER') return 'Gazetted Queue Operations Officer';
-    if (role === 'DESK') return 'Citizen Assistance Desk Officer';
-    if (role === 'ADMIN' || role === 'SUPER_ADMIN') return 'Zonal System & Civic Administrator';
-    return 'Civic Staff Member';
+    if (role === 'OFFICER') return t('account.desig_officer', 'Gazetted Queue Operations Officer');
+    if (role === 'DESK') return t('account.desig_desk', 'Citizen Assistance Desk Officer');
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') return t('account.desig_admin', 'Zonal System & Civic Administrator');
+    return t('account.desig_staff', 'Civic Staff Member');
   };
 
   const maskedPhone = persona?.phone
@@ -105,7 +105,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
             </div>
             <div>
               <h2 style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                {persona?.name || 'Authorized Staff Officer'}
+                {persona?.name || t('shell.authorized_staff', 'Authorized Staff')}
               </h2>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
                 <span
@@ -146,7 +146,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
               shield
             </span>
             <span>
-              <strong>Managed by your office admin.</strong> Role assignment and center allocation cannot be edited directly.
+              {t('account.managed_notice', 'Managed by your office admin. Role assignment and center allocation cannot be edited directly.')}
             </span>
           </div>
 
@@ -154,39 +154,39 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', fontSize: 'var(--font-body)' }}>
             <div>
               <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Official Designation
+                {t('account.designation_label', 'Official Designation')}
               </div>
               <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{getDesignation()}</div>
             </div>
 
             <div>
               <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Assigned Civic Office
+                {t('account.assigned_office_label', 'Assigned Civic Office')}
               </div>
               <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{humanOffice}</div>
             </div>
 
             <div>
               <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Department
+                {t('account.dept_label', 'Department')}
               </div>
               <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                Citizen Facilitation, Revenue & Public Grievance
+                {t('account.dept_val', 'Citizen Facilitation, Revenue & Public Grievance')}
               </div>
             </div>
 
             <div>
               <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Workstation Shift Timing
+                {t('account.shift_label', 'Workstation Shift Timing')}
               </div>
               <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                09:00 AM – 05:00 PM (Standard Indian Civic Hours)
+                {t('account.shift_val', '09:00 AM – 05:00 PM (Standard Indian Civic Hours)')}
               </div>
             </div>
 
             <div>
               <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Official Email
+                {t('account.email_label', 'Official Email')}
               </div>
               <div style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
                 {userEmail}
@@ -195,7 +195,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
 
             <div>
               <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Registered Contact
+                {t('account.contact_label', 'Registered Contact')}
               </div>
               <div style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
                 {maskedPhone}
@@ -204,10 +204,10 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
 
             <div>
               <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Active Session
+                {t('account.session_label', 'Active Session')}
               </div>
               <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)' }}>
-                Authenticated via DevAuth Provider · Session Active
+                {t('account.session_val', 'Authenticated via DevAuth Provider · Session Active')}
               </div>
             </div>
           </div>
@@ -226,13 +226,13 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
             }}
           >
             <h2 style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 'var(--space-md)' }}>
-              Workstation Preferences
+              {t('account.pref_title', 'Workstation Preferences')}
             </h2>
 
             {/* Language Selection */}
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <label style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '8px' }}>
-                Display Language
+                {t('account.lang_label', 'Display Language')}
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(['en', 'gu', 'hi'] as const).map((lng) => {
@@ -268,7 +268,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
             {/* Text Size Scale */}
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <label style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '8px' }}>
-                Text Size Accessibility
+                {t('account.text_size_label', 'Text Size Accessibility')}
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
@@ -286,7 +286,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                     color: textSize === 'normal' ? 'var(--color-primary)' : 'var(--color-text-primary)',
                   }}
                 >
-                  Normal (15px)
+                  {t('account.text_normal', 'Normal (15px)')}
                 </button>
                 <button
                   type="button"
@@ -303,7 +303,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                     color: textSize === 'large' ? 'var(--color-primary)' : 'var(--color-text-primary)',
                   }}
                 >
-                  Large (17px High-Legibility)
+                  {t('account.text_large', 'Large (17px High-Legibility)')}
                 </button>
               </div>
             </div>
@@ -313,10 +313,10 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div>
                   <div style={{ fontSize: 'var(--font-sm)', fontWeight: 700 }}>
-                    Arrival & Check-in Chime
+                    {t('account.chime_label', 'Arrival & Check-in Chime')}
                   </div>
                   <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)' }}>
-                    Play acoustic chime notification when citizen checks in at counter
+                    {t('account.chime_desc', 'Play acoustic chime notification when citizen checks in at counter')}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -334,7 +334,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                       color: soundActive ? 'var(--color-success)' : 'var(--color-text-muted)',
                     }}
                   >
-                    {soundActive ? 'Sound On' : 'Sound Off'}
+                    {soundActive ? t('common.sound_on', 'Sound On') : t('common.sound_off', 'Sound Off')}
                   </button>
                   {soundActive && (
                     <button
@@ -359,7 +359,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
             {/* Default Counter Remembered */}
             <div>
               <label style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '8px' }}>
-                Default Assigned Counter
+                {t('account.default_counter_label', 'Default Assigned Counter')}
               </label>
               <select
                 aria-label="Default assigned counter"
@@ -375,10 +375,10 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                   backgroundColor: 'var(--color-surface)',
                 }}
               >
-                <option value="cnt-1">Counter 1 · Birth certificate & Civic documents</option>
-                <option value="cnt-2">Counter 2 · Income certificate & Revenue</option>
-                <option value="cnt-3">Counter 3 · Property tax & Grievances</option>
-                <option value="cnt-all">Counter Universal · All civic services</option>
+                <option value="cnt-1">{t('account.counter_1_opt', 'Counter 1 · Birth certificate & Civic documents')}</option>
+                <option value="cnt-2">{t('account.counter_2_opt', 'Counter 2 · Income certificate & Revenue')}</option>
+                <option value="cnt-3">{t('account.counter_3_opt', 'Counter 3 · Property tax & Grievances')}</option>
+                <option value="cnt-all">{t('account.counter_all_opt', 'Counter Universal · All civic services')}</option>
               </select>
             </div>
           </div>
@@ -394,16 +394,16 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
             }}
           >
             <h2 style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 'var(--space-md)' }}>
-              Security & Session
+              {t('account.sec_title', 'Security & Session')}
             </h2>
 
             {/* Password Management */}
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <div style={{ fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '4px' }}>
-                Change Password
+                {t('account.pwd_label', 'Change Password')}
               </div>
               <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-                Password updates are locked in local development mode (DevAuth active). In production, Supabase Auth manages staff passwords.
+                {t('account.pwd_desc', 'Password updates are locked in local development mode (DevAuth active). In production, Supabase Auth manages staff passwords.')}
               </p>
               <button
                 type="button"
@@ -419,17 +419,17 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                   cursor: 'not-allowed',
                 }}
               >
-                Change Password (Disabled in Dev)
+                {t('account.pwd_btn_disabled', 'Change Password (Disabled in Dev)')}
               </button>
             </div>
 
             {/* Sign Out */}
             <div>
               <div style={{ fontSize: 'var(--font-sm)', fontWeight: 700, marginBottom: '4px' }}>
-                Session Termination
+                {t('account.term_label', 'Session Termination')}
               </div>
               <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-                End this session and return to the role authentication portal.
+                {t('account.term_desc', 'End this session and return to the role authentication portal.')}
               </p>
               <button
                 type="button"
@@ -455,7 +455,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                 }}
               >
                 <span className="material-symbols-outlined icon-sm">logout</span>
-                Sign out of this device
+                {t('account.signout_device', 'Sign out of this device')}
               </button>
             </div>
           </div>
@@ -467,11 +467,11 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
         <div className="modal-overlay" style={{ zIndex: 1000 }}>
           <div className="modal-content" style={{ maxWidth: '440px' }}>
             <h2 className="modal-title" style={{ color: 'var(--color-danger)' }}>
-              Confirm Staff Sign Out
+              {t('account.confirm_signout_title', 'Confirm Staff Sign Out')}
             </h2>
             <div className="modal-body">
               <p style={{ fontSize: 'var(--font-body)', color: 'var(--color-text-secondary)' }}>
-                Are you sure you want to sign out from the civic staff workstation? Any active token state will remain preserved in the queue system.
+                {t('account.confirm_signout_body', 'Are you sure you want to sign out from the civic staff workstation? Any active token state will remain preserved in the queue system.')}
               </p>
             </div>
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
@@ -481,7 +481,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                 style={{ minHeight: '44px', padding: '0 16px' }}
                 onClick={() => setShowSignOutConfirm(false)}
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </button>
               <button
                 type="button"
@@ -498,7 +498,7 @@ export function MyAccountPage({ onSignOutRequested }: { onSignOutRequested?: () 
                   logout();
                 }}
               >
-                Confirm Sign Out
+                {t('nav.sign_out', 'Confirm Sign Out')}
               </button>
             </div>
           </div>

@@ -211,7 +211,7 @@ export function TodayActivityPage({ counterId = 'cnt-1' }: { counterId?: string 
             {metrics.servedCount}
           </div>
           <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Completed counter services
+            {t('activity.completed_desc', 'Completed counter services')}
           </div>
         </div>
 
@@ -229,7 +229,7 @@ export function TodayActivityPage({ counterId = 'cnt-1' }: { counterId?: string 
             {metrics.avgServiceTime}
           </div>
           <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Target: 10m 00s benchmark
+            {t('activity.target_benchmark', 'Target: 10m 00s benchmark')}
           </div>
         </div>
 
@@ -247,7 +247,7 @@ export function TodayActivityPage({ counterId = 'cnt-1' }: { counterId?: string 
             {metrics.noShowCount}
           </div>
           <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-            Citizen failed to appear within grace period
+            {t('activity.noshow_desc', 'Citizen failed to appear within grace period')}
           </div>
         </div>
       </div>
@@ -291,26 +291,39 @@ export function TodayActivityPage({ counterId = 'cnt-1' }: { counterId?: string 
 
         {/* Outcome Filter Pills */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {(['ALL', 'SERVED', 'NO_SHOW', 'MISSING_DOCS', 'WRONG_SERVICE'] as const).map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() => setOutcomeFilter(code)}
-              style={{
-                height: '40px',
-                padding: '0 14px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--font-sm)',
-                fontWeight: 600,
-                border: '1px solid',
-                borderColor: outcomeFilter === code ? 'var(--color-primary)' : 'var(--color-border)',
-                backgroundColor: outcomeFilter === code ? 'var(--color-primary-soft)' : 'var(--color-surface)',
-                color: outcomeFilter === code ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              }}
-            >
-              {code === 'ALL' ? 'All Outcomes' : code}
-            </button>
-          ))}
+          {(['ALL', 'SERVED', 'NO_SHOW', 'MISSING_DOCS', 'WRONG_SERVICE'] as const).map((code) => {
+            const label = code === 'ALL'
+              ? t('activity.all_outcomes', 'All Outcomes')
+              : code === 'SERVED'
+              ? t('officer.served', 'Served')
+              : code === 'NO_SHOW'
+              ? t('officer.no_show', 'No-Show')
+              : code === 'MISSING_DOCS'
+              ? t('officer.missing_docs', 'Missing Docs')
+              : code === 'WRONG_SERVICE'
+              ? t('officer.wrong_service', 'Wrong Service')
+              : code;
+            return (
+              <button
+                key={code}
+                type="button"
+                onClick={() => setOutcomeFilter(code)}
+                style={{
+                  height: '40px',
+                  padding: '0 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--font-sm)',
+                  fontWeight: 600,
+                  border: '1px solid',
+                  borderColor: outcomeFilter === code ? 'var(--color-primary)' : 'var(--color-border)',
+                  backgroundColor: outcomeFilter === code ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+                  color: outcomeFilter === code ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -338,12 +351,12 @@ export function TodayActivityPage({ counterId = 'cnt-1' }: { counterId?: string 
             <table className="queue-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-secondary-canvas)' }}>
-                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>Token</th>
-                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>Service</th>
-                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>Outcome</th>
-                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>Duration</th>
-                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>Time</th>
-                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>Note / Details</th>
+                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>{t('activity.col_token', 'Token')}</th>
+                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>{t('activity.col_service', 'Service')}</th>
+                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>{t('activity.col_outcome', 'Outcome')}</th>
+                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>{t('activity.col_duration', 'Duration')}</th>
+                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>{t('activity.col_time', 'Time')}</th>
+                  <th style={{ padding: '14px 16px', fontSize: 'var(--font-sm)', fontWeight: 700 }}>{t('activity.col_notes', 'Note / Details')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -396,7 +409,15 @@ export function TodayActivityPage({ counterId = 'cnt-1' }: { counterId?: string 
                           <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
                             {isServed ? 'check_circle' : isNoShow ? 'person_off' : 'info'}
                           </span>
-                          {r.outcome_code}
+                          {r.outcome_code === 'SERVED'
+                            ? t('officer.served', 'SERVED')
+                            : r.outcome_code === 'NO_SHOW'
+                            ? t('officer.no_show', 'NO_SHOW')
+                            : r.outcome_code === 'MISSING_DOCS'
+                            ? t('officer.missing_docs', 'MISSING_DOCS')
+                            : r.outcome_code === 'WRONG_SERVICE'
+                            ? t('officer.wrong_service', 'WRONG_SERVICE')
+                            : r.outcome_code}
                           {r.group_size && r.group_size > 1 && (
                             <span style={{ opacity: 0.9 }}>
                               ({r.served_count ?? r.group_size}/{r.group_size})

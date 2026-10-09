@@ -600,7 +600,7 @@ export function OfficerQueuePage() {
             {t('officer.my_queue', 'My queue')}
           </h1>
           <p style={{ fontSize: 'var(--font-body)', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-            Manage citizen turns, verify physical documentation, and deliver civic services.
+            {t('officer.manage_turns_desc', 'Manage citizen turns, verify physical documentation, and deliver civic services.')}
           </p>
         </div>
 
@@ -626,10 +626,10 @@ export function OfficerQueuePage() {
                 color: 'var(--color-text-primary)',
               }}
             >
-              <option value="cnt-1">Counter 1 · Birth certificate, Civic documents</option>
-              <option value="cnt-2">Counter 2 · Income certificate, Revenue</option>
-              <option value="cnt-3">Counter 3 · Property tax, Trade licenses</option>
-              <option value="cnt-all">Counter Universal · All civic services</option>
+              <option value="cnt-1">{t('officer.counter_1_opt', 'Counter 1 · Birth certificate, Civic documents')}</option>
+              <option value="cnt-2">{t('officer.counter_2_opt', 'Counter 2 · Income certificate, Revenue')}</option>
+              <option value="cnt-3">{t('officer.counter_3_opt', 'Counter 3 · Property tax, Trade licenses')}</option>
+              <option value="cnt-all">{t('officer.counter_all_opt', 'Counter Universal · All civic services')}</option>
             </select>
           </div>
 
@@ -675,7 +675,7 @@ export function OfficerQueuePage() {
                     cursor: 'pointer',
                   }}
                 >
-                  {st === 'OPEN' ? '● Open' : st === 'BREAK' ? 'Break' : 'Closed'}
+                  {st === 'OPEN' ? t('officer.open_status', '● Open') : st === 'BREAK' ? t('officer.break_status', 'Break') : t('officer.closed_status', 'Closed')}
                 </button>
               );
             })}
@@ -685,7 +685,7 @@ export function OfficerQueuePage() {
           <button
             type="button"
             onClick={() => setShowReportProblemModal(true)}
-            title="Report counter equipment, biometric, or network issue"
+            title={t('officer.report_problem_tooltip', 'Report counter equipment, biometric, or network issue')}
             style={{
               minHeight: '48px',
               padding: '0 14px',
@@ -701,14 +701,14 @@ export function OfficerQueuePage() {
             }}
           >
             <span className="material-symbols-outlined icon-sm">report_problem</span>
-            <span>Report problem</span>
+            <span>{t('officer.report_problem', 'Report problem')}</span>
           </button>
 
           {/* Keyboard Shortcuts Popover Button */}
           <button
             type="button"
             onClick={() => setShowShortcutsPopover(!showShortcutsPopover)}
-            title="View keyboard shortcuts"
+            title={t('officer.shortcuts_tooltip', 'View keyboard shortcuts')}
             style={{
               minHeight: '48px',
               width: '48px',
@@ -730,7 +730,7 @@ export function OfficerQueuePage() {
             className="btn-call-next"
             onClick={handleCallNext}
             disabled={loading || !isCallNextPrimary}
-            title={!isCallNextPrimary ? 'Finish the current token first' : 'Call next citizen [N]'}
+            title={!isCallNextPrimary ? t('officer.call_next_finish_first', 'Finish the current token first') : t('officer.call_next_tooltip', 'Call next citizen [N]')}
             style={{
               minHeight: '48px',
               padding: '0 20px',
@@ -748,7 +748,7 @@ export function OfficerQueuePage() {
             }}
           >
             <span className="material-symbols-outlined icon-md">volume_up</span>
-            <span>Call next</span>
+            <span>{t('officer.call_next_btn', 'Call next')}</span>
             <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.15)', padding: '2px 5px', borderRadius: '3px' }}>
               N
             </span>
@@ -773,20 +773,20 @@ export function OfficerQueuePage() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <strong style={{ fontSize: 'var(--font-sm)', color: 'var(--color-primary)' }}>Keyboard Shortcuts</strong>
+            <strong style={{ fontSize: 'var(--font-sm)', color: 'var(--color-primary)' }}>{t('officer.shortcuts_title', 'Keyboard Shortcuts')}</strong>
             <button type="button" onClick={() => setShowShortcutsPopover(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>✕</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: 'var(--font-xs)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Call next token:</span>
+              <span>{t('officer.shortcut_call_next', 'Call next token:')}</span>
               <kbd style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '3px', fontWeight: 700 }}>N</kbd>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Start service:</span>
+              <span>{t('officer.shortcut_start', 'Start service:')}</span>
               <kbd style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '3px', fontWeight: 700 }}>S</kbd>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Complete service:</span>
+              <span>{t('officer.shortcut_complete', 'Complete service:')}</span>
               <kbd style={{ padding: '2px 6px', background: '#e2e8f0', borderRadius: '3px', fontWeight: 700 }}>C</kbd>
             </div>
           </div>
@@ -854,7 +854,7 @@ export function OfficerQueuePage() {
             <span className="material-symbols-outlined icon-sm" style={{ color: 'var(--color-primary)' }}>
               recommend
             </span>
-            <strong style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-primary)' }}>Next up:</strong>
+            <strong style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-primary)' }}>{t('officer.next_up', 'Next up:')}</strong>
           </div>
 
           {nextRecommendedToken ? (
@@ -872,12 +872,12 @@ export function OfficerQueuePage() {
                 {nextRecommendedToken.token.display_code}
               </span>
               <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)' }}>
-                Reason: {nextRecommendedToken.reason}
+                {t('officer.reason_prefix', 'Reason:')} {nextRecommendedToken.reason}
               </span>
             </div>
           ) : (
             <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)' }}>
-              No eligible waiting tokens queued.
+              {t('officer.no_eligible_tokens', 'No eligible waiting tokens queued.')}
             </span>
           )}
         </div>
@@ -894,7 +894,7 @@ export function OfficerQueuePage() {
               border: '1px solid var(--color-border)',
             }}
           >
-            Next online booking: 11:00 AM · ~25 mins available (walk-in fits)
+            {t('officer.next_online_fit', 'Next online booking: 11:00 AM · ~25 mins available (walk-in fits)')}
           </div>
 
           {/* Choose another button */}
@@ -914,7 +914,7 @@ export function OfficerQueuePage() {
               cursor: queue.length > 1 ? 'pointer' : 'not-allowed',
             }}
           >
-            Choose another…
+            {t('officer.choose_another', 'Choose another…')}
           </button>
         </div>
       </div>
@@ -943,7 +943,7 @@ export function OfficerQueuePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                Waiting
+                {t('officer.waiting_title', 'Waiting')}
               </span>
               <span
                 style={{
@@ -962,7 +962,7 @@ export function OfficerQueuePage() {
             <button
               type="button"
               onClick={loadQueue}
-              title="Refresh queue"
+              title={t('officer.refresh_queue', 'Refresh queue')}
               style={{
                 width: '36px',
                 height: '36px',
@@ -992,11 +992,11 @@ export function OfficerQueuePage() {
             }}
           >
             {[
-              { id: 'ALL', label: 'All', count: tabCounts.all },
-              { id: 'PRIORITY', label: 'Priority', count: tabCounts.priority },
-              { id: 'ARRIVED', label: 'Arrived', count: tabCounts.arrived },
-              { id: 'ONLINE', label: 'Online appointments', count: tabCounts.online },
-              { id: 'WALKIN', label: 'Walk-ins', count: tabCounts.walkin },
+              { id: 'ALL', label: t('officer.tab_all', 'All'), count: tabCounts.all },
+              { id: 'PRIORITY', label: t('officer.tab_priority', 'Priority'), count: tabCounts.priority },
+              { id: 'ARRIVED', label: t('officer.tab_arrived', 'Arrived'), count: tabCounts.arrived },
+              { id: 'ONLINE', label: t('officer.tab_online', 'Online appointments'), count: tabCounts.online },
+              { id: 'WALKIN', label: t('officer.tab_walkin', 'Walk-ins'), count: tabCounts.walkin },
             ].map((tab) => {
               const active = filterTab === tab.id;
               return (
@@ -1035,7 +1035,7 @@ export function OfficerQueuePage() {
             <input
               type="search"
               aria-label="Search token codes"
-              placeholder="Search token code or citizen name…"
+              placeholder={t('officer.search_waiting_placeholder', 'Search token code or citizen name…')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -1056,7 +1056,7 @@ export function OfficerQueuePage() {
               <span className="material-symbols-outlined" style={{ fontSize: '40px', opacity: 0.5, marginBottom: '6px' }}>
                 inbox
               </span>
-              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>No tokens in this filter view</p>
+              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{t('officer.no_tokens_filter', 'No tokens in this filter view')}</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '520px', overflowY: 'auto' }}>
@@ -1107,7 +1107,7 @@ export function OfficerQueuePage() {
                               color: 'var(--color-warning)',
                             }}
                           >
-                            ★ Priority
+                            {t('officer.chip_priority', '★ Priority')}
                           </span>
                         )}
                         <span
@@ -1126,7 +1126,7 @@ export function OfficerQueuePage() {
                           <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
                             {item.arrived ? 'check' : 'directions_walk'}
                           </span>
-                          {item.arrived ? 'Arrived' : 'On the way'}
+                          {item.arrived ? t('officer.chip_arrived', 'Arrived') : t('officer.chip_on_the_way', 'On the way')}
                         </span>
                         <span
                           style={{
@@ -1137,7 +1137,7 @@ export function OfficerQueuePage() {
                             color: 'var(--color-text-secondary)',
                           }}
                         >
-                          {isOnline ? 'Online Appointment' : 'Walk-in'}
+                          {isOnline ? t('officer.chip_online', 'Online Appointment') : t('officer.chip_walkin', 'Walk-in')}
                         </span>
                         {item.pass_over_count > 0 && (
                           <span
@@ -1149,7 +1149,7 @@ export function OfficerQueuePage() {
                               color: 'var(--color-danger)',
                             }}
                           >
-                            Pass-over: {item.pass_over_count}
+                            {t('officer.pass_over', 'Pass-over')}: {item.pass_over_count}
                           </span>
                         )}
                       </div>
@@ -1157,10 +1157,10 @@ export function OfficerQueuePage() {
 
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)' }}>
-                        Waiting
+                        {t('officer.waiting_label', 'Waiting')}
                       </div>
                       <div style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                        {item.waiting_minutes.toFixed(0)} min
+                        {item.waiting_minutes.toFixed(0)} {t('officer.min', 'min')}
                       </div>
                     </div>
                   </div>
@@ -1184,7 +1184,7 @@ export function OfficerQueuePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div>
                   <strong style={{ fontSize: 'var(--font-body)', color: 'var(--color-primary)' }}>
-                    Citizen Details & Document Checklist
+                    {t('officer.drawer_title', 'Citizen Details & Document Checklist')}
                   </strong>
                   <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginLeft: '8px' }}>
                     ({drawerToken.display_code})
@@ -1200,19 +1200,23 @@ export function OfficerQueuePage() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', fontSize: 'var(--font-xs)', marginBottom: '12px' }}>
-                <div><strong>Name:</strong> {drawerToken.beneficiary_name || 'Citizen Walk-in'}</div>
-                <div><strong>Phone:</strong> {drawerToken.masked_phone || '+91 ••••• ••001'}</div>
-                <div><strong>Category:</strong> {drawerToken.category}</div>
-                <div><strong>Status:</strong> {drawerToken.arrived ? 'Arrived at Lobby' : 'On the way'}</div>
+                <div><strong>{t('officer.lbl_name', 'Name:')}</strong> {drawerToken.beneficiary_name || t('officer.citizen_walkin', 'Citizen Walk-in')}</div>
+                <div><strong>{t('officer.lbl_phone', 'Phone:')}</strong> {drawerToken.masked_phone || '+91 ••••• ••001'}</div>
+                <div><strong>{t('officer.lbl_category', 'Category:')}</strong> {drawerToken.category}</div>
+                <div><strong>{t('officer.lbl_status', 'Status:')}</strong> {drawerToken.arrived ? t('officer.status_arrived_lobby', 'Arrived at Lobby') : t('officer.chip_on_the_way', 'On the way')}</div>
               </div>
 
               {/* Document Checklist Preview */}
               <div style={{ backgroundColor: 'var(--color-surface)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', marginBottom: '10px' }}>
                 <div style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '6px' }}>
-                  Required Document Checklist:
+                  {t('officer.required_docs_checklist', 'Required Document Checklist:')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: 'var(--font-xs)' }}>
-                  {['Government Photo ID (Aadhaar / Voter ID)', 'Proof of Residence (Electricity / Water bill)', 'Signed Application Form'].map((doc, idx) => (
+                  {[
+                    t('officer.doc_photo_id', 'Government Photo ID (Aadhaar / Voter ID)'),
+                    t('officer.doc_residence', 'Proof of Residence (Electricity / Water bill)'),
+                    t('officer.doc_signed_app', 'Signed Application Form')
+                  ].map((doc, idx) => (
                     <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
@@ -1229,7 +1233,7 @@ export function OfficerQueuePage() {
 
               {/* Event History / Timeline */}
               <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                <strong>Event Timeline:</strong> Token generated · Arrived at entrance {drawerToken.arrived_at ? new Date(drawerToken.arrived_at).toLocaleTimeString() : 'Pending'}
+                <strong>{t('officer.event_timeline', 'Event Timeline:')}</strong> {t('officer.timeline_generated', 'Token generated · Arrived at entrance')} {drawerToken.arrived_at ? new Date(drawerToken.arrived_at).toLocaleTimeString() : t('officer.pending', 'Pending')}
               </div>
             </div>
           )}
@@ -1253,7 +1257,7 @@ export function OfficerQueuePage() {
                 desktop_windows
               </span>
               <span style={{ fontSize: 'var(--font-h2)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                Now serving
+                {t('officer.now_serving_title', 'Now serving')}
               </span>
             </div>
 
@@ -1268,7 +1272,7 @@ export function OfficerQueuePage() {
                   color: activeToken.state === 'SERVING' ? 'var(--color-success)' : 'var(--color-warning)',
                 }}
               >
-                {activeToken.state === 'SERVING' ? '● Serving In-Progress' : 'Awaiting Citizen'}
+                {activeToken.state === 'SERVING' ? t('officer.serving_in_progress', '● Serving In-Progress') : t('officer.awaiting_citizen', 'Awaiting Citizen')}
               </span>
             )}
           </div>
@@ -1280,10 +1284,10 @@ export function OfficerQueuePage() {
                 event_seat
               </span>
               <h2 style={{ fontSize: 'var(--font-h3)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '6px' }}>
-                Counter {counterId.replace('cnt-', '')} is Idle
+                {t('officer.counter_idle_title', { num: counterId.replace('cnt-', '') })}
               </h2>
               <p style={{ fontSize: 'var(--font-body)', color: 'var(--color-text-secondary)', maxWidth: '360px', margin: '0 auto 18px auto' }}>
-                Press <strong>Call next</strong> in the top header or hit shortcut <kbd style={{ padding: '1px 5px', background: '#e2e8f0', borderRadius: '3px' }}>N</kbd> to call the next eligible citizen.
+                {t('officer.counter_idle_desc', 'Press Call next in the top header or hit shortcut N to call the next eligible citizen.')}
               </p>
             </div>
           ) : (
@@ -1303,7 +1307,7 @@ export function OfficerQueuePage() {
                   {activeToken.display_code}
                 </div>
                 <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-                  {activeToken.beneficiary_name || 'Citizen Walk-in'}
+                  {activeToken.beneficiary_name || t('officer.citizen_walkin', 'Citizen Walk-in')}
                   {activeToken.phone && ` · ${activeToken.phone}`}
                 </div>
               </div>
@@ -1323,10 +1327,10 @@ export function OfficerQueuePage() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-warning)' }}>
                     <span className="material-symbols-outlined icon-sm">timer</span>
-                    <strong style={{ fontSize: 'var(--font-sm)' }}>Grace Period Countdown:</strong>
+                    <strong style={{ fontSize: 'var(--font-sm)' }}>{t('officer.grace_countdown', 'Grace Period Countdown:')}</strong>
                   </div>
                   <span style={{ fontSize: 'var(--font-body)', fontWeight: 800, color: 'var(--color-warning)', fontVariantNumeric: 'tabular-nums' }}>
-                    {graceSecondsRemaining !== null ? formatTimer(graceSecondsRemaining) : '03:00'} remaining
+                    {graceSecondsRemaining !== null ? formatTimer(graceSecondsRemaining) : '03:00'} {t('officer.remaining', 'remaining')}
                   </span>
                 </div>
               )}
@@ -1346,14 +1350,14 @@ export function OfficerQueuePage() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)' }}>
                     <span className="material-symbols-outlined icon-sm">timer</span>
-                    <strong style={{ fontSize: 'var(--font-sm)' }}>Serving Elapsed Time:</strong>
+                    <strong style={{ fontSize: 'var(--font-sm)' }}>{t('officer.serving_elapsed', 'Serving Elapsed Time:')}</strong>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: 'var(--font-body)', fontWeight: 800, color: 'var(--color-primary)', fontVariantNumeric: 'tabular-nums' }}>
                       {formatTimer(elapsedSeconds)}
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block' }}>
-                      Target: 10m 00s
+                      {t('officer.target_time', 'Target: 10m 00s')}
                     </span>
                   </div>
                 </div>
@@ -1371,7 +1375,7 @@ export function OfficerQueuePage() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <strong style={{ fontSize: 'var(--font-xs)', color: 'var(--color-warning)' }}>
-                      Priority Status: {activeToken.priority_status || 'CLAIMED'}
+                      {t('officer.priority_status', 'Priority Status:')} {activeToken.priority_status || 'CLAIMED'}
                     </strong>
                     {activeToken.priority_status === 'CLAIMED' && (
                       <div style={{ display: 'flex', gap: '6px' }}>
@@ -1388,7 +1392,7 @@ export function OfficerQueuePage() {
                             fontWeight: 600,
                           }}
                         >
-                          Verify Document
+                          {t('officer.verify_doc', 'Verify Document')}
                         </button>
                         <button
                           type="button"
@@ -1403,7 +1407,7 @@ export function OfficerQueuePage() {
                             fontWeight: 600,
                           }}
                         >
-                          Reject
+                          {t('officer.reject', 'Reject')}
                         </button>
                       </div>
                     )}
@@ -1421,12 +1425,12 @@ export function OfficerQueuePage() {
                 }}
               >
                 <div style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
-                  Check-in at Counter (Barcode wedge / Camera scan)
+                  {t('officer.counter_checkin_title', 'Check-in at Counter (Barcode wedge / Camera scan)')}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input
                     type="text"
-                    placeholder="Enter or scan code…"
+                    placeholder={t('officer.counter_checkin_placeholder', 'Enter or scan code…')}
                     value={counterCheckinInput}
                     onChange={(e) => setCounterCheckinInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -1457,12 +1461,12 @@ export function OfficerQueuePage() {
                       fontWeight: 700,
                     }}
                   >
-                    Confirm
+                    {t('common.confirm', 'Confirm')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowWebcamScanner(true)}
-                    title="Scan with camera"
+                    title={t('officer.scan_camera_tooltip', 'Scan with camera')}
                     style={{
                       minHeight: '44px',
                       padding: '0 10px',
@@ -1504,7 +1508,7 @@ export function OfficerQueuePage() {
                     }}
                   >
                     <span className="material-symbols-outlined icon-md">play_arrow</span>
-                    <span>Start service</span>
+                    <span>{t('officer.start_service_btn', 'Start service')}</span>
                     <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 5px', borderRadius: '3px' }}>
                       S
                     </span>
@@ -1530,7 +1534,7 @@ export function OfficerQueuePage() {
                       }}
                     >
                       <span className="material-symbols-outlined icon-xs">campaign</span>
-                      Call again
+                      {t('officer.call_again_btn', 'Call again')}
                     </button>
                     <button
                       type="button"
@@ -1550,7 +1554,7 @@ export function OfficerQueuePage() {
                       }}
                     >
                       <span className="material-symbols-outlined icon-xs">person_off</span>
-                      Did not arrive
+                      {t('officer.did_not_arrive_btn', 'Did not arrive')}
                     </button>
                     <button
                       type="button"
@@ -1570,7 +1574,7 @@ export function OfficerQueuePage() {
                       }}
                     >
                       <span className="material-symbols-outlined icon-xs">undo</span>
-                      Release
+                      {t('officer.release_btn', 'Release')}
                     </button>
                   </div>
                 </div>
@@ -1603,7 +1607,7 @@ export function OfficerQueuePage() {
                     }}
                   >
                     <span className="material-symbols-outlined icon-md">check_circle</span>
-                    <span>Complete service</span>
+                    <span>{t('officer.complete_service_btn', 'Complete service')}</span>
                     <span style={{ fontSize: '11px', opacity: 0.8, backgroundColor: 'rgba(0,0,0,0.2)', padding: '2px 5px', borderRadius: '3px' }}>
                       C
                     </span>
@@ -1629,7 +1633,7 @@ export function OfficerQueuePage() {
                       }}
                     >
                       <span className="material-symbols-outlined icon-xs">swap_horiz</span>
-                      Transfer
+                      {t('officer.transfer_btn', 'Transfer')}
                     </button>
                     <button
                       type="button"
@@ -1649,7 +1653,7 @@ export function OfficerQueuePage() {
                       }}
                     >
                       <span className="material-symbols-outlined icon-xs">checklist</span>
-                      Check document
+                      {t('officer.check_document_btn', 'Check document')}
                     </button>
                   </div>
                 </div>
@@ -1666,34 +1670,34 @@ export function OfficerQueuePage() {
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '440px' }}>
             <h2 className="modal-title" style={{ fontSize: 'var(--font-h2)' }}>
-              Set Counter to {pendingStatus}
+              {t('officer.set_counter_status', { status: pendingStatus === 'BREAK' ? t('officer.break_status') : t('officer.closed_status') })}
             </h2>
             <div className="modal-body">
               <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
-                Please specify the mandatory reason for setting the counter to {pendingStatus}:
+                {t('officer.specify_status_reason', { status: pendingStatus === 'BREAK' ? t('officer.break_status') : t('officer.closed_status') })}
               </p>
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Reason Category
+                  {t('officer.reason_category')}
                 </label>
                 <select
                   value={statusReason}
                   onChange={(e) => setStatusReason(e.target.value)}
                   style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
                 >
-                  <option value="Lunch">Lunch break</option>
-                  <option value="Official work">Official administrative work</option>
-                  <option value="System problem">System or network problem</option>
-                  <option value="Other">Other reason</option>
+                  <option value="Lunch">{t('officer.opt_lunch')}</option>
+                  <option value="Official work">{t('officer.opt_official')}</option>
+                  <option value="System problem">{t('officer.opt_system')}</option>
+                  <option value="Other">{t('officer.opt_other')}</option>
                 </select>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Additional Notes (Optional)
+                  {t('officer.additional_notes_optional')}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Returning in 30 minutes"
+                  placeholder={t('officer.returning_in_30')}
                   value={statusCustomNote}
                   onChange={(e) => setStatusCustomNote(e.target.value)}
                   style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
@@ -1702,14 +1706,14 @@ export function OfficerQueuePage() {
             </div>
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowStatusModal(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
                 className="action-btn btn-start"
                 onClick={() => executeStatusChange(pendingStatus, `${statusReason}${statusCustomNote ? `: ${statusCustomNote}` : ''}`)}
               >
-                Confirm {pendingStatus}
+                {t('officer.confirm_status', { status: pendingStatus === 'BREAK' ? t('officer.break_status') : t('officer.closed_status') })}
               </button>
             </div>
           </div>
@@ -1721,34 +1725,34 @@ export function OfficerQueuePage() {
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '460px' }}>
             <h2 className="modal-title" style={{ fontSize: 'var(--font-h2)' }}>
-              Complete Service Outcome
+              {t('officer.complete_modal_title')}
             </h2>
             <div className="modal-body">
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Service Outcome Code
+                  {t('officer.outcome_code_label')}
                 </label>
                 <select
                   value={outcomeCode}
                   onChange={(e) => setOutcomeCode(e.target.value)}
                   style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
                 >
-                  <option value="SERVED">SERVED (Delivered successfully)</option>
-                  <option value="MISSING_DOCS">MISSING_DOCS (Incomplete documentation)</option>
-                  <option value="WRONG_SERVICE">WRONG_SERVICE (Citizen requires different service)</option>
-                  <option value="WRONG_OFFICE">WRONG_OFFICE (Requires zonal head office)</option>
-                  <option value="CITIZEN_LEFT">CITIZEN_LEFT (Citizen departed before finish)</option>
-                  <option value="OTHER">OTHER</option>
+                  <option value="SERVED">{t('officer.opt_served_desc')}</option>
+                  <option value="MISSING_DOCS">{t('officer.opt_missing_docs_desc')}</option>
+                  <option value="WRONG_SERVICE">{t('officer.opt_wrong_service_desc')}</option>
+                  <option value="WRONG_OFFICE">{t('officer.opt_wrong_office_desc')}</option>
+                  <option value="CITIZEN_LEFT">{t('officer.opt_citizen_left_desc')}</option>
+                  <option value="OTHER">{t('officer.other')}</option>
                 </select>
               </div>
 
               {/* Group Bookings Result */}
               <div style={{ marginBottom: '12px', padding: '10px', backgroundColor: 'var(--color-secondary-canvas)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Beneficiaries Served (Group Bookings)
+                  {t('officer.beneficiaries_served_label')}
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>Served</span>
+                  <span>{t('officer.served_word')}</span>
                   <input
                     type="number"
                     min="1"
@@ -1757,7 +1761,7 @@ export function OfficerQueuePage() {
                     onChange={(e) => setGroupServedCount(parseInt(e.target.value, 10) || 1)}
                     style={{ width: '60px', padding: '6px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}
                   />
-                  <span>of</span>
+                  <span>{t('officer.of_word')}</span>
                   <input
                     type="number"
                     min="1"
@@ -1766,16 +1770,16 @@ export function OfficerQueuePage() {
                     onChange={(e) => setGroupTotalSize(parseInt(e.target.value, 10) || 1)}
                     style={{ width: '60px', padding: '6px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}
                   />
-                  <span>people</span>
+                  <span>{t('officer.people_word')}</span>
                 </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Officer Verification Notes
+                  {t('officer.officer_verification_notes')}
                 </label>
                 <textarea
-                  placeholder="e.g. Scanned physical documents verified and returned"
+                  placeholder={t('officer.officer_notes_placeholder')}
                   value={officerNote}
                   onChange={(e) => setOfficerNote(e.target.value)}
                   style={{ width: '100%', height: '64px', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: 'var(--font-sm)' }}
@@ -1784,10 +1788,10 @@ export function OfficerQueuePage() {
             </div>
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowCompleteModal(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button type="button" className="action-btn btn-complete" onClick={handleCompleteServing} disabled={loading}>
-                Confirm Complete
+                {t('officer.confirm_complete_btn')}
               </button>
             </div>
           </div>
@@ -1798,11 +1802,11 @@ export function OfficerQueuePage() {
       {showTransferModal && (
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '440px' }}>
-            <h2 className="modal-title">Transfer Service</h2>
+            <h2 className="modal-title">{t('officer.transfer_modal_title')}</h2>
             <div className="modal-body">
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Destination Service
+                  {t('officer.destination_service')}
                 </label>
                 <select
                   value={targetServiceId}
@@ -1818,11 +1822,11 @@ export function OfficerQueuePage() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Reason for Transfer
+                  {t('officer.reason_for_transfer')}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Citizen needs Income Certificate prior to scholarship"
+                  placeholder={t('officer.transfer_placeholder')}
                   value={officerNote}
                   onChange={(e) => setOfficerNote(e.target.value)}
                   style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
@@ -1831,10 +1835,10 @@ export function OfficerQueuePage() {
             </div>
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowTransferModal(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button type="button" className="action-btn btn-start" onClick={handleTransfer} disabled={loading || !targetServiceId}>
-                Confirm Transfer
+                {t('officer.confirm_transfer_btn')}
               </button>
             </div>
           </div>
@@ -1846,19 +1850,19 @@ export function OfficerQueuePage() {
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '440px' }}>
             <h2 className="modal-title" style={{ color: 'var(--color-danger)' }}>
-              Confirm Did Not Arrive
+              {t('officer.confirm_did_not_arrive')}
             </h2>
             <div className="modal-body">
               <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
-                The citizen did not report to the counter within the allotted grace window. Confirm no-show recording?
+                {t('officer.did_not_arrive_desc')}
               </p>
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Audit Note
+                  {t('officer.audit_note')}
                 </label>
                 <input
                   type="text"
-                  placeholder="Called twice, citizen did not appear"
+                  placeholder={t('officer.audit_note_placeholder')}
                   value={officerNote}
                   onChange={(e) => setOfficerNote(e.target.value)}
                   style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
@@ -1867,10 +1871,10 @@ export function OfficerQueuePage() {
             </div>
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowNoShowModal(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button type="button" className="action-btn btn-no-show" onClick={handleNoShow} disabled={loading}>
-                Record No-Show
+                {t('officer.record_no_show_btn')}
               </button>
             </div>
           </div>
@@ -1881,11 +1885,11 @@ export function OfficerQueuePage() {
       {showChooseAnotherModal && (
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '480px' }}>
-            <h2 className="modal-title">Choose Another Waiting Token</h2>
+            <h2 className="modal-title">{t('officer.choose_another_modal_title')}</h2>
             <div className="modal-body">
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Select Token to Call
+                  {t('officer.select_token_to_call')}
                 </label>
                 <select
                   value={overrideChosenTokenId || (queue[1]?.id ?? '')}
@@ -1894,30 +1898,30 @@ export function OfficerQueuePage() {
                 >
                   {queue.map((q) => (
                     <option key={q.id} value={q.id}>
-                      {q.display_code} — {q.beneficiary_name || 'Citizen'} ({q.category})
+                      {q.display_code} — {q.beneficiary_name || t('officer.citizen_walkin')} ({q.category})
                     </option>
                   ))}
                 </select>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Mandatory Dispatch Reason (Logged)
+                  {t('officer.mandatory_dispatch_reason')}
                 </label>
                 <select
                   value={overrideReason}
                   onChange={(e) => setOverrideReason(e.target.value)}
                   style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', marginBottom: '8px' }}
                 >
-                  <option value="Special assistance">Special disability / elderly assistance</option>
-                  <option value="Urgent dispatch">Urgent dispatch / Emergency service</option>
-                  <option value="Citizen requested order">Citizen physical presence confirmed</option>
-                  <option value="Other administrative override">Other administrative reason</option>
+                  <option value="Special assistance">{t('officer.disp_special_assist')}</option>
+                  <option value="Urgent dispatch">{t('officer.disp_urgent')}</option>
+                  <option value="Citizen requested order">{t('officer.disp_presence')}</option>
+                  <option value="Other administrative override">{t('officer.disp_override')}</option>
                 </select>
               </div>
             </div>
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowChooseAnotherModal(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -1927,11 +1931,11 @@ export function OfficerQueuePage() {
                   await handleCallNext();
                   setFeedbackMsg({
                     type: 'info',
-                    text: `Dispatched token with logged reason: "${overrideReason}"`,
+                    text: t('officer.dispatched_token_feedback', { reason: overrideReason }),
                   });
                 }}
               >
-                Confirm Dispatch
+                {t('officer.confirm_dispatch_btn')}
               </button>
             </div>
           </div>
@@ -1943,42 +1947,42 @@ export function OfficerQueuePage() {
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '460px' }}>
             <h2 className="modal-title" style={{ color: 'var(--color-danger)' }}>
-              Report a Workstation Incident
+              {t('officer.report_incident_title')}
             </h2>
             <div className="modal-body">
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Incident Type
+                  {t('officer.incident_type')}
                 </label>
                 <select
                   value={problemReason}
                   onChange={(e) => setProblemReason(e.target.value)}
                   style={{ width: '100%', minHeight: '44px', padding: '0 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
                 >
-                  <option value="Server down">Server down / Connectivity loss</option>
-                  <option value="Biometric device fault">Biometric / Scanner device fault</option>
-                  <option value="Power cut">Power cut / Electrical glitch</option>
-                  <option value="Officer unavailable">Officer unavailable / Medical leave</option>
+                  <option value="Server down">{t('officer.inc_server_down')}</option>
+                  <option value="Biometric device fault">{t('officer.inc_biometric_fault')}</option>
+                  <option value="Power cut">{t('officer.inc_power_cut')}</option>
+                  <option value="Officer unavailable">{t('officer.inc_officer_unavail')}</option>
                 </select>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 700, marginBottom: '6px' }}>
-                  Details for Administrative Support
+                  {t('officer.support_details')}
                 </label>
                 <textarea
-                  placeholder="Describe workstation behavior…"
+                  placeholder={t('officer.incident_desc_placeholder')}
                   value={problemDetails}
                   onChange={(e) => setProblemDetails(e.target.value)}
-                  style={{ width: '100%', height: '64px', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                  style={{ width: '100%', height: '64px', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: 'var(--font-sm)' }}
                 />
               </div>
             </div>
             <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowReportProblemModal(false)}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button type="button" className="action-btn btn-no-show" onClick={handleSubmitProblemReport}>
-                Submit Incident
+                {t('officer.submit_incident_btn')}
               </button>
             </div>
           </div>
@@ -1991,7 +1995,7 @@ export function OfficerQueuePage() {
           <div className="modal-content" style={{ maxWidth: '500px' }}>
             <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="material-symbols-outlined icon-sm">photo_camera</span>
-              Scan Citizen Code with Camera
+              {t('officer.scan_camera_title')}
             </h2>
             <div className="modal-body" style={{ textAlign: 'center' }}>
               <div
@@ -2026,7 +2030,7 @@ export function OfficerQueuePage() {
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <input
                   type="text"
-                  placeholder="Or enter token code manually…"
+                  placeholder={t('officer.or_manual_code')}
                   value={counterCheckinInput}
                   onChange={(e) => setCounterCheckinInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -2048,13 +2052,13 @@ export function OfficerQueuePage() {
                   onClick={() => handleCounterCheckin()}
                   disabled={!counterCheckinInput.trim() || loading}
                 >
-                  Verify
+                  {t('priority.verify_doc')}
                 </button>
               </div>
             </div>
             <div className="modal-actions" style={{ marginTop: '14px' }}>
               <button type="button" className="action-btn btn-secondary" onClick={() => setShowWebcamScanner(false)}>
-                Close Camera
+                {t('officer.close_camera_btn')}
               </button>
             </div>
           </div>

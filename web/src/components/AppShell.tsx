@@ -74,7 +74,7 @@ export function AppShell({
   }, []);
 
   const role = persona?.role || 'OFFICER';
-  const humanOffice = getHumanOfficeName(persona?.office_id);
+  const humanOffice = getHumanOfficeName(persona?.office_id, undefined, i18n.language);
   const navSections = getNavigationForRole(role);
 
   // Resolve active nav item title for breadcrumb
@@ -89,12 +89,12 @@ export function AppShell({
 
   const roleDisplay =
     role === 'OFFICER'
-      ? 'Officer Portal'
+      ? t('shell.officer_portal', 'Officer Portal')
       : role === 'DESK'
-      ? 'Help Desk Portal'
+      ? t('shell.desk_portal', 'Help Desk Portal')
       : role === 'ADMIN' || role === 'SUPER_ADMIN'
-      ? 'Admin Portal'
-      : 'Staff Portal';
+      ? t('shell.admin_portal', 'Admin Portal')
+      : t('shell.staff_portal', 'Staff Portal');
 
   const handleNavClick = (itemId: NavTabId, isExternal?: boolean) => {
     if (isExternal && itemId === 'display') {
@@ -144,15 +144,15 @@ export function AppShell({
               <CivicCrest size={40} />
               <div className="brand-text-wrap">
                 <div className="brand-app-name">QueueLess</div>
-                <div className="brand-sub-badge">Civic Governance</div>
+                <div className="brand-sub-badge">{t('shell.civic_governance', 'Civic Governance')}</div>
               </div>
               {/* Close Sidebar Button */}
               <button
                 type="button"
                 className="btn-sidebar-toggle-close"
                 onClick={toggleSidebar}
-                title="Close sidebar"
-                aria-label="Close navigation sidebar"
+                title={t('shell.close_sidebar', 'Close sidebar')}
+                aria-label={t('shell.close_sidebar', 'Close sidebar')}
               >
                 <span className="material-symbols-outlined icon-sm">menu_open</span>
               </button>
@@ -214,13 +214,13 @@ export function AppShell({
                 onNavChange?.('account');
                 setMobileDrawerOpen(false);
               }}
-              title="Open My Account"
+              title={t('nav.my_account', 'My account')}
             >
               <div className="user-avatar-pill">
                 <span className="material-symbols-outlined icon-sm">person</span>
               </div>
               <div className="user-info-col">
-                <div className="user-card-name">{persona?.name || 'Authorized Staff'}</div>
+                <div className="user-card-name">{persona?.name || t('shell.authorized_staff', 'Authorized Staff')}</div>
                 <div className="user-card-meta">
                   <span className="user-role-tag">{role}</span>
                   <span className="user-office-brief">{humanOffice.split('(')[0]}</span>
@@ -273,8 +273,8 @@ export function AppShell({
                 type="button"
                 className="btn-sidebar-toggle"
                 onClick={toggleSidebar}
-                title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-                aria-label="Toggle navigation sidebar"
+                title={sidebarOpen ? t('shell.close_sidebar', 'Close sidebar') : t('shell.open_sidebar', 'Open sidebar')}
+                aria-label={sidebarOpen ? t('shell.close_sidebar', 'Close sidebar') : t('shell.open_sidebar', 'Open sidebar')}
                 aria-expanded={sidebarOpen}
               >
                 <span className="material-symbols-outlined icon-md">
@@ -308,7 +308,7 @@ export function AppShell({
               {/* Sync Indicator */}
               <div className="topbar-sync-indicator" title={`System status synchronized with server`}>
                 <span className="sync-pulse-dot" />
-                <span className="sync-text">Updated {lastSyncTime}</span>
+                <span className="sync-text">{t('shell.updated_at', 'Updated')} {lastSyncTime}</span>
               </div>
             </div>
           </header>
@@ -322,13 +322,13 @@ export function AppShell({
           <footer className="gov-slim-footer">
             <div className="footer-contact">
               <span className="material-symbols-outlined icon-xs">headset_mic</span>
-              <span>Civic Help Desk: 1800-233-0000 · support@queueless.gov.in</span>
+              <span>{t('shell.helpdesk_hotline', 'Civic Help Desk: 1800-233-0000 · support@queueless.gov.in')}</span>
             </div>
             <div className="footer-version">
-              QueueLess Staff Portal v1.4.0 (Institutional Civic Edition)
+              {t('shell.portal_version', 'QueueLess Staff Portal v1.4.0 (Institutional Civic Edition)')}
             </div>
             <div className="footer-sync">
-              Synced: {lastSyncTime}
+              {t('shell.synced', 'Synced')}: {lastSyncTime}
             </div>
           </footer>
         </div>
@@ -356,7 +356,7 @@ export function AppShell({
                 style={{ minHeight: '44px', padding: '0 16px' }}
                 onClick={() => setShowSignOutConfirm(false)}
               >
-                Cancel
+                {t('common.cancel', 'Cancel')}
               </button>
               <button
                 type="button"
@@ -373,7 +373,7 @@ export function AppShell({
                   logout();
                 }}
               >
-                Sign Out
+                {t('nav.sign_out', 'Sign out')}
               </button>
             </div>
           </div>

@@ -578,8 +578,20 @@ Running log of milestones, completed tasks, verifications, and status.
   - `scripts/verify.ps1`: Exit 0 (All 57 pytest tests passed, Ruff: OK, Mypy: OK, Flutter: OK).
 - **Git Commit & Tag**: `sidebar-toggle-done`
 
+---
 
-
-
-
-
+## UI-ENHANCEMENT: Full-Screen Multilingual Localization (English, Gujarati, Hindi)
+- **Date**: 2026-10-09
+- **Built**:
+  - `web/src/i18n/en.json`, `gu.json`, `hi.json`: Complete 1-to-1 parity across English, Gujarati, and Hindi dictionaries covering 100% of staff portal keys: shell navigation, breadcrumbs, civic crest labels, officer queue table and action bars, modal dialogs (Counter status reason, Service outcome, Destination transfer, Did not arrive / No-show, Override dispatch, Problem incident report, Camera scanner), Today's Activity audit log (KPI cards, search bar, outcome filter pills, table headers and outcome badges), and My Account (designations, preferences, accessibility font scaling, and session confirmation).
+  - `web/src/utils/officeNames.ts`: Added language-aware civic office names (`getHumanOfficeName(officeId, undefined, i18n.language)`) returning localized Gujarati (e.g. `મધ્ય ઝોન નાગરિક સેવા કેન્દ્ર`), Hindi (e.g. `मध्य ज़ोन नागरिक सुविधा केंद्र`), and English institutional names.
+  - `web/src/components/AppShell.tsx`: Full dynamic localization across breadcrumbs, user roles, sidebar tooltips, helpdesk hotline, and sign-out confirmation dialog.
+  - `web/src/pages/OfficerQueuePage.tsx`: Completely eliminated hardcoded English strings across all headers, action buttons, counters, keyboard shortcut overlays, document drawer checklist, countdown timers, and all 7 workflow modals.
+  - `web/src/pages/TodayActivityPage.tsx`: Full translation of KPI summaries, search placeholders, filter pill labels, table headers, and status badges.
+  - `web/src/pages/MyAccountPage.tsx`: Full translation of official designation, shift timings, accessibility scale toggles, audio notifications, and session controls.
+- **Verification**:
+  - Browser Automation: Verified live switching between English, Gujarati, and Hindi across all screens without hardcoded strings remaining.
+  - `npm run typecheck` in `web/`: 0 errors.
+  - `npm run build` in `web/`: Built in 161ms.
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit 0 (All 57 pytest tests passed in 51.69s, Ruff: OK, Mypy: OK on 52 files, Flutter: OK).
+- **Git Commit & Tag**: `multilingual-fullscreen-done`
