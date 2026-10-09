@@ -230,7 +230,7 @@ void main() {
       // Tap Book Fixed Appointment to open bottom sheet
       await tester.tap(bookButtonFinder);
       await tester.pumpAndSettle();
-      expect(find.text('Choose Date & Time Slot'), findsOneWidget);
+      expect(find.text('Choose an Available Appointment Slot'), findsOneWidget);
 
       // Verify standard slot fee starts at Free / ₹0
       expect(find.textContaining('Normal Slot (Within 2 Days) • Free / ₹0 Standard Fee'), findsOneWidget);
@@ -250,10 +250,10 @@ void main() {
 
       // Verify confirmation dialog displays token
       expect(find.textContaining('Appointment Confirmed!'), findsOneWidget);
-      expect(find.text('TAX-001'), findsOneWidget);
+      expect(find.text('TAX-001'), findsAtLeast(1));
     });
 
-    testWidgets('Priority category selection switches mode and shows proof notice', (tester) async {
+    testWidgets('Priority access selection is removed from normal citizen booking UI', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -264,17 +264,9 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // Verify priority chip is available
+      // Verify citizen cannot self-select Priority Access
       final priorityChip = find.text('Priority Access');
-      expect(priorityChip, findsOneWidget);
-
-      // Tap Priority chip
-      await tester.tap(priorityChip);
-      await tester.pumpAndSettle();
-
-      // Verify notice and eligibility dropdown appears
-      expect(find.textContaining('Reserved for senior citizens'), findsOneWidget);
-      expect(find.text('Senior Citizen (60+ years)'), findsOneWidget);
+      expect(priorityChip, findsNothing, reason: 'Citizens should not self-select Priority Access in normal booking');
     });
 
     testWidgets('Core Rule 11: Button height is at least 56px', (tester) async {

@@ -217,7 +217,11 @@ class AppLocalizationsGu extends AppLocalizations {
   String get nowServingAt => 'હાલમાં સેવા:';
 
   @override
-  String get chooseDateTimeSlot => 'તારીખ અને સમય સ્લોટ પસંદ કરો';
+  String get chooseDateTimeSlot => 'ઉપલબ્ધ મુલાકાત સ્લોટ પસંદ કરો';
+
+  @override
+  String get chooseAvailableSlotInstruction =>
+      'નીચેના સમયપત્રકમાંથી ઉપલબ્ધ નિશ્ચિત મુલાકાત સ્લોટ પસંદ કરો.';
 
   @override
   String get selectedDateLabel => 'પસંદ કરેલ તારીખ';
@@ -404,4 +408,46 @@ class AppLocalizationsGu extends AppLocalizations {
   @override
   String get qrFallbackOfficerNotice =>
       'જો QR સ્કેનરમાં કોઈ સમસ્યા આવે તો આ કોડ અધિકારી સાથે શેર કરો.';
+
+  @override
+  String get appointmentConfirmedCardTitle => 'મુલાકાત પુષ્ટિ થયેલ છે';
+
+  @override
+  String get appointmentFutureNotice =>
+      'તમારી મુલાકાત આગામી તારીખ માટે પુષ્ટિ થયેલ છે. કચેરી ખુલ્યા પછી તમારી મુલાકાતના દિવસે લાઈવ કતાર સ્થિતિ સક્રિય થશે.';
+
+  @override
+  String get appointmentScheduledFor => 'નિયત તારીખ અને સમય';
+
+  @override
+  String get serviceLabel => 'સરકારી સેવા';
+
+  @override
+  String get civicCentreLabel => 'નાગરિક સેવા કેન્દ્ર';
+
+  @override
+  String get tokenLabel => 'ટોકન કોડ';
+
+  @override
+  String get partySizeLabel => 'સાથે આવતા લોકોની સંખ્યા';
+
+  @override
+  String get feeLabel => 'લાગુ પડતી ફી';
+
+  @override
+  String get feeDemoNotice => 'માત્ર ડેમો ફી • કોઈ પેમેન્ટ ગેટવે જોડાયેલ નથી';
+
+  @override
+  String get feeFreeNotice => 'સામાન્ય સરકારી મુલાકાત • ₹૦ મફત';
+
+  @override
+  String get liveQueueActiveNotice => 'સક્રિય કચેરી કતાર ટ્રેકિંગ';
+
+  @override
+  String get officeDelayAlert =>
+      'કચેરીમાં હાલ સેવામાં વિલંબ થઈ રહ્યો છે. તમારી મુલાકાતનો સમય યથાવત છે, પરંતુ સેવામાં અપેક્ષા કરતાં વધુ સમય લાગી શકે છે.';
+
+  @override
+  String get cancelNotAllowedNotice =>
+      'રદ કરવાનો નિયત સમય પૂર્ણ થઈ ગયો છે. આ મુલાકાત હવે ઓનલાઈન રદ કરી શકાતી નથી.';
 }

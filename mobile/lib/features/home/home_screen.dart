@@ -5,6 +5,7 @@ import 'package:mobile/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
+import '../../core/office_names.dart';
 import '../../api/client.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -458,10 +459,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final isArrived = token.arrivedAt != null;
     final onMyWayClaimed = token.onMyWayAt != null;
+    final currentLang = Localizations.localeOf(context).languageCode;
+
+    // Check if appointment is for a future date (Requirement 3: Differentiate future appointment)
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final isFutureAppointment =
+        token.businessDate.isNotEmpty && token.businessDate.compareTo(todayStr) > 0;
+
+    // Check for office delay / paused queue (Requirement 10: Server/Office Delay notice)
+    final hasOfficeDelay = token.lastEtaReason != null &&
+        (token.lastEtaReason!.toUpperCase().contains('DELAY') ||
+            token.lastEtaReason!.toUpperCase().contains('PAUSED') ||
+            token.lastEtaReason!.toUpperCase().contains('COUNTER_DOWN') ||
+            token.lastEtaReason!.toUpperCase().contains('RUSH'));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Office Service Delay Alert Banner (Requirement 10)
+        if (hasOfficeDelay) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: CivicTheme.warningSoft,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: CivicTheme.warning, width: 1.5),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline, color: Color(0xFFB45309), size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.officeDelayAlert,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFB45309),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Called Banner
         if (token.state == 'CALLED') ...[
           Container(
             margin: const EdgeInsets.only(bottom: 16),
@@ -540,6 +588,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+
+        // Main Card
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -557,7 +607,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             children: [
               Text(
-                l10n.myToken.toUpperCase(),
+                isFutureAppointment
+                    ? l10n.appointmentConfirmedCardTitle.toUpperCase()
+                    : l10n.myToken.toUpperCase(),
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -583,15 +635,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: CivicTheme.primarySoft,
+                      color: isFutureAppointment ? CivicTheme.successSoft : CivicTheme.primarySoft,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      token.state,
-                      style: const TextStyle(
+                      isFutureAppointment ? l10n.appointmentConfirmedCardTitle : token.state,
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: CivicTheme.primary,
+                        color: isFutureAppointment ? CivicTheme.success : CivicTheme.primary,
                       ),
                     ),
                   ),
@@ -616,64 +668,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Arrival Status Pill
+
+              // Civic Centre Human Name (Never show technical IDs like ward-central-01)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isArrived ? CivicTheme.successSoft : CivicTheme.canvas,
+                  color: CivicTheme.primarySoft.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isArrived ? CivicTheme.success : CivicTheme.border,
-                  ),
+                  border: Border.all(color: CivicTheme.primary.withValues(alpha: 0.2)),
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      isArrived ? Icons.verified : Icons.location_on_outlined,
-                      size: 18,
-                      color: isArrived ? CivicTheme.success : CivicTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
+                    const Icon(Icons.account_balance, color: CivicTheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Text(
-                        isArrived ? l10n.presenceVerified : l10n.notCheckedInStatus,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isArrived ? CivicTheme.success : CivicTheme.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Divider(color: CivicTheme.border),
-              const SizedBox(height: 12),
-              // Queue metrics
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(child: Text(l10n.waitingAhead, style: const TextStyle(fontSize: 16))),
-                  Text(
-                    '${token.waitingAhead}',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-              if (token.nowServing != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text(l10n.nowServingAt, style: const TextStyle(fontSize: 16))),
-                    Flexible(
-                      child: Text(
-                        '${token.nowServing}${token.counterLabel != null ? " (${token.counterLabel})" : ""}',
-                        textAlign: TextAlign.right,
+                        OfficeNames.getHumanOfficeName(token.officeId, lang: currentLang),
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: CivicTheme.primary,
                         ),
@@ -681,71 +694,195 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(child: Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16))),
-                  Text(
-                    token.lastEtaMinutes != null
-                        ? '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}'
-                        : l10n.calculatingEta,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                ],
               ),
-              // ETA Range (p50 / low / high)
-              if (token.etaLow != null && token.etaHigh != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text(l10n.etaRangePrefix, style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary))),
-                    Text(
-                      '${token.etaLow!.round()} – ${token.etaHigh!.round()} ${l10n.minutesUnit}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: CivicTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              // Last ETA Reason
-              if (token.lastEtaReason != null && token.lastEtaReason!.isNotEmpty) ...[
-                const SizedBox(height: 12),
+              const SizedBox(height: 14),
+
+              // Future Appointment View vs Active Waiting View (Requirement 3)
+              if (isFutureAppointment) ...[
+                // Notice: Not yet appointment time
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: CivicTheme.primarySoft.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(8),
+                    color: CivicTheme.canvas,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: CivicTheme.border),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.info_outline, size: 16, color: CivicTheme.primary),
-                      const SizedBox(width: 6),
+                      const Icon(Icons.event, color: CivicTheme.textSecondary, size: 20),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          token.lastEtaReason!,
+                          l10n.appointmentFutureNotice,
                           style: const TextStyle(
-                            fontSize: 13,
-                            color: CivicTheme.primary,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: CivicTheme.textSecondary,
+                            height: 1.35,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Divider(color: CivicTheme.border),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.appointmentScheduledFor,
+                        style: const TextStyle(fontSize: 15, color: CivicTheme.textSecondary),
+                      ),
+                    ),
+                    Text(
+                      token.businessDate,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                // Appointment Day / Active Waiting View
+                // Arrival Status Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isArrived ? CivicTheme.successSoft : CivicTheme.canvas,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isArrived ? CivicTheme.success : CivicTheme.border,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isArrived ? Icons.verified : Icons.location_on_outlined,
+                        size: 18,
+                        color: isArrived ? CivicTheme.success : CivicTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          isArrived ? l10n.presenceVerified : l10n.notCheckedInStatus,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isArrived ? CivicTheme.success : CivicTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Divider(color: CivicTheme.border),
+                const SizedBox(height: 12),
+
+                // Queue metrics
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Text(l10n.waitingAhead, style: const TextStyle(fontSize: 16))),
+                    Text(
+                      '${token.waitingAhead}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                if (token.nowServing != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: Text(l10n.nowServingAt, style: const TextStyle(fontSize: 16))),
+                      Flexible(
+                        child: Text(
+                          '${token.nowServing}${token.counterLabel != null ? " (${token.counterLabel})" : ""}',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: CivicTheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16))),
+                    Text(
+                      token.lastEtaMinutes != null
+                          ? '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}'
+                          : l10n.calculatingEta,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                // ETA Range (p50 / low / high)
+                if (token.etaLow != null && token.etaHigh != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.etaRangePrefix,
+                          style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
+                        ),
+                      ),
+                      Text(
+                        '${token.etaLow!.round()} – ${token.etaHigh!.round()} ${l10n.minutesUnit}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: CivicTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                // Last ETA Reason
+                if (token.lastEtaReason != null && token.lastEtaReason!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: CivicTheme.primarySoft.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, size: 16, color: CivicTheme.primary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            token.lastEtaReason!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: CivicTheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
         ),
         const SizedBox(height: 20),
 
-        // Action 1: Presence Check-In
+        // Action 1: Presence Check-In (Shown only on appointment day or once arrived)
         if (!isArrived)
           ElevatedButton.icon(
             key: const Key('btn_presence_checkin'),
@@ -755,7 +892,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         const SizedBox(height: 12),
 
-        // Action 2: "I'm on My Way" extension (+5 min)
+        // Action 2: "I'm on My Way" extension (+5 min) (One-time, preserved)
         OutlinedButton.icon(
           key: const Key('btn_on_my_way'),
           icon: const Icon(Icons.directions_walk, size: 22),
@@ -766,7 +903,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Action 3: Cancel Appointment
+        // Action 3: Cancel Appointment (Normal citizen cancellation)
         OutlinedButton.icon(
           key: const Key('btn_cancel_appointment'),
           style: OutlinedButton.styleFrom(

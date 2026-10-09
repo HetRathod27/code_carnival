@@ -215,10 +215,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get etaRangePrefix => 'Estimated Turn Window:';
 
   @override
-  String get nowServingAt => 'Currently Serving:';
+  String get nowServingAt => 'Now Serving At:';
 
   @override
-  String get chooseDateTimeSlot => 'Choose Date & Time Slot';
+  String get chooseDateTimeSlot => 'Choose an Available Appointment Slot';
+
+  @override
+  String get chooseAvailableSlotInstruction =>
+      'Select an available fixed appointment slot from the schedule below.';
 
   @override
   String get selectedDateLabel => 'Selected Date';
@@ -406,4 +410,46 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get qrFallbackOfficerNotice =>
       'Share this code with the officer if the QR scanner faces any issue.';
+
+  @override
+  String get appointmentConfirmedCardTitle => 'Appointment Confirmed';
+
+  @override
+  String get appointmentFutureNotice =>
+      'Your appointment is confirmed for an upcoming date. Live queue status will activate on the day of your appointment when the office opens.';
+
+  @override
+  String get appointmentScheduledFor => 'Scheduled Date & Time';
+
+  @override
+  String get serviceLabel => 'Service';
+
+  @override
+  String get civicCentreLabel => 'Civic Centre';
+
+  @override
+  String get tokenLabel => 'Token Code';
+
+  @override
+  String get partySizeLabel => 'Party / Group Size';
+
+  @override
+  String get feeLabel => 'Applicable Fee';
+
+  @override
+  String get feeDemoNotice => 'Demo fee only • No payment gateway connected';
+
+  @override
+  String get feeFreeNotice => 'Standard civic appointment • ₹0 Free';
+
+  @override
+  String get liveQueueActiveNotice => 'Active Office Queue Tracking';
+
+  @override
+  String get officeDelayAlert =>
+      'Office is currently experiencing a service delay. Your appointment time remains unchanged, but service may take longer than expected.';
+
+  @override
+  String get cancelNotAllowedNotice =>
+      'Cancellation cutoff has passed. This appointment cannot be cancelled online.';
 }

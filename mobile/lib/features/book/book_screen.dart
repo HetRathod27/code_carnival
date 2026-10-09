@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/client.dart';
 import '../../core/theme.dart';
+import '../../core/office_names.dart';
 
 String _generateUuidV4() {
   final random = Random.secure();
@@ -40,7 +41,7 @@ class _BookScreenState extends State<BookScreen> {
 
   // Form state
   bool _documentsConfirmed = false;
-  String _category = 'NORMAL';
+  final String _category = 'NORMAL';
   String? _priorityDocType;
   final TextEditingController _beneficiaryController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -306,14 +307,94 @@ class _BookScreenState extends State<BookScreen> {
               ),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: CivicTheme.surface,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: CivicTheme.border),
                 ),
                 child: Column(
                   children: [
+                    // Civic Centre
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          l10n.civicCentreLabel,
+                          style: const TextStyle(
+                            color: CivicTheme.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            OfficeNames.getHumanOfficeName(
+                              widget.officeId,
+                              lang: currentLang,
+                            ),
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: CivicTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Service
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          l10n.serviceLabel,
+                          style: const TextStyle(
+                            color: CivicTheme.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _service?.localizedName(currentLang) ?? widget.serviceId,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: CivicTheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Token Code
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          l10n.tokenLabel,
+                          style: const TextStyle(
+                            color: CivicTheme.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        Text(
+                          token.displayCode,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            color: CivicTheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Date
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -335,7 +416,8 @@ class _BookScreenState extends State<BookScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    // Fixed Slot
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -357,7 +439,8 @@ class _BookScreenState extends State<BookScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    // Party Size
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -381,13 +464,14 @@ class _BookScreenState extends State<BookScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    // Fee Tier & Notice
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Text(
-                            l10n.feeTierSummaryLabel,
+                            l10n.feeLabel,
                             style: const TextStyle(
                               color: CivicTheme.textSecondary,
                               fontSize: 13,
@@ -411,30 +495,58 @@ class _BookScreenState extends State<BookScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              // Truthful Fee Disclosure
               Container(
-                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: CivicTheme.primarySoft,
-                  borderRadius: BorderRadius.circular(10),
+                  color: _selectedDayIndex < 2
+                      ? CivicTheme.successSoft
+                      : CivicTheme.warningSoft,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.waitingAhead,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${token.waitingAhead}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ],
+                child: Text(
+                  _selectedDayIndex < 2
+                      ? l10n.feeFreeNotice
+                      : l10n.feeDemoNotice,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _selectedDayIndex < 2
+                        ? const Color(0xFF1B7A4B)
+                        : const Color(0xFF8A5800),
+                  ),
                 ),
               ),
+              // Live waiting status is ONLY shown if appointment is for TODAY
+              if (_selectedDayIndex == 0 && token.waitingAhead > 0) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: CivicTheme.primarySoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n.waitingAhead,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${token.waitingAhead}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -493,12 +605,6 @@ class _BookScreenState extends State<BookScreen> {
                     // Document Checklist (Spec Rule 14 & Principle 14)
                     _buildDocumentChecklist(_service!, l10n, currentLang),
                     const SizedBox(height: 20),
-
-                    // Category Selector (Normal / Priority)
-                    if (_service!.priorityAllowed) ...[
-                      _buildCategorySelector(l10n),
-                      const SizedBox(height: 20),
-                    ],
 
                     // Applicant Information Card
                     _buildApplicantForm(l10n),
@@ -901,119 +1007,6 @@ class _BookScreenState extends State<BookScreen> {
     );
   }
 
-  Widget _buildCategorySelector(AppLocalizations l10n) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: CivicTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: CivicTheme.border, width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.categorySelectionTitle,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: CivicTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: ChoiceChip(
-                  label: Text(l10n.categoryNormalLabel),
-                  selected: _category == 'NORMAL',
-                  onSelected: (selected) {
-                    if (selected) setState(() => _category = 'NORMAL');
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ChoiceChip(
-                  label: Text(l10n.categoryPriorityLabel),
-                  selected: _category == 'PRIORITY',
-                  onSelected: (selected) {
-                    if (selected) setState(() => _category = 'PRIORITY');
-                  },
-                ),
-              ),
-            ],
-          ),
-          if (_category == 'PRIORITY') ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: CivicTheme.accentSoft,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: CivicTheme.accent.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        size: 20,
-                        color: Color(0xFF9E6000),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          l10n.categoryPriorityNotice,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF9E6000),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    initialValue: _priorityDocType ?? 'SENIOR_CITIZEN',
-                    decoration: InputDecoration(
-                      labelText: l10n.eligibilityCategoryLabel,
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'SENIOR_CITIZEN',
-                        child: Text(l10n.seniorCitizenCategory),
-                      ),
-                      DropdownMenuItem(
-                        value: 'PREGNANT',
-                        child: Text(l10n.pregnantCategory),
-                      ),
-                      DropdownMenuItem(
-                        value: 'DISABILITY',
-                        child: Text(l10n.disabilityCategory),
-                      ),
-                      DropdownMenuItem(
-                        value: 'MEDICAL',
-                        child: Text(l10n.medicalCategory),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      setState(() => _priorityDocType = val);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _buildApplicantForm(AppLocalizations l10n) {
     return Container(
@@ -1132,6 +1125,14 @@ class _BookScreenState extends State<BookScreen> {
                             onPressed: () => Navigator.of(sheetContext).pop(),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.chooseAvailableSlotInstruction,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: CivicTheme.textSecondary,
+                        ),
                       ),
                       const Divider(height: 18),
                       Flexible(

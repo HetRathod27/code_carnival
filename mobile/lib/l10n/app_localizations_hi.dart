@@ -219,7 +219,11 @@ class AppLocalizationsHi extends AppLocalizations {
   String get nowServingAt => 'वर्तमान में सेवा:';
 
   @override
-  String get chooseDateTimeSlot => 'तारीख और समय स्लॉट चुनें';
+  String get chooseDateTimeSlot => 'उपलब्ध अपॉइंटमेंट स्लॉट चुनें';
+
+  @override
+  String get chooseAvailableSlotInstruction =>
+      'नीचे दिए गए समय सारिणी में से उपलब्ध निश्चित अपॉइंटमेंट स्लॉट चुनें।';
 
   @override
   String get selectedDateLabel => 'चुनी गई तारीख';
@@ -406,4 +410,47 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get qrFallbackOfficerNotice =>
       'यदि QR स्कैनर में कोई समस्या आए तो यह कोड अधिकारी को बताएं।';
+
+  @override
+  String get appointmentConfirmedCardTitle => 'अपॉइंटमेंट सुनिश्चित हुआ';
+
+  @override
+  String get appointmentFutureNotice =>
+      'आपकी अपॉइंटमेंट आगामी तिथि के लिए सुनिश्चित है। कार्यालय खुलने के बाद आपकी अपॉइंटमेंट के दिन लाइव कतार स्थिति सक्रिय होगी।';
+
+  @override
+  String get appointmentScheduledFor => 'नियत तिथि एवं समय';
+
+  @override
+  String get serviceLabel => 'सरकारी सेवा';
+
+  @override
+  String get civicCentreLabel => 'नागरिक सुविधा केंद्र';
+
+  @override
+  String get tokenLabel => 'टोकन कोड';
+
+  @override
+  String get partySizeLabel => 'साथ आने वाले लोगों की संख्या';
+
+  @override
+  String get feeLabel => 'लागू शुल्क';
+
+  @override
+  String get feeDemoNotice =>
+      'केवल डेमो शुल्क • कोई भुगतान गेटवे जुड़ा नहीं है';
+
+  @override
+  String get feeFreeNotice => 'मानक नागरिक अपॉइंटमेंट • ₹० निःशुल्क';
+
+  @override
+  String get liveQueueActiveNotice => 'सक्रिय कार्यालय कतार ट्रैकिंग';
+
+  @override
+  String get officeDelayAlert =>
+      'कार्यालय में वर्तमान में सेवा में विलंब हो रहा है। आपका अपॉइंटमेंट समय अपरिवर्तित है, लेकिन सेवा में अपेक्षा से अधिक समय लग सकता है।';
+
+  @override
+  String get cancelNotAllowedNotice =>
+      'रद्दीकरण की निर्धारित समय-सीमा समाप्त हो चुकी है। यह अपॉइंटमेंट अब ऑनलाइन रद्द नहीं किया जा सकता।';
 }

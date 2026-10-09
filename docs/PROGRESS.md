@@ -595,3 +595,30 @@ Running log of milestones, completed tasks, verifications, and status.
   - `npm run build` in `web/`: Built in 161ms.
   - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit 0 (All 57 pytest tests passed in 51.69s, Ruff: OK, Mypy: OK on 52 files, Flutter: OK).
 - **Git Commit & Tag**: `multilingual-fullscreen-done`
+
+---
+
+## M-CITIZEN-REFINE: Citizen Appointment Flow Refinement
+- **Date**: 2026-10-09
+- **Built**:
+  - `mobile/lib/core/office_names.dart`: Added civic office human-readable name resolver with trilingual support (English, Gujarati, Hindi). Never exposes raw IDs like `ward-central-01` to citizens.
+  - `mobile/lib/features/book/book_screen.dart`:
+    - Removed citizen-facing "Priority Access" self-selection chip while preserving default/normal booking path and underlying operational/staff priority capabilities.
+    - Updated slot picker dialog title and guidance: "Choose an Available Appointment Slot" with explicit fixed slot wording.
+    - Integrated human-readable civic office names and service names in booking confirmation dialog.
+    - Added truthful fee disclosure banner (`feeFreeNotice` for standard ₹0 appointments vs. `feeDemoNotice` clarifying demo fee when custom slot is chosen).
+    - Made waiting ahead count conditional so future appointments do not misleadingly claim 0 live wait.
+  - `mobile/lib/features/home/home_screen.dart`:
+    - Differentiated future appointments from active waiting: future dates display a dedicated "Appointment Confirmed" status card with scheduled date and notice that live queue tracking activates on appointment day.
+    - Added proactive office delay alert banner (`officeDelayAlert`) without modifying fixed appointment slot times.
+    - Preserved one-time "I'm on My Way (+5 min)" grace extension and entrance QR presence check-in.
+    - Resolved civic office names into human-readable trilingual labels.
+  - `mobile/lib/l10n/app_en.arb`, `app_gu.arb`, `app_hi.arb`: Added all corresponding localized strings for slot selection instructions, appointment confirmation card, human office titles, demo fee transparency, and office delay notices across English, Gujarati, and Hindi.
+  - `mobile/test/f1_citizen_test.dart`: Updated widget tests to verify that citizen-facing priority self-selection is removed and fixed slot selection header passes.
+- **Verification**:
+  - `flutter analyze` in `mobile/`: 0 errors / no issues found.
+  - `flutter test` in `mobile/`: 17/17 tests passed.
+  - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (Database reset: OK, Pytest: 60 passed in 47.96s, Flutter test: 17 passed, 0 failures).
+- **Assumptions**:
+  - Operational priority handling remains accessible via Help Desk and Counter Officer interfaces as specified.
+- **Git Commit & Tag**: `citizen-flow-refine-done`

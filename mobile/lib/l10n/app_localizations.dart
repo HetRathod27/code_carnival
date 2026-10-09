@@ -493,14 +493,20 @@ abstract class AppLocalizations {
   /// No description provided for @nowServingAt.
   ///
   /// In en, this message translates to:
-  /// **'Currently Serving:'**
+  /// **'Now Serving At:'**
   String get nowServingAt;
 
   /// No description provided for @chooseDateTimeSlot.
   ///
   /// In en, this message translates to:
-  /// **'Choose Date & Time Slot'**
+  /// **'Choose an Available Appointment Slot'**
   String get chooseDateTimeSlot;
+
+  /// No description provided for @chooseAvailableSlotInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an available fixed appointment slot from the schedule below.'**
+  String get chooseAvailableSlotInstruction;
 
   /// No description provided for @selectedDateLabel.
   ///
@@ -849,6 +855,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share this code with the officer if the QR scanner faces any issue.'**
   String get qrFallbackOfficerNotice;
+
+  /// No description provided for @appointmentConfirmedCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Confirmed'**
+  String get appointmentConfirmedCardTitle;
+
+  /// No description provided for @appointmentFutureNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Your appointment is confirmed for an upcoming date. Live queue status will activate on the day of your appointment when the office opens.'**
+  String get appointmentFutureNotice;
+
+  /// No description provided for @appointmentScheduledFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled Date & Time'**
+  String get appointmentScheduledFor;
+
+  /// No description provided for @serviceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Service'**
+  String get serviceLabel;
+
+  /// No description provided for @civicCentreLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Civic Centre'**
+  String get civicCentreLabel;
+
+  /// No description provided for @tokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Token Code'**
+  String get tokenLabel;
+
+  /// No description provided for @partySizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Party / Group Size'**
+  String get partySizeLabel;
+
+  /// No description provided for @feeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Applicable Fee'**
+  String get feeLabel;
+
+  /// No description provided for @feeDemoNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo fee only • No payment gateway connected'**
+  String get feeDemoNotice;
+
+  /// No description provided for @feeFreeNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard civic appointment • ₹0 Free'**
+  String get feeFreeNotice;
+
+  /// No description provided for @liveQueueActiveNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Office Queue Tracking'**
+  String get liveQueueActiveNotice;
+
+  /// No description provided for @officeDelayAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Office is currently experiencing a service delay. Your appointment time remains unchanged, but service may take longer than expected.'**
+  String get officeDelayAlert;
+
+  /// No description provided for @cancelNotAllowedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation cutoff has passed. This appointment cannot be cancelled online.'**
+  String get cancelNotAllowedNotice;
 }
 
 class _AppLocalizationsDelegate
