@@ -7,16 +7,20 @@ import 'package:mobile/api/client.dart';
 import 'package:mobile/l10n/app_localizations.dart';
 
 class MockCompletionApiClient extends ApiClient {
-  final TokenModel token;
+  TokenModel? token;
+  TokenModel? nextToken;
   bool confirmCompletionCalled = false;
   bool? reportedCompleted;
   String? reportedReason;
   int? reportedRating;
 
-  MockCompletionApiClient(this.token);
+  MockCompletionApiClient(this.token, {this.nextToken});
 
   @override
   Future<TokenModel?> getActiveToken(String authToken) async {
+    if (confirmCompletionCalled && nextToken != null) {
+      return nextToken;
+    }
     return token;
   }
 
@@ -109,5 +113,59 @@ void main() {
     expect(mockClient.confirmCompletionCalled, isTrue);
     expect(mockClient.reportedCompleted, isFalse);
     expect(mockClient.reportedReason, equals('Server error at counter'));
+  });
+
+  testWidgets('Group appointment shows next person code after first person completes and submits feedback', (tester) async {
+    final nextPersonToken = TokenModel(
+      id: 'tok-child-2',
+      officeId: 'ward-central-01',
+      serviceId: 'srv-1',
+      businessDate: '2026-10-07',
+      seq: 15,
+      displayCode: 'TAX-015',
+      state: 'WAITING',
+      category: 'NORMAL',
+      priorityStatus: 'NONE',
+      createdVia: 'APP',
+      beneficiaryName: 'Aarav Patel',
+      appointmentSlot: '10:15 - 10:30',
+      parentTokenId: 'tok-done-1',
+      counterLabel: 'Counter 1',
+      waitingAhead: 1,
+    );
+
+    final firstCompletedToken = TokenModel(
+      id: 'tok-done-1',
+      officeId: 'ward-central-01',
+      serviceId: 'srv-1',
+      businessDate: '2026-10-07',
+      seq: 14,
+      displayCode: 'TAX-014',
+      state: 'COMPLETED',
+      category: 'NORMAL',
+      priorityStatus: 'NONE',
+      createdVia: 'APP',
+      counterLabel: 'Counter 1',
+      waitingAhead: 0,
+      childTokens: [nextPersonToken],
+    );
+
+    final mockClient = MockCompletionApiClient(firstCompletedToken, nextToken: nextPersonToken);
+    await tester.pumpWidget(wrapApp(HomeScreen(client: mockClient)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Service Completed at Counter'), findsOneWidget);
+    final submitBtn = find.text('Submit & Proceed to Next Person');
+    expect(submitBtn, findsOneWidget);
+
+    await tester.ensureVisible(submitBtn);
+    await tester.tap(submitBtn);
+    await tester.pumpAndSettle();
+
+    expect(mockClient.confirmCompletionCalled, isTrue);
+    // After submission, app must show the code and details for the next person
+    expect(find.text('TAX-015'), findsWidgets);
+    expect(find.text('Aarav Patel'), findsWidgets);
+    expect(find.text('10:15 - 10:30'), findsWidgets);
   });
 }

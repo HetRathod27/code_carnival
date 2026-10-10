@@ -347,25 +347,47 @@ class _HomeScreenState extends State<HomeScreen> {
         feedbackText: _feedbackComments.isNotEmpty ? _feedbackComments : null,
       );
 
+      // Check if next person in appointment group is available
+      TokenModel? nextActive;
+      try {
+        nextActive = await _client.getActiveToken(authToken);
+      } catch (_) {
+        nextActive = null;
+      }
+
       if (mounted) {
         setState(() {
-          _activeToken = null;
+          _activeToken = nextActive;
           _submittingConfirmation = false;
+          _serviceCompletedYes = true;
+          _reasonIfNot = '';
+          _ratingStars = 5;
+          _feedbackComments = '';
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Verification and feedback submitted successfully!'),
-            backgroundColor: CivicTheme.success,
-          ),
-        );
+        if (nextActive != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Service verified for ${token.displayCode}! Next person token: ${nextActive.displayCode}'),
+              backgroundColor: CivicTheme.success,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verification and feedback submitted successfully!'),
+              backgroundColor: CivicTheme.success,
+            ),
+          );
 
-        // Directly redirect to list of civic centres available in the city
-        try {
-          context.go('/offices');
-        } catch (_) {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
+          // Directly redirect to list of civic centres available in the city
+          try {
+            context.go('/offices');
+          } catch (_) {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
           }
         }
       }
@@ -662,6 +684,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   letterSpacing: 2,
                 ),
               ),
+              if (token.beneficiaryName != null && token.beneficiaryName!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: CivicTheme.primarySoft,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    token.beneficiaryName!,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: CivicTheme.primary,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1417,7 +1457,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : const Icon(Icons.check, size: 22),
                 label: Text(
-                  _submittingConfirmation ? 'Submitting...' : 'Submit & Return to Civic Centres',
+                  _submittingConfirmation
+                      ? 'Submitting...'
+                      : (token.childTokens.isNotEmpty
+                          ? 'Submit & Proceed to Next Person'
+                          : 'Submit & Return to Civic Centres'),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 onPressed: _submittingConfirmation ? null : () => _handleConfirmCompletion(token),

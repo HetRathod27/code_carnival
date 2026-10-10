@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
-from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import case, false, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -138,10 +137,12 @@ async def build_token_out(
             calc_eta_high = 2.0
 
     child_outs: list[TokenOut] = []
-    if include_children and token.parent_token_id is None:
+    if include_children:
+        root_id = token.parent_token_id or token.id
         children_stmt = (
             select(Token)
-            .where(Token.parent_token_id == token.id)
+            .where(or_(Token.parent_token_id == root_id, Token.id == root_id))
+            .where(Token.id != token.id)
             .order_by(Token.seq.asc())
         )
         children_result = await session.execute(children_stmt)
@@ -376,40 +377,74 @@ async def create_token(
     return await build_token_out(token_obj, session, clock, include_secret=True)
 
 
+async def _is_citizen_token_owner(token: Token, user: UserClaims, session: AsyncSession) -> bool:
+    if user.role != "CITIZEN":
+        return True
+    if (token.citizen_id and token.citizen_id == user.user_id) or (
+        token.phone and user.phone and token.phone == user.phone
+    ):
+        return True
+    if token.parent_token_id:
+        p_res = await session.execute(select(Token).where(Token.id == token.parent_token_id))
+        p_tok = p_res.scalar_one_or_none()
+        if p_tok and (
+            (p_tok.citizen_id and p_tok.citizen_id == user.user_id)
+            or (p_tok.phone and user.phone and p_tok.phone == user.phone)
+        ):
+            return True
+    return False
+
+
 @router.get("/tokens/me/active", response_model=TokenOut | None)
 async def get_my_active_token(
     user: UserClaims = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
     clock: Clock = Depends(get_clock),
 ) -> TokenOut | None:
-    conditions: list[Any] = [Token.state.in_(["WAITING", "CALLED", "SERVING"])]
-
+    user_conds = []
     if user.phone:
-        conditions.append(Token.phone == user.phone)
-    else:
-        conditions.append(Token.citizen_id == user.user_id)
+        user_conds.append(Token.phone == user.phone)
+    if user.user_id:
+        user_conds.append(Token.citizen_id == user.user_id)
+    direct_owner = or_(*user_conds) if user_conds else false()
 
-    conditions.append(Token.parent_token_id.is_(None))
+    parent_ids_subquery = select(Token.id).where(direct_owner, Token.parent_token_id.is_(None))
+    is_my_token = or_(direct_owner, Token.parent_token_id.in_(parent_ids_subquery))
 
-    stmt = select(Token).where(*conditions).order_by(Token.created_at.desc()).limit(1)
-    result = await session.execute(stmt)
-    token = result.scalar_one_or_none()
-    if not token:
-        # Check if citizen has a newly COMPLETED token awaiting double-verification & feedback
-        b_date = clock.business_date()
-        completed_conds: list[Any] = [Token.state == "COMPLETED", Token.business_date == b_date]
-        if user.phone:
-            completed_conds.append(Token.phone == user.phone)
-        else:
-            completed_conds.append(Token.citizen_id == user.user_id)
+    # Step 1: Check if citizen has a newly COMPLETED token awaiting double-verification & feedback
+    c_stmt = (
+        select(Token)
+        .where(is_my_token, Token.state == "COMPLETED")
+        .order_by(Token.completed_at.asc().nullslast(), Token.seq.asc())
+    )
+    c_res = await session.execute(c_stmt)
+    c_tokens = c_res.scalars().all()
+    for c_tok in c_tokens:
+        if not c_tok.eta_features or not c_tok.eta_features.get("citizen_confirmed"):
+            return await build_token_out(c_tok, session, clock, include_secret=False)
 
-        c_stmt = select(Token).where(*completed_conds).order_by(Token.completed_at.desc().nullslast()).limit(1)
-        c_res = await session.execute(c_stmt)
-        c_token = c_res.scalar_one_or_none()
-        if c_token and (not c_token.eta_features or not c_token.eta_features.get("citizen_confirmed")):
-            return await build_token_out(c_token, session, clock, include_secret=False)
-        return None
-    return await build_token_out(token, session, clock, include_secret=True)
+    # Step 2: Next active token in SERVING, CALLED, or WAITING
+    # Order: SERVING first (currently being served), CALLED second, WAITING third (by business_date and seq)
+    a_stmt = (
+        select(Token)
+        .where(is_my_token, Token.state.in_(["SERVING", "CALLED", "WAITING"]))
+        .order_by(
+            case(
+                (Token.state == "SERVING", 1),
+                (Token.state == "CALLED", 2),
+                (Token.state == "WAITING", 3),
+                else_=4,
+            ),
+            Token.business_date.asc(),
+            Token.seq.asc(),
+        )
+    )
+    a_res = await session.execute(a_stmt)
+    active_tok = a_res.scalars().first()
+    if active_tok:
+        return await build_token_out(active_tok, session, clock, include_secret=True)
+
+    return None
 
 
 @router.get("/tokens/{token_id}", response_model=TokenOut)
@@ -424,13 +459,9 @@ async def get_token_details(
     if not token:
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
 
-    is_owner = True
-    if user.role == "CITIZEN":
-        is_owner = bool((token.citizen_id and token.citizen_id == user.user_id) or (
-            token.phone and user.phone and token.phone == user.phone
-        ))
-        if not is_owner:
-            raise AppException(ErrorCode.FORBIDDEN, "Access denied to token", status.HTTP_403_FORBIDDEN)
+    is_owner = await _is_citizen_token_owner(token, user, session)
+    if not is_owner:
+        raise AppException(ErrorCode.FORBIDDEN, "Access denied to token", status.HTTP_403_FORBIDDEN)
 
     return await build_token_out(token, session, clock, include_secret=is_owner)
 
@@ -447,12 +478,8 @@ async def citizen_cancel_token(
     if not token:
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
 
-    if user.role == "CITIZEN":
-        is_owner = (token.citizen_id and token.citizen_id == user.user_id) or (
-            token.phone and user.phone and token.phone == user.phone
-        )
-        if not is_owner:
-            raise AppException(ErrorCode.FORBIDDEN, "Access denied to cancel token", status.HTTP_403_FORBIDDEN)
+    if not await _is_citizen_token_owner(token, user, session):
+        raise AppException(ErrorCode.FORBIDDEN, "Access denied to cancel token", status.HTTP_403_FORBIDDEN)
 
     cancelled = await cancel_token(
         session=session,
@@ -478,12 +505,8 @@ async def citizen_check_in(
     if not token:
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
 
-    if user.role == "CITIZEN":
-        is_owner = (token.citizen_id and token.citizen_id == user.user_id) or (
-            token.phone and user.phone and token.phone == user.phone
-        )
-        if not is_owner:
-            raise AppException(ErrorCode.FORBIDDEN, "Access denied to token check-in", status.HTTP_403_FORBIDDEN)
+    if not await _is_citizen_token_owner(token, user, session):
+        raise AppException(ErrorCode.FORBIDDEN, "Access denied to token check-in", status.HTTP_403_FORBIDDEN)
 
     checked = await check_in_token(
         session=session,
@@ -517,12 +540,8 @@ async def citizen_on_my_way(
     if not token:
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
 
-    if user.role == "CITIZEN":
-        is_owner = (token.citizen_id and token.citizen_id == user.user_id) or (
-            token.phone and user.phone and token.phone == user.phone
-        )
-        if not is_owner:
-            raise AppException(ErrorCode.FORBIDDEN, "Access denied to token", status.HTTP_403_FORBIDDEN)
+    if not await _is_citizen_token_owner(token, user, session):
+        raise AppException(ErrorCode.FORBIDDEN, "Access denied to token", status.HTTP_403_FORBIDDEN)
 
     if token.state not in ("CALLED", "WAITING"):
         raise AppException(
@@ -575,12 +594,8 @@ async def citizen_confirm_completion(
     if not token:
         raise AppException(ErrorCode.NOT_FOUND, f"Token '{token_id}' not found", status.HTTP_404_NOT_FOUND)
 
-    if user.role == "CITIZEN":
-        is_owner = (token.citizen_id and token.citizen_id == user.user_id) or (
-            token.phone and user.phone and token.phone == user.phone
-        )
-        if not is_owner:
-            raise AppException(ErrorCode.FORBIDDEN, "Access denied to confirm token completion", status.HTTP_403_FORBIDDEN)
+    if not await _is_citizen_token_owner(token, user, session):
+        raise AppException(ErrorCode.FORBIDDEN, "Access denied to confirm token completion", status.HTTP_403_FORBIDDEN)
 
     now = clock.now()
     # Mark citizen confirmed on token

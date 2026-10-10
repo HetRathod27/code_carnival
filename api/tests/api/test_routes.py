@@ -13,6 +13,7 @@ from api.app.core.config import settings
 from api.app.core.db import get_db
 from api.app.core.safety import assert_test_database
 from api.app.main import app
+from api.app.models.entities import Token
 from api.app.services.officer_service import generate_qr_payload
 
 assert_test_database(settings.TEST_DATABASE_URL)
@@ -219,7 +220,7 @@ async def test_citizen_booking_and_lifecycle(client, dev_auth, vclock):
 
 
 @pytest.mark.asyncio
-async def test_citizen_booking_with_accompanying_children_allots_tokens_and_times(client, dev_auth, vclock):
+async def test_citizen_booking_with_accompanying_children_allots_tokens_and_times(client, dev_auth, vclock, session_factory):
     """
     Booking with multiple accompanying members creates distinct child tokens with staggered times.
     """
@@ -278,6 +279,82 @@ async def test_citizen_booking_with_accompanying_children_allots_tokens_and_time
     assert len(active_data["child_tokens"]) == 2
     assert active_data["child_tokens"][0]["display_code"] == child1["display_code"]
     assert active_data["child_tokens"][1]["display_code"] == child2["display_code"]
+
+    async def complete_token_state(tok_id):
+        async with session_factory() as sess:
+            tok = await sess.get(Token, tok_id)
+            assert tok is not None
+            tok.state = "CALLED"
+            tok.called_at = vclock.now()
+            await sess.flush()
+            tok.state = "SERVING"
+            tok.serving_started_at = vclock.now()
+            await sess.flush()
+            tok.state = "COMPLETED"
+            tok.completed_at = vclock.now()
+            await sess.commit()
+
+    # 1. Complete Parent Token
+    await complete_token_state(data["id"])
+
+    # Active token returns completed parent awaiting double-verification
+    resp_completed = await client.get("/v1/citizen/tokens/me/active", headers=auth_headers)
+    assert resp_completed.status_code == 200
+    assert resp_completed.json()["id"] == data["id"]
+    assert resp_completed.json()["state"] == "COMPLETED"
+
+    # Citizen submits double-verification & feedback for parent token
+    resp_feedback1 = await client.post(
+        f"/v1/citizen/tokens/{data['id']}/confirm-completion",
+        json={"service_completed": True, "rating": 5, "feedback_text": "Parent done"},
+        headers=auth_headers,
+    )
+    assert resp_feedback1.status_code == 200
+
+    # 2. After parent verification, active token automatically switches to next person (Child 1)!
+    resp_active_child1 = await client.get("/v1/citizen/tokens/me/active", headers=auth_headers)
+    assert resp_active_child1.status_code == 200
+    child1_active = resp_active_child1.json()
+    assert child1_active["id"] == child1["id"]
+    assert child1_active["display_code"] == child1["display_code"]
+    assert child1_active["beneficiary_name"] == "Child One"
+    assert child1_active["verification_secret"] is not None
+
+    # Complete Child 1 token
+    await complete_token_state(child1["id"])
+
+    # Citizen submits feedback for Child 1
+    resp_feedback2 = await client.post(
+        f"/v1/citizen/tokens/{child1['id']}/confirm-completion",
+        json={"service_completed": True, "rating": 4},
+        headers=auth_headers,
+    )
+    assert resp_feedback2.status_code == 200
+
+    # 3. After Child 1 verification, active token switches to next person (Child 2)!
+    resp_active_child2 = await client.get("/v1/citizen/tokens/me/active", headers=auth_headers)
+    assert resp_active_child2.status_code == 200
+    child2_active = resp_active_child2.json()
+    assert child2_active["id"] == child2["id"]
+    assert child2_active["display_code"] == child2["display_code"]
+    assert child2_active["beneficiary_name"] == "Child Two"
+    assert child2_active["verification_secret"] is not None
+
+    # Complete Child 2 token
+    await complete_token_state(child2["id"])
+
+    # Citizen submits feedback for Child 2
+    resp_feedback3 = await client.post(
+        f"/v1/citizen/tokens/{child2['id']}/confirm-completion",
+        json={"service_completed": True, "rating": 5},
+        headers=auth_headers,
+    )
+    assert resp_feedback3.status_code == 200
+
+    # 4. All persons completed and verified -> no remaining active appointment
+    resp_all_done = await client.get("/v1/citizen/tokens/me/active", headers=auth_headers)
+    assert resp_all_done.status_code == 200
+    assert resp_all_done.json() is None
 
 
 @pytest.mark.asyncio
