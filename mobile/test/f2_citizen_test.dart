@@ -246,5 +246,35 @@ void main() {
       expect(fakeClient.cancelCalled, isTrue);
       expect(find.text('No Active Appointment'), findsOneWidget);
     });
+
+    testWidgets('Serving state does not show On-My-Way or Cancel buttons', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final servingToken = TokenModel(
+        id: 'tok-200',
+        officeId: 'off-1',
+        serviceId: 'srv-1',
+        businessDate: '2026-10-05',
+        seq: 15,
+        displayCode: 'TAX-015',
+        state: 'SERVING',
+        category: 'NORMAL',
+        priorityStatus: 'NONE',
+        createdVia: 'APP',
+        waitingAhead: 0,
+        nowServing: 'TAX-015',
+        counterLabel: 'Counter 2',
+        arrivedAt: '2026-10-05T10:00:00Z',
+      );
+
+      final fakeClient = FakeHomeApiClient(activeToken: servingToken);
+      await tester.pumpWidget(createTestHomeApp(HomeScreen(client: fakeClient)));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('btn_on_my_way')), findsNothing);
+      expect(find.byKey(const Key('btn_cancel_appointment')), findsNothing);
+    });
   });
 }

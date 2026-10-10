@@ -1135,39 +1135,42 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 20),
 
-        // Action 1: Presence Check-In (Shown only on appointment day or once arrived)
-        if (!isArrived)
+        // Action 1: Presence Check-In (Shown only on appointment day or before arrival)
+        if (!isArrived && token.state != 'SERVING') ...[
           ElevatedButton.icon(
             key: const Key('btn_presence_checkin'),
             icon: const Icon(Icons.qr_code_scanner, size: 22),
             label: Text(l10n.scanEntranceQr),
             onPressed: _handleCheckIn,
           ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
 
-        // Action 2: "I'm on My Way" extension (+5 min) (One-time, preserved)
-        OutlinedButton.icon(
-          key: const Key('btn_on_my_way'),
-          icon: const Icon(Icons.directions_walk, size: 22),
-          label: Text(
-            onMyWayClaimed ? l10n.onMyWayClaimed : l10n.onMyWayAction,
+        if (token.state != 'SERVING') ...[
+          // Action 2: "I'm on My Way" extension (+5 min) (One-time, preserved)
+          OutlinedButton.icon(
+            key: const Key('btn_on_my_way'),
+            icon: const Icon(Icons.directions_walk, size: 22),
+            label: Text(
+              onMyWayClaimed ? l10n.onMyWayClaimed : l10n.onMyWayAction,
+            ),
+            onPressed: onMyWayClaimed ? null : _handleOnMyWay,
           ),
-          onPressed: onMyWayClaimed ? null : _handleOnMyWay,
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-        // Action 3: Cancel Appointment (Normal citizen cancellation)
-        OutlinedButton.icon(
-          key: const Key('btn_cancel_appointment'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: CivicTheme.error,
-            side: const BorderSide(color: CivicTheme.error, width: 2),
+          // Action 3: Cancel Appointment (Normal citizen cancellation)
+          OutlinedButton.icon(
+            key: const Key('btn_cancel_appointment'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: CivicTheme.error,
+              side: const BorderSide(color: CivicTheme.error, width: 2),
+            ),
+            icon: const Icon(Icons.cancel_outlined, size: 22),
+            label: Text(l10n.cancelAppointment),
+            onPressed: _handleCancel,
           ),
-          icon: const Icon(Icons.cancel_outlined, size: 22),
-          label: Text(l10n.cancelAppointment),
-          onPressed: _handleCancel,
-        ),
-        const SizedBox(height: 20),
+          const SizedBox(height: 20),
+        ],
       ],
     );
   }
