@@ -810,7 +810,18 @@ Running log of milestones, completed tasks, verifications, and status.
   - `scripts/verify.ps1`: Exit code 0 (All 72 pytest tests passed in 82.80s, Ruff OK, OpenAPI export OK, Web typecheck & build OK, Flutter analyze OK).
 - **Git Commit & Tag**: `m-counter-status-done`
 
+---
 
-
-
+## FIX-CITIZEN-SERVING-ACTION-BUTTONS: Hide On-My-Way and Cancel buttons when Citizen is SERVING
+- **Date**: 2026-10-10
+- **Built**:
+  - `mobile/lib/features/home/home_screen.dart`:
+    - Conditionally hid the "I'm on My Way (+5 min)" (`btn_on_my_way`) button and the "Cancel Appointment" (`btn_cancel_appointment`) button when `token.state == 'SERVING'`.
+    - Also gated entrance presence check-in button with `token.state != 'SERVING'` to avoid redundant check-in actions during active counter service.
+  - `mobile/test/f2_citizen_test.dart`:
+    - Added widget test `Serving state does not show On-My-Way or Cancel buttons` verifying both buttons are completely hidden when citizen token is in `SERVING` state.
+- **Verification**:
+  - `flutter analyze` in `mobile/`: 0 errors / No issues found.
+  - `flutter test` in `mobile/`: 42/42 tests passed.
+- **Git Commit**: `0c28edd`
 
