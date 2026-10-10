@@ -264,7 +264,11 @@ async def run_tick(
             prev_eta = waiting_tok.last_eta_minutes
             waiting_tok.last_eta_minutes = int(eta.p50_minutes)
             waiting_tok.last_eta_reason = eta.reason
-            waiting_tok.eta_features = {"low": eta.low_minutes, "high": eta.high_minutes, "reason": eta.reason}
+            existing_meta = dict(waiting_tok.eta_features or {})
+            existing_meta["low"] = eta.low_minutes
+            existing_meta["high"] = eta.high_minutes
+            existing_meta["reason"] = eta.reason
+            waiting_tok.eta_features = existing_meta
             stats["eta_evaluations"] += 1
 
             # A. GET_READY: p50 <= 15 min

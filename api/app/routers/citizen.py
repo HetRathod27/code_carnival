@@ -35,7 +35,7 @@ from api.app.schemas.citizen import (
 )
 from api.app.schemas.common import SuccessResponse
 from api.app.services.officer_service import check_in_token
-from api.app.services.slot_service import get_service_slots
+from api.app.services.slot_service import get_service_slots, parse_slot_lead_minutes
 from api.app.services.token_service import book_token, cancel_token
 
 router = APIRouter(prefix="/v1/citizen", tags=["Citizen"])
@@ -53,15 +53,25 @@ async def build_token_out(
         c_res = await session.execute(select(Counter.label).where(Counter.id == token.counter_id))
         counter_label = c_res.scalar_one_or_none()
 
-    q_res = await session.execute(
-        select(QueueState).where(
-            QueueState.office_id == token.office_id,
-            QueueState.service_id == token.service_id,
-            QueueState.business_date == token.business_date,
+    # Determine now_serving based on active serving/called tokens
+    serving_stmt = (
+        select(Token.display_code, Counter.label)
+        .join(Counter, Counter.id == Token.counter_id, isouter=True)
+        .where(
+            Token.office_id == token.office_id,
+            Token.service_id == token.service_id,
+            Token.business_date == token.business_date,
+            Token.state.in_(["SERVING", "CALLED"]),
         )
+        .order_by(Token.called_at.desc().nullslast())
+        .limit(1)
     )
-    q_state = q_res.scalar_one_or_none()
-    now_serving = q_state.now_serving if q_state else None
+    serving_res = await session.execute(serving_stmt)
+    serving_row = serving_res.first()
+    now_serving = serving_row[0] if serving_row else None
+    if serving_row and serving_row[1] and not counter_label:
+        counter_label = serving_row[1]
+
 
     waiting_ahead = 0
     if token.state == "WAITING":
@@ -88,6 +98,39 @@ async def build_token_out(
     if token.eta_features:
         appointment_date_str = token.eta_features.get("appointment_date")
         appointment_slot_str = token.eta_features.get("appointment_slot")
+
+    calc_eta_minutes = (
+        float(token.last_eta_minutes) if token.last_eta_minutes is not None else None
+    )
+    calc_eta_low = (
+        float(token.eta_features["low"])
+        if token.eta_features and "low" in token.eta_features
+        else None
+    )
+    calc_eta_high = (
+        float(token.eta_features["high"])
+        if token.eta_features and "high" in token.eta_features
+        else None
+    )
+
+    if token.state == "WAITING":
+        lead_mins = parse_slot_lead_minutes(appointment_slot_str, appointment_date_str, clock)
+        if lead_mins is not None and lead_mins > 0:
+            calc_eta_minutes = round(max(calc_eta_minutes or 0.0, lead_mins), 1)
+            calc_eta_low = round(lead_mins, 1)
+            calc_eta_high = round(lead_mins + 15.0, 1)
+        elif calc_eta_minutes is not None and calc_eta_minutes <= 0.0:
+            calc_eta_minutes = 1.0
+            calc_eta_low = 1.0
+            calc_eta_high = 2.0
+        elif (
+            calc_eta_low is not None
+            and calc_eta_high is not None
+            and calc_eta_low <= 0.0
+            and calc_eta_high <= 0.0
+        ):
+            calc_eta_low = 1.0
+            calc_eta_high = 2.0
 
     child_outs: list[TokenOut] = []
     if include_children and token.parent_token_id is None:
@@ -132,10 +175,10 @@ async def build_token_out(
         grace_deadline=token.grace_deadline,
         serving_started_at=token.serving_started_at,
         completed_at=token.completed_at,
-        last_eta_minutes=float(token.last_eta_minutes) if token.last_eta_minutes is not None else None,
+        last_eta_minutes=calc_eta_minutes,
         last_eta_reason=token.last_eta_reason,
-        eta_low=float(token.eta_features["low"]) if token.eta_features and "low" in token.eta_features else None,
-        eta_high=float(token.eta_features["high"]) if token.eta_features and "high" in token.eta_features else None,
+        eta_low=calc_eta_low,
+        eta_high=calc_eta_high,
         waiting_ahead=waiting_ahead,
         now_serving=now_serving,
         is_verified=bool(token.verification_verified),
@@ -144,6 +187,7 @@ async def build_token_out(
         child_tokens=child_outs,
         server_time=clock.now(),
     )
+
 
 
 @router.get("/offices", response_model=list[OfficeOut])

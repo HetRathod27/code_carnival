@@ -223,6 +223,12 @@ class AppLocalizationsGu extends AppLocalizations {
   String get etaRangePrefix => 'અંદાજિત વારા વિન્ડો:';
 
   @override
+  String get yourTurnIsNext => 'તમારો વારો હવે પછીનો છે! (~૧ મિ)';
+
+  @override
+  String get appointmentSlotLabel => 'મુલાકાત સ્લોટ';
+
+  @override
   String get nowServingAt => 'હાલમાં સેવા:';
 
   @override

@@ -77,6 +77,8 @@
   "confirmCancelPrompt": "Are you sure you want to cancel this appointment?",
   "cancelReasonLabel": "Reason for cancellation (optional)",
   "etaRangePrefix": "Estimated Turn Window:",
+  "yourTurnIsNext": "Your turn is next! (~1 min)",
+  "appointmentSlotLabel": "Appointment Slot",
   "nowServingAt": "Now Serving At:",
   "chooseDateTimeSlot": "Choose an Available Appointment Slot",
   "chooseAvailableSlotInstruction": "Select an available fixed appointment slot from the schedule below.",

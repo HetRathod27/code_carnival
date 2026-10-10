@@ -224,6 +224,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get etaRangePrefix => 'Estimated Turn Window:';
 
   @override
+  String get yourTurnIsNext => 'Your turn is next! (~1 min)';
+
+  @override
+  String get appointmentSlotLabel => 'Appointment Slot';
+
+  @override
   String get nowServingAt => 'Now Serving At:';
 
   @override

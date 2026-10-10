@@ -852,6 +852,45 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ],
+                if (token.appointmentSlot != null && token.appointmentSlot!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: CivicTheme.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: CivicTheme.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time_filled, size: 18, color: CivicTheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.appointmentSlotLabel,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: CivicTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          token.appointmentSlot!,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: CivicTheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const Divider(color: CivicTheme.border),
                 const SizedBox(height: 12),
@@ -867,7 +906,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                if (token.nowServing != null) ...[
+                if (token.nowServing != null && token.nowServing!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -875,7 +914,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(child: Text(l10n.nowServingAt, style: const TextStyle(fontSize: 16))),
                       Flexible(
                         child: Text(
-                          '${token.nowServing}${token.counterLabel != null ? " (${token.counterLabel})" : ""}',
+                          '${token.nowServing}${token.counterLabel != null && !token.nowServing!.contains("(") ? " (${token.counterLabel})" : ""}',
                           textAlign: TextAlign.right,
                           style: const TextStyle(
                             fontSize: 16,
@@ -894,7 +933,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(child: Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16))),
                     Text(
                       token.lastEtaMinutes != null
-                          ? '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}'
+                          ? ((token.waitingAhead == 0 && (token.lastEtaMinutes ?? 0) <= 1)
+                              ? l10n.yourTurnIsNext
+                              : '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}')
                           : l10n.calculatingEta,
                       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                     ),
@@ -913,7 +954,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        '${token.etaLow!.round()} – ${token.etaHigh!.round()} ${l10n.minutesUnit}',
+                        (token.etaLow!.round() <= 0 && token.etaHigh!.round() <= 0)
+                            ? '1 – 2 ${l10n.minutesUnit}'
+                            : (token.etaLow!.round() == token.etaHigh!.round()
+                                ? '~${token.etaLow!.round()} ${l10n.minutesUnit}'
+                                : '${token.etaLow!.round()} – ${token.etaHigh!.round()} ${l10n.minutesUnit}'),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,

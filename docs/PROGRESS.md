@@ -747,7 +747,33 @@ Running log of milestones, completed tasks, verifications, and status.
 - **Verification**:
   - `scripts/verify.ps1`: Exit code 0 (All 71 pytest tests passed, Ruff clean, Mypy clean on 55 source files, Web typecheck & build clean, Flutter analyze: no issues found).
   - `flutter test` in `mobile/`: 36/36 tests passed.
-- **Git Commit & Tag**: `m-slot-availability-done`
+---
+
+## M-ETA-WINDOW-ACCURACY: Estimated Turn & Turn Window Polish
+- **Date**: 2026-10-10
+- **Built**:
+  - `api/app/services/slot_service.py`:
+    - Added pure helper `parse_slot_lead_minutes(slot_str, b_date_val, clock)` calculating remaining lead minutes from current business time to appointment slot start time.
+  - `api/app/services/token_service.py`:
+    - In `book_token`: Integrated slot lead calculation to initialize `p50`, `low`, and `high` accurately for future scheduled appointments (instead of default 0 min when queues are idle) and initialized walk-in immediate wait to 1–2 minutes.
+  - `api/app/services/scheduler_service.py`:
+    - Fixed tick sweep to merge updated ETA metrics into `waiting_tok.eta_features` rather than overwriting the dictionary, preserving appointment slot metadata.
+  - `api/app/routers/citizen.py`:
+    - In `build_token_out`: Correctly calculated `now_serving` by querying active `["SERVING", "CALLED"]` tokens dynamically instead of stale state, preventing phantom `Now Serving At` entries when no one is at the counter.
+    - Added ETA window refinement: For waiting tokens with appointment slots, projects ETA according to slot lead time. For walk-in tokens next in line with 0 people ahead, rounds to 1 min (window: 1–2 min).
+  - `mobile/lib/l10n/app_{en,gu,hi}.arb`:
+    - Added `yourTurnIsNext` ("Your turn is next! (~1 min)") and `appointmentSlotLabel` ("Appointment Slot") across English, Gujarati, and Hindi. Rebuilt localization files via `flutter gen-l10n`.
+  - `mobile/lib/features/home/home_screen.dart`:
+    - Rendered scheduled appointment slot badge with `token.appointmentSlot`.
+    - Refined `nowServing` row: Only renders when `token.nowServing` is not null and non-empty; cleanly includes counter label.
+    - Updated `estimatedTurn` row: Renders `l10n.yourTurnIsNext` when `waitingAhead == 0` and `lastEtaMinutes <= 1`.
+    - Updated `etaRangePrefix` row: Renders `1 – 2 min` instead of degenerate `0 – 0 min` when low and high are 0; renders `~X min` when low equals high.
+- **Verification**:
+  - `flutter analyze` in `mobile/`: 0 errors / No issues found.
+  - `flutter test` in `mobile/`: 36/36 tests passed.
+  - `ruff check api`: All checks passed.
+  - `scripts/verify.ps1`: Exit code 0 (All 71 pytest tests passed, Ruff clean, Mypy clean on 55 source files, Web typecheck & build clean, Flutter analyze: no issues found).
+- **Git Commit & Tag**: `m-eta-window-done`
 
 
 

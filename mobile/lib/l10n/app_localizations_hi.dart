@@ -225,6 +225,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String get etaRangePrefix => 'अनुमानित बारी विंडो:';
 
   @override
+  String get yourTurnIsNext => 'आपकी बारी अब अगली है! (~१ मि)';
+
+  @override
+  String get appointmentSlotLabel => 'अपॉइंटमेंट स्लॉट';
+
+  @override
   String get nowServingAt => 'वर्तमान में सेवा:';
 
   @override

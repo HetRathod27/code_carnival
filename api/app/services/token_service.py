@@ -24,7 +24,7 @@ from api.app.models.entities import (
     Token,
     TokenEvent,
 )
-from api.app.services.slot_service import DEFAULT_SLOT_WINDOWS
+from api.app.services.slot_service import DEFAULT_SLOT_WINDOWS, parse_slot_lead_minutes
 
 
 class BookingError(Exception):
@@ -400,8 +400,20 @@ async def book_token(
     reason = token_eta.reason if token_eta else None
     n_p50 = naive_eta.p50_minutes if naive_eta else 0.0
 
+    if is_fixed_appointment and appointment_slot:
+        lead = parse_slot_lead_minutes(appointment_slot, appointment_date, clock)
+        if lead is not None and lead > 0:
+            p50 = max(p50, lead)
+            low = max(low, lead)
+            high = max(high, lead + 15.0)
+    elif p50 <= 0.0:
+        p50 = 1.0
+        low = 1.0
+        high = 2.0
+
     token.last_eta_minutes = int(p50)
     token.last_eta_reason = reason
+
     eta_meta: dict[str, Any] = {"low": low, "high": high, "naive_p50": n_p50}
     if is_fixed_appointment:
         eta_meta["is_fixed"] = True

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import zoneinfo
 from datetime import date, time
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -162,3 +162,33 @@ async def get_service_slots(
         )
 
     return slot_items
+
+
+def parse_slot_lead_minutes(slot_str: str | None, b_date_val: Any, clock: Clock) -> float | None:
+    if not slot_str:
+        return None
+    try:
+        curr_b_date = clock.business_date()
+        target_b_date = date.fromisoformat(str(b_date_val)) if not isinstance(b_date_val, date) else b_date_val
+        if target_b_date != curr_b_date:
+            return None
+
+        raw_start = slot_str.split("–")[0].split("-")[0].strip()
+        parts = raw_start.split()
+        time_part = parts[0]
+        meridiem = parts[1].upper() if len(parts) > 1 else ""
+        h_str, m_str = time_part.split(":")[:2]
+        hour = int(h_str)
+        minute = int(m_str)
+        if meridiem == "PM" and hour < 12:
+            hour += 12
+        elif meridiem == "AM" and hour == 12:
+            hour = 0
+
+        now_dt = clock.now()
+        slot_dt = now_dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        diff_mins = (slot_dt - now_dt).total_seconds() / 60.0
+        return diff_mins
+    except Exception:
+        return None
+

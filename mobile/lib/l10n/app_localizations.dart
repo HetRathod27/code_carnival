@@ -502,6 +502,18 @@ abstract class AppLocalizations {
   /// **'Estimated Turn Window:'**
   String get etaRangePrefix;
 
+  /// No description provided for @yourTurnIsNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Your turn is next! (~1 min)'**
+  String get yourTurnIsNext;
+
+  /// No description provided for @appointmentSlotLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointment Slot'**
+  String get appointmentSlotLabel;
+
   /// No description provided for @nowServingAt.
   ///
   /// In en, this message translates to:

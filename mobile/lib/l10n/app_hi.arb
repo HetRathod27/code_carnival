@@ -77,6 +77,8 @@
   "confirmCancelPrompt": "क्या आप वाकई इस अपॉइंटमेंट को रद्द करना चाहते हैं?",
   "cancelReasonLabel": "रद्द करने का कारण (वैकल्पिक)",
   "etaRangePrefix": "अनुमानित बारी विंडो:",
+  "yourTurnIsNext": "आपकी बारी अब अगली है! (~१ मि)",
+  "appointmentSlotLabel": "अपॉइंटमेंट स्लॉट",
   "nowServingAt": "वर्तमान में सेवा:",
   "chooseDateTimeSlot": "उपलब्ध अपॉइंटमेंट स्लॉट चुनें",
   "chooseAvailableSlotInstruction": "नीचे दिए गए समय सारिणी में से उपलब्ध निश्चित अपॉइंटमेंट स्लॉट चुनें।",
