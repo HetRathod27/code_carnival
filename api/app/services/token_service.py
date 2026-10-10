@@ -4,7 +4,7 @@ import zoneinfo
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, not_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.app.core.clock import Clock
@@ -215,12 +215,16 @@ async def book_token(
             .where(
                 Counter.office_id == office_id,
                 CounterService.service_id == service_id,
+                not_(Counter.id.startswith("cnt-all")),
             )
         )
         res_counters = await session.execute(stmt_counters)
         service_counters = list(res_counters.scalars().all())
         if not service_counters:
-            stmt_all = select(Counter).where(Counter.office_id == office_id)
+            stmt_all = select(Counter).where(
+                Counter.office_id == office_id,
+                not_(Counter.id.startswith("cnt-all")),
+            )
             res_all = await session.execute(stmt_all)
             service_counters = list(res_all.scalars().all())
 

@@ -245,9 +245,11 @@ async def list_office_services(
         mapped_counters = [
             office_counters[m.counter_id]
             for m in all_mappings
-            if m.service_id == s.id and m.counter_id in office_counters
+            if m.service_id == s.id and m.counter_id in office_counters and not m.counter_id.startswith("cnt-all")
         ]
-        eligible_counters = mapped_counters if mapped_counters else list(office_counters.values())
+        eligible_counters = mapped_counters if mapped_counters else [
+            c for c in office_counters.values() if not c.id.startswith("cnt-all")
+        ]
 
         if not eligible_counters:
             counter_status = "OPEN"

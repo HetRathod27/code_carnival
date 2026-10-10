@@ -20,12 +20,12 @@ class OfficeModel {
 
   factory OfficeModel.fromJson(Map<String, dynamic> json) {
     return OfficeModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      address: json['address'] as String,
-      timezone: json['timezone'] as String,
-      openTime: json['open_time'] as String,
-      closeTime: json['close_time'] as String,
+      id: (json['id'] as String?) ?? '',
+      name: (json['name'] as String?) ?? '',
+      address: (json['address'] as String?) ?? '',
+      timezone: (json['timezone'] as String?) ?? 'Asia/Kolkata',
+      openTime: (json['open_time'] as String?) ?? '',
+      closeTime: (json['close_time'] as String?) ?? '',
     );
   }
 }
@@ -63,9 +63,9 @@ class ServiceModel {
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
     return ServiceModel(
-      id: json['id'] as String,
-      officeId: json['office_id'] as String,
-      code: json['code'] as String,
+      id: (json['id'] as String?) ?? '',
+      officeId: (json['office_id'] as String?) ?? '',
+      code: (json['code'] as String?) ?? '',
       names: (json['names'] as Map<String, dynamic>?) ?? {},
       priorAvgMinutes: (json['prior_avg_minutes'] as num?)?.toDouble() ?? 0.0,
       requiredDocs: (json['required_docs'] as List<dynamic>?) ?? [],
@@ -108,9 +108,9 @@ class SlotItemModel {
 
   factory SlotItemModel.fromJson(Map<String, dynamic> json) {
     return SlotItemModel(
-      slotTime: json['slot_time'] as String,
-      startTime: json['start_time'] as String,
-      endTime: json['end_time'] as String,
+      slotTime: (json['slot_time'] as String?) ?? '',
+      startTime: (json['start_time'] as String?) ?? '',
+      endTime: (json['end_time'] as String?) ?? '',
       available: json['available'] as bool? ?? false,
       status: json['status'] as String? ?? 'AVAILABLE',
       reasonCode: json['reason_code'] as String? ?? 'AVAILABLE',
@@ -192,16 +192,16 @@ class TokenModel {
 
   factory TokenModel.fromJson(Map<String, dynamic> json) {
     return TokenModel(
-      id: json['id'] as String,
-      officeId: json['office_id'] as String,
-      serviceId: json['service_id'] as String,
-      businessDate: json['business_date'] as String,
+      id: (json['id'] as String?) ?? '',
+      officeId: (json['office_id'] as String?) ?? '',
+      serviceId: (json['service_id'] as String?) ?? '',
+      businessDate: (json['business_date'] as String?) ?? '',
       seq: (json['seq'] as num?)?.toInt() ?? 0,
-      displayCode: json['display_code'] as String,
-      state: json['state'] as String,
-      category: json['category'] as String,
-      priorityStatus: json['priority_status'] as String,
-      createdVia: json['created_via'] as String,
+      displayCode: (json['display_code'] as String?) ?? '',
+      state: (json['state'] as String?) ?? 'WAITING',
+      category: (json['category'] as String?) ?? 'NORMAL',
+      priorityStatus: (json['priority_status'] as String?) ?? 'PENDING',
+      createdVia: (json['created_via'] as String?) ?? 'APP',
       phone: json['phone'] as String?,
       counterLabel: json['counter_label'] as String?,
       arrivedAt: json['arrived_at'] as String?,
@@ -252,7 +252,7 @@ class ProfileModel {
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(
-      id: json['id'] as String,
+      id: (json['id'] as String?) ?? '',
       phone: json['phone'] as String?,
       name: json['name'] as String?,
       language: (json['language'] as String?) ?? 'en',
