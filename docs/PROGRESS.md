@@ -822,6 +822,29 @@ Running log of milestones, completed tasks, verifications, and status.
     - Added widget test `Serving state does not show On-My-Way or Cancel buttons` verifying both buttons are completely hidden when citizen token is in `SERVING` state.
 - **Verification**:
   - `flutter analyze` in `mobile/`: 0 errors / No issues found.
-  - `flutter test` in `mobile/`: 42/42 tests passed.
-- **Git Commit**: `0c28edd`
+---
 
+## FIX-MULTI-PERSON-GROUP-APPOINTMENT-FLOW: Seamless Next-Person Code Display After Feedback
+- **Date**: 2026-10-10
+- **Built**:
+  - `api/app/routers/citizen.py`:
+    - Updated `GET /v1/citizen/tokens/me/active`:
+      - Evaluates ownership across direct citizen tokens and group child tokens linked via `parent_token_id`.
+      - Priority 1: Unconfirmed `COMPLETED` tokens are served first so citizens complete double-verification & feedback.
+      - Priority 2: Next active tokens in `SERVING`, `CALLED`, or `WAITING` order (sorted by earliest `seq`), returning the next person's token with secret code and QR payload.
+    - Updated `build_token_out`: Included all other group members/siblings in `child_tokens` when active token is a child token.
+    - Added `_is_citizen_token_owner`: Generalized ownership checking across `get_token_details`, `cancel_token`, `check_in`, `on_my_way`, and `confirm_completion` to seamlessly allow child tokens linked by `parent_token_id`.
+  - `mobile/lib/features/home/home_screen.dart`:
+    - In `_handleConfirmCompletion`: Automatically refetches the citizen's active token. When subsequent group members exist, updates `_activeToken` to the next person, resets feedback state, and stays on HomeScreen displaying the next person's code, QR, and secret.
+    - Displayed `token.beneficiaryName` on the main ticket card when non-empty.
+    - Updated feedback submission button to indicate whether more members remain (`Submit & Proceed to Next Person` vs `Submit & Return to Civic Centres`).
+  - `api/tests/api/test_routes.py`:
+    - Extended `test_citizen_booking_with_accompanying_children_allots_tokens_and_times` verifying end-to-end multi-person lifecycle: Parent completes -> feedback -> Child 1 active -> Child 1 completes -> feedback -> Child 2 active -> Child 2 completes -> feedback -> all appointments finished.
+  - `mobile/test/completion_double_verification_test.dart`:
+    - Added widget test `Group appointment shows next person code after first person completes and submits feedback`.
+- **Verification**:
+  - `ruff check api`: All checks passed.
+  - `pytest`: All 73 tests passed.
+  - `flutter analyze`: No issues found.
+  - `flutter test`: All 43 tests passed.
+- **Git Commit**: `1bd4a12`
