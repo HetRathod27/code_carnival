@@ -238,21 +238,125 @@ class _BookScreenState extends State<BookScreen> {
     return '$dayName, ${target.day} ${months[target.month - 1]}';
   }
 
-  List<Map<String, dynamic>> _getSlotsForDay(int dayIndex) {
+
+  List<SlotItemModel> _getFallbackSlots() {
     return [
-      {'time': '09:30 AM – 10:30 AM', 'available': true},
-      {'time': '10:30 AM – 11:30 AM', 'available': true},
-      {
-        'time': '11:30 AM – 12:30 PM',
-        'available': dayIndex != 0,
-      }, // Full today to demonstrate rule
-      {'time': '02:00 PM – 03:00 PM', 'available': true},
-      {
-        'time': '03:00 PM – 04:00 PM',
-        'available': dayIndex != 1,
-      }, // Full tomorrow
-      {'time': '04:30 PM – 05:30 PM', 'available': true},
+      SlotItemModel(slotTime: '09:30 AM – 10:30 AM', startTime: '09:30:00', endTime: '10:30:00', available: true, status: 'AVAILABLE', reasonCode: 'AVAILABLE', remainingCapacity: 4, bookedCount: 0, totalCapacity: 4),
+      SlotItemModel(slotTime: '10:30 AM – 11:30 AM', startTime: '10:30:00', endTime: '11:30:00', available: true, status: 'AVAILABLE', reasonCode: 'AVAILABLE', remainingCapacity: 4, bookedCount: 0, totalCapacity: 4),
+      SlotItemModel(slotTime: '11:30 AM – 12:30 PM', startTime: '11:30:00', endTime: '12:30:00', available: true, status: 'AVAILABLE', reasonCode: 'AVAILABLE', remainingCapacity: 4, bookedCount: 0, totalCapacity: 4),
+      SlotItemModel(slotTime: '02:00 PM – 03:00 PM', startTime: '14:00:00', endTime: '15:00:00', available: true, status: 'AVAILABLE', reasonCode: 'AVAILABLE', remainingCapacity: 4, bookedCount: 0, totalCapacity: 4),
+      SlotItemModel(slotTime: '03:00 PM – 04:00 PM', startTime: '15:00:00', endTime: '16:00:00', available: true, status: 'AVAILABLE', reasonCode: 'AVAILABLE', remainingCapacity: 4, bookedCount: 0, totalCapacity: 4),
+      SlotItemModel(slotTime: '04:30 PM – 05:30 PM', startTime: '16:30:00', endTime: '17:30:00', available: true, status: 'AVAILABLE', reasonCode: 'AVAILABLE', remainingCapacity: 4, bookedCount: 0, totalCapacity: 4),
     ];
+  }
+
+  String _getSlotStatusLabel(SlotItemModel slot, AppLocalizations l10n) {
+    switch (slot.status) {
+      case 'OFFICE_CLOSED':
+        return l10n.slotOfficeClosed;
+      case 'BOOKING_CLOSED':
+        return l10n.slotBookingClosed;
+      case 'TIME_PASSED':
+        return l10n.slotTimePassed;
+      case 'FULLY_BOOKED':
+        return l10n.slotFullyBooked;
+      case 'INSUFFICIENT_GROUP_SLOTS':
+        return l10n.slotInsufficientGroupSlots;
+      case 'AVAILABLE':
+      default:
+        return l10n.slotAvailable;
+    }
+  }
+
+  String _getSlotErrorMessage(SlotItemModel slot, AppLocalizations l10n) {
+    switch (slot.status) {
+      case 'OFFICE_CLOSED':
+        return l10n.slotOfficeClosedError;
+      case 'BOOKING_CLOSED':
+        return l10n.slotBookingClosedError;
+      case 'TIME_PASSED':
+        return l10n.slotTimePassedError;
+      case 'FULLY_BOOKED':
+        return l10n.slotFullyBookedError;
+      case 'INSUFFICIENT_GROUP_SLOTS':
+        return l10n.slotGroupUnavailableError;
+      default:
+        return l10n.slotNoLongerAvailable;
+    }
+  }
+
+  Widget _buildSlotStatusBadge(SlotItemModel slot, AppLocalizations l10n, bool isSelected) {
+    IconData icon;
+    String text;
+    Color badgeColor;
+    Color textColor;
+
+    switch (slot.status) {
+      case 'OFFICE_CLOSED':
+        icon = Icons.domain_disabled;
+        text = l10n.slotOfficeClosed;
+        badgeColor = Colors.grey.shade200;
+        textColor = Colors.grey.shade700;
+        break;
+      case 'BOOKING_CLOSED':
+        icon = Icons.lock_clock;
+        text = l10n.slotBookingClosed;
+        badgeColor = Colors.orange.shade50;
+        textColor = Colors.orange.shade800;
+        break;
+      case 'TIME_PASSED':
+        icon = Icons.schedule;
+        text = l10n.slotTimePassed;
+        badgeColor = Colors.grey.shade200;
+        textColor = Colors.grey.shade700;
+        break;
+      case 'FULLY_BOOKED':
+        icon = Icons.block;
+        text = l10n.slotFullyBooked;
+        badgeColor = Colors.red.shade50;
+        textColor = CivicTheme.error;
+        break;
+      case 'INSUFFICIENT_GROUP_SLOTS':
+        icon = Icons.group_off_outlined;
+        text = l10n.slotInsufficientGroupSlots;
+        badgeColor = Colors.amber.shade50;
+        textColor = const Color(0xFF8A5800);
+        break;
+      case 'AVAILABLE':
+      default:
+        icon = Icons.check_circle_outline;
+        text = l10n.slotAvailable;
+        badgeColor = isSelected ? CivicTheme.primary.withValues(alpha: 0.15) : Colors.green.shade50;
+        textColor = isSelected ? CivicTheme.primary : CivicTheme.success;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: badgeColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: textColor),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -382,8 +486,20 @@ class _BookScreenState extends State<BookScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMsg = e.toString().replaceAll('Exception: ', '');
+        if (errorMsg.contains('SLOT_TIME_PASSED')) {
+          errorMsg = l10n.slotTimePassedError;
+        } else if (errorMsg.contains('SLOT_FULLY_BOOKED')) {
+          errorMsg = l10n.slotFullyBookedError;
+        } else if (errorMsg.contains('SLOT_INSUFFICIENT_GROUP_SLOTS')) {
+          errorMsg = l10n.slotGroupUnavailableError;
+        } else if (errorMsg.contains('SLOT_OFFICE_CLOSED')) {
+          errorMsg = l10n.slotOfficeClosedError;
+        } else if (errorMsg.contains('BOOKING_CLOSED')) {
+          errorMsg = l10n.slotBookingClosedError;
+        }
         setState(() {
-          _error = e.toString().replaceAll('Exception: ', '');
+          _error = errorMsg;
           _submitting = false;
         });
       }
@@ -1442,6 +1558,9 @@ class _BookScreenState extends State<BookScreen> {
     String selectedSlotTime = _selectedSlotTime;
     int familyCount = _familyCount;
     String? localNotice;
+    List<SlotItemModel> currentSlots = _getFallbackSlots();
+    bool isLoadingSlots = true;
+    bool hasInitiatedFetch = false;
 
     showDialog(
       context: context,
@@ -1458,7 +1577,38 @@ class _BookScreenState extends State<BookScreen> {
             );
             final diffDays = selectedStart.difference(todayStart).inDays;
             final isCustomSlot = diffDays >= 2;
-            final slots = _getSlotsForDay(diffDays < 0 ? 0 : diffDays);
+
+            Future<void> fetchSlotsForDateAndParty() async {
+              final dateFormatted =
+                  "${selectedDate.year.toString().padLeft(4, '0')}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+              setSheetState(() {
+                isLoadingSlots = true;
+              });
+              try {
+                final fetched = await _client.fetchSlots(
+                  officeId: widget.officeId,
+                  serviceId: widget.serviceId,
+                  date: dateFormatted,
+                  partySize: familyCount,
+                );
+                setSheetState(() {
+                  currentSlots = fetched;
+                  isLoadingSlots = false;
+                });
+              } catch (_) {
+                setSheetState(() {
+                  currentSlots = _getFallbackSlots();
+                  isLoadingSlots = false;
+                });
+              }
+            }
+
+            if (!hasInitiatedFetch) {
+              hasInitiatedFetch = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                fetchSlotsForDateAndParty();
+              });
+            }
 
             return Dialog(
               backgroundColor: CivicTheme.surface,
@@ -1606,32 +1756,8 @@ class _BookScreenState extends State<BookScreen> {
                                           setSheetState(() {
                                             selectedDate = picked;
                                             localNotice = null;
-                                            final newDiff = DateTime(
-                                              picked.year,
-                                              picked.month,
-                                              picked.day,
-                                            ).difference(todayStart).inDays;
-                                            final newSlots = _getSlotsForDay(
-                                              newDiff < 0 ? 0 : newDiff,
-                                            );
-                                            final isAvail = newSlots.any(
-                                              (s) =>
-                                                  s['time'] ==
-                                                      selectedSlotTime &&
-                                                  (s['available'] as bool),
-                                            );
-                                            if (!isAvail) {
-                                              final firstAvail = newSlots
-                                                  .firstWhere(
-                                                    (s) =>
-                                                        s['available'] as bool,
-                                                    orElse: () =>
-                                                        newSlots.first,
-                                                  );
-                                              selectedSlotTime =
-                                                  firstAvail['time'] as String;
-                                            }
                                           });
+                                          fetchSlotsForDateAndParty();
                                         }
                                       },
                                     ),
@@ -1663,6 +1789,7 @@ class _BookScreenState extends State<BookScreen> {
                                         selectedDate = now;
                                         localNotice = null;
                                       });
+                                        fetchSlotsForDateAndParty();
                                     },
                                   ),
                                   _buildQuickDateChip(
@@ -1676,6 +1803,7 @@ class _BookScreenState extends State<BookScreen> {
                                         );
                                         localNotice = null;
                                       });
+                                        fetchSlotsForDateAndParty();
                                     },
                                   ),
                                   _buildQuickDateChip(
@@ -1689,6 +1817,7 @@ class _BookScreenState extends State<BookScreen> {
                                         );
                                         localNotice = null;
                                       });
+                                        fetchSlotsForDateAndParty();
                                     },
                                   ),
                                   _buildQuickDateChip(
@@ -1702,6 +1831,7 @@ class _BookScreenState extends State<BookScreen> {
                                         );
                                         localNotice = null;
                                       });
+                                        fetchSlotsForDateAndParty();
                                     },
                                   ),
                                 ],
@@ -1808,137 +1938,189 @@ class _BookScreenState extends State<BookScreen> {
                               ],
 
                               // Time Slots Header
-                              Text(
-                                l10n.availableTimeSlotsTitle,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: CivicTheme.textPrimary,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    l10n.availableTimeSlotsTitle,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: CivicTheme.textPrimary,
+                                    ),
+                                  ),
+                                  if (isLoadingSlots) ...[
+                                    const SizedBox(width: 8),
+                                    const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      l10n.slotsLoadingLabel,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: CivicTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 10),
+                              if (!isLoadingSlots && currentSlots.isEmpty) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: CivicTheme.warningSoft,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: CivicTheme.warning),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.info_outline, color: Color(0xFF8A5800), size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          l10n.noSlotsAvailableNotice,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF6B4500),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               Wrap(
                                 spacing: 10,
                                 runSpacing: 10,
-                                children: slots.map((slot) {
-                                  final timeStr = slot['time'] as String;
-                                  final isAvailable = slot['available'] as bool;
+                                children: currentSlots.map((slot) {
                                   final isSelected =
-                                      selectedSlotTime == timeStr &&
-                                      isAvailable;
-
-                                  return InkWell(
-                                    onTap: () {
-                                      if (isAvailable) {
-                                        setSheetState(() {
-                                          selectedSlotTime = timeStr;
-                                          localNotice = null;
-                                        });
-                                      } else {
-                                        setSheetState(() {
-                                          localNotice = l10n.slotsFullWarning;
-                                        });
-                                      }
-                                    },
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Container(
-                                      width: 160,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: !isAvailable
-                                            ? Colors.grey.shade100
-                                            : (isSelected
-                                                  ? CivicTheme.primarySoft
-                                                  : CivicTheme.surface),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: !isAvailable
-                                              ? Colors.grey.shade300
-                                              : (isSelected
-                                                    ? CivicTheme.primary
-                                                    : CivicTheme.border),
-                                          width: isSelected ? 2 : 1,
+                                      selectedSlotTime == slot.slotTime &&
+                                      slot.available;
+                              
+                                  return Semantics(
+                                    label: "${slot.slotTime}, ${_getSlotStatusLabel(slot, l10n)}",
+                                    enabled: slot.available,
+                                    button: true,
+                                    child: InkWell(
+                                      onTap: () {
+                                        if (slot.available) {
+                                          setSheetState(() {
+                                            selectedSlotTime = slot.slotTime;
+                                            localNotice = null;
+                                          });
+                                        } else {
+                                          setSheetState(() {
+                                            localNotice = _getSlotErrorMessage(slot, l10n);
+                                          });
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        width: 160,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
                                         ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            timeStr,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: !isAvailable
-                                                  ? Colors.grey.shade500
-                                                  : (isSelected
-                                                        ? CivicTheme.primary
-                                                        : CivicTheme
-                                                              .textPrimary),
-                                            ),
+                                        decoration: BoxDecoration(
+                                          color: !slot.available
+                                              ? Colors.grey.shade100
+                                              : (isSelected
+                                                    ? CivicTheme.primarySoft
+                                                    : CivicTheme.surface),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: !slot.available
+                                                ? Colors.grey.shade300
+                                                : (isSelected
+                                                      ? CivicTheme.primary
+                                                      : CivicTheme.border),
+                                            width: isSelected ? 2 : 1,
                                           ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Flexible(
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: !isAvailable
-                                                        ? Colors.red.shade50
-                                                        : (isSelected
-                                                              ? CivicTheme.primary
-                                                                    .withValues(
-                                                                      alpha: 0.15,
-                                                                    )
-                                                              : Colors
-                                                                    .green
-                                                                    .shade50),
-                                                    borderRadius:
-                                                        BorderRadius.circular(4),
-                                                  ),
-                                                  child: Text(
-                                                    !isAvailable
-                                                        ? l10n.slotsFullBadge
-                                                        : l10n.availableBadge,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: !isAvailable
-                                                          ? CivicTheme.error
-                                                          : CivicTheme.success,
-                                                    ),
-                                                  ),
-                                                ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              slot.slotTime,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: !slot.available
+                                                    ? Colors.grey.shade500
+                                                    : (isSelected
+                                                          ? CivicTheme.primary
+                                                          : CivicTheme
+                                                                .textPrimary),
                                               ),
-                                              if (isSelected) ...[
-                                                const SizedBox(width: 4),
-                                                const Icon(
-                                                  Icons.check_circle,
-                                                  size: 16,
-                                                  color: CivicTheme.primary,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Flexible(
+                                                  child: _buildSlotStatusBadge(
+                                                    slot,
+                                                    l10n,
+                                                    isSelected,
+                                                  ),
                                                 ),
+                                                if (isSelected) ...[
+                                                  const SizedBox(width: 4),
+                                                  const Icon(
+                                                    Icons.check_circle,
+                                                    size: 16,
+                                                    color: CivicTheme.primary,
+                                                  ),
+                                                ],
                                               ],
-                                            ],
-                                          ),
-                                        ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );
                                 }).toList(),
                               ),
+                              if (localNotice != null) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: CivicTheme.errorSoft,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: CivicTheme.error.withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.info_outline,
+                                        color: CivicTheme.error,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          localNotice!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: CivicTheme.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 18),
 
                               // Party Size Selector (Max 4 People: primary + up to 3 accompanying)
@@ -1972,8 +2154,12 @@ class _BookScreenState extends State<BookScreen> {
                                     onSelected: (val) {
                                       if (val) {
                                         setSheetState(
-                                          () => familyCount = count,
+                                          () {
+                                            familyCount = count;
+                                            localNotice = null;
+                                          },
                                         );
+                                        fetchSlotsForDateAndParty();
                                       }
                                     },
                                   );
@@ -2259,7 +2445,10 @@ class _BookScreenState extends State<BookScreen> {
                               _getAccompanyingValidationError(familyCount, l10n);
                           final dateExceedsLimit = diffDays > 15;
                           final dateError = dateExceedsLimit ? l10n.dateExceeds15DaysError : null;
-                          final activeError = accompanyingError ?? dateError;
+                          final selectedSlotItem = currentSlots.where((s) => s.slotTime == selectedSlotTime).firstOrNull;
+                          final isSlotAvailable = selectedSlotItem?.available ?? true;
+                          final slotUnavailableError = !isSlotAvailable ? l10n.slotNoLongerAvailable : null;
+                          final activeError = localNotice ?? accompanyingError ?? dateError ?? slotUnavailableError;
                           final canConfirm = activeError == null;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,

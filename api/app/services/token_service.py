@@ -1,5 +1,6 @@
 import secrets
 import uuid
+import zoneinfo
 from datetime import datetime
 from typing import Any
 
@@ -23,6 +24,7 @@ from api.app.models.entities import (
     Token,
     TokenEvent,
 )
+from api.app.services.slot_service import DEFAULT_SLOT_WINDOWS
 
 
 class BookingError(Exception):
@@ -141,6 +143,66 @@ async def book_token(
     service = res_svc.scalar_one_or_none()
     if not service or not service.active:
         raise BookingError("SERVICE_NOT_FOUND_OR_INACTIVE", "Service is not active or found", 404)
+
+    # Validate appointment slot if provided
+    if appointment_slot:
+        matched_slot = None
+        for w in DEFAULT_SLOT_WINDOWS:
+            if w["slot_time"] == appointment_slot or appointment_slot.startswith(w["start_str"]):
+                matched_slot = w
+                break
+
+        party_count = 1 + (len(accompanying_members) if accompanying_members else 0)
+
+        if matched_slot:
+            office_close_mins = office.close_time.hour * 60 + office.close_time.minute
+            office_open_mins = office.open_time.hour * 60 + office.open_time.minute
+            start_mins = matched_slot["start_time"].hour * 60 + matched_slot["start_time"].minute
+            end_mins = matched_slot["end_time"].hour * 60 + matched_slot["end_time"].minute
+
+            # 1. Office Closed
+            if not office.active or start_mins < office_open_mins or end_mins > office_close_mins:
+                raise BookingError("SLOT_OFFICE_CLOSED", "Office is closed during selected slot", 400)
+
+            # 2. Time Passed
+            try:
+                tz = zoneinfo.ZoneInfo(office.timezone)
+                office_now = clock.now().astimezone(tz)
+            except Exception:
+                office_now = clock.now()
+
+            if b_date < curr_b_date or (b_date == curr_b_date and office_now.time() >= matched_slot["start_time"]):
+                raise BookingError("SLOT_TIME_PASSED", "Selected slot time has already passed", 400)
+
+            # 3. Booked Count & Capacity
+            stmt_booked = select(Token).where(
+                Token.office_id == office_id,
+                Token.service_id == service_id,
+                Token.business_date == b_date,
+                Token.state.in_(["WAITING", "CALLED", "SERVING", "COMPLETED"]),
+            )
+            res_booked = await session.execute(stmt_booked)
+            booked_toks = res_booked.scalars().all()
+            booked_count = 0
+            for b_tok in booked_toks:
+                if b_tok.eta_features:
+                    b_slot = b_tok.eta_features.get("base_slot") or b_tok.eta_features.get("appointment_slot") or ""
+                    if b_slot == matched_slot["slot_time"] or b_slot.startswith(matched_slot["start_str"]):
+                        booked_count += 1
+
+            slot_capacity = 4
+            remaining_cap = max(0, slot_capacity - booked_count)
+            if remaining_cap == 0:
+                raise BookingError("SLOT_FULLY_BOOKED", "Selected slot is fully booked", 409)
+
+            # 4. Group Slots Check
+            if party_count > 1:
+                if (start_mins + party_count * 15 > office_close_mins) or (party_count > remaining_cap):
+                    raise BookingError(
+                        "SLOT_INSUFFICIENT_GROUP_SLOTS",
+                        "Not enough consecutive queue slots available for your group",
+                        409,
+                    )
 
     db_category = "PRIORITY" if category in ["PRIORITY", "SENIOR", "PREGNANT", "DISABILITY"] else "NORMAL"
 
@@ -345,6 +407,7 @@ async def book_token(
         eta_meta["is_fixed"] = True
     if appointment_slot:
         eta_meta["appointment_slot"] = appointment_slot
+        eta_meta["base_slot"] = appointment_slot
     if appointment_date:
         eta_meta["appointment_date"] = appointment_date
     token.eta_features = eta_meta
@@ -388,6 +451,7 @@ async def book_token(
                 "naive_p50": n_p50,
                 "co_attendance_reason": m_reason,
                 "appointment_slot": c_slot_time,
+                "base_slot": appointment_slot,
             }
             if is_fixed_appointment:
                 c_eta_meta["is_fixed"] = True

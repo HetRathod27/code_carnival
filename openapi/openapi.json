@@ -77,6 +77,93 @@
         }
       }
     },
+    "/v1/citizen/offices/{office_id}/services/{service_id}/slots": {
+      "get": {
+        "tags": [
+          "Citizen"
+        ],
+        "summary": "Get Slots",
+        "operationId": "get_slots_v1_citizen_offices__office_id__services__service_id__slots_get",
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Office Id"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Service Id"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Appointment date YYYY-MM-DD",
+              "title": "Date"
+            },
+            "description": "Appointment date YYYY-MM-DD"
+          },
+          {
+            "name": "party_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 4,
+              "minimum": 1,
+              "description": "Party size (1 to 4)",
+              "default": 1,
+              "title": "Party Size"
+            },
+            "description": "Party size (1 to 4)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SlotItemOut"
+                  },
+                  "title": "Response Get Slots V1 Citizen Offices  Office Id  Services  Service Id  Slots Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/citizen/tokens": {
       "post": {
         "tags": [
@@ -5112,6 +5199,59 @@
         },
         "type": "object",
         "title": "ServiceUpdateIn"
+      },
+      "SlotItemOut": {
+        "properties": {
+          "slot_time": {
+            "type": "string",
+            "title": "Slot Time"
+          },
+          "start_time": {
+            "type": "string",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "type": "string",
+            "title": "End Time"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reason_code": {
+            "type": "string",
+            "title": "Reason Code"
+          },
+          "remaining_capacity": {
+            "type": "integer",
+            "title": "Remaining Capacity"
+          },
+          "booked_count": {
+            "type": "integer",
+            "title": "Booked Count"
+          },
+          "total_capacity": {
+            "type": "integer",
+            "title": "Total Capacity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slot_time",
+          "start_time",
+          "end_time",
+          "available",
+          "status",
+          "reason_code",
+          "remaining_capacity",
+          "booked_count",
+          "total_capacity"
+        ],
+        "title": "SlotItemOut"
       },
       "StaffCreateIn": {
         "properties": {

@@ -1201,4 +1201,53 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get dateExceeds15DaysError =>
       'अपॉइंटमेंट की तारीख आज से 15 दिनों से अधिक नहीं हो सकती।';
+
+  @override
+  String get slotAvailable => 'उपलब्ध';
+
+  @override
+  String get slotTimePassed => 'समय बीत चुका';
+
+  @override
+  String get slotFullyBooked => 'पूर्णतः बुक';
+
+  @override
+  String get slotOfficeClosed => 'कार्यालय बंद है';
+
+  @override
+  String get slotBookingClosed => 'बुकिंग बंद है';
+
+  @override
+  String get slotInsufficientGroupSlots => 'समूह के लिए पर्याप्त स्लॉट नहीं';
+
+  @override
+  String get slotNoLongerAvailable =>
+      'चयनित स्लॉट अब उपलब्ध नहीं है। कृपया दूसरा स्लॉट चुनें।';
+
+  @override
+  String get slotTimePassedError =>
+      'बुक नहीं कर सकते: इस स्लॉट का समय बीत चुका है।';
+
+  @override
+  String get slotFullyBookedError =>
+      'बुक नहीं कर सकते: यह स्लॉट पूरी तरह बुक हो चुका है।';
+
+  @override
+  String get slotGroupUnavailableError =>
+      'आपके समूह के लिए पर्याप्त लगातार कतार स्लॉट उपलब्ध नहीं हैं।';
+
+  @override
+  String get slotOfficeClosedError =>
+      'बुक नहीं कर सकते: इस स्लॉट के दौरान नागरिक केंद्र बंद है।';
+
+  @override
+  String get slotBookingClosedError =>
+      'बुक नहीं कर सकते: इस सेवा के लिए ऑनलाइन बुकिंग बंद है।';
+
+  @override
+  String get slotsLoadingLabel => 'स्लॉट उपलब्धता जांची जा रही है…';
+
+  @override
+  String get noSlotsAvailableNotice =>
+      'इस तारीख के लिए वर्तमान में कोई स्लॉट उपलब्ध नहीं है।';
 }

@@ -75,6 +75,44 @@ class ServiceModel {
   }
 }
 
+class SlotItemModel {
+  final String slotTime;
+  final String startTime;
+  final String endTime;
+  final bool available;
+  final String status;
+  final String reasonCode;
+  final int remainingCapacity;
+  final int bookedCount;
+  final int totalCapacity;
+
+  SlotItemModel({
+    required this.slotTime,
+    required this.startTime,
+    required this.endTime,
+    required this.available,
+    required this.status,
+    required this.reasonCode,
+    required this.remainingCapacity,
+    required this.bookedCount,
+    required this.totalCapacity,
+  });
+
+  factory SlotItemModel.fromJson(Map<String, dynamic> json) {
+    return SlotItemModel(
+      slotTime: json['slot_time'] as String,
+      startTime: json['start_time'] as String,
+      endTime: json['end_time'] as String,
+      available: json['available'] as bool? ?? false,
+      status: json['status'] as String? ?? 'AVAILABLE',
+      reasonCode: json['reason_code'] as String? ?? 'AVAILABLE',
+      remainingCapacity: (json['remaining_capacity'] as num?)?.toInt() ?? 0,
+      bookedCount: (json['booked_count'] as num?)?.toInt() ?? 0,
+      totalCapacity: (json['total_capacity'] as num?)?.toInt() ?? 4,
+    );
+  }
+}
+
 class TokenModel {
   final String id;
   final String officeId;
@@ -313,6 +351,28 @@ class ApiClient {
     }
     final List<dynamic> body = jsonDecode(res.body);
     return body.map((s) => ServiceModel.fromJson(s as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<SlotItemModel>> fetchSlots({
+    required String officeId,
+    required String serviceId,
+    String? date,
+    int partySize = 1,
+  }) async {
+    final queryParams = <String, String>{
+      'party_size': partySize.toString(),
+    };
+    if (date != null && date.isNotEmpty) {
+      queryParams['date'] = date;
+    }
+    final uri = Uri.parse('$baseUrl/v1/citizen/offices/$officeId/services/$serviceId/slots')
+        .replace(queryParameters: queryParams);
+    final res = await _safeGet(uri);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load slots: ${res.statusCode}');
+    }
+    final List<dynamic> body = jsonDecode(res.body);
+    return body.map((s) => SlotItemModel.fromJson(s as Map<String, dynamic>)).toList();
   }
 
   Future<TokenModel> bookToken({

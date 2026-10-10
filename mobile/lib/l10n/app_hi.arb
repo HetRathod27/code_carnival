@@ -382,5 +382,19 @@
     }
   },
   "advanceLimitNotice": "अपॉइंटमेंट अधिकतम 15 दिन पहले तक ही बुक किए जा सकते हैं",
-  "dateExceeds15DaysError": "अपॉइंटमेंट की तारीख आज से 15 दिनों से अधिक नहीं हो सकती।"
+  "dateExceeds15DaysError": "अपॉइंटमेंट की तारीख आज से 15 दिनों से अधिक नहीं हो सकती।",
+  "slotAvailable": "उपलब्ध",
+  "slotTimePassed": "समय बीत चुका",
+  "slotFullyBooked": "पूर्णतः बुक",
+  "slotOfficeClosed": "कार्यालय बंद है",
+  "slotBookingClosed": "बुकिंग बंद है",
+  "slotInsufficientGroupSlots": "समूह के लिए पर्याप्त स्लॉट नहीं",
+  "slotNoLongerAvailable": "चयनित स्लॉट अब उपलब्ध नहीं है। कृपया दूसरा स्लॉट चुनें।",
+  "slotTimePassedError": "बुक नहीं कर सकते: इस स्लॉट का समय बीत चुका है।",
+  "slotFullyBookedError": "बुक नहीं कर सकते: यह स्लॉट पूरी तरह बुक हो चुका है।",
+  "slotGroupUnavailableError": "आपके समूह के लिए पर्याप्त लगातार कतार स्लॉट उपलब्ध नहीं हैं।",
+  "slotOfficeClosedError": "बुक नहीं कर सकते: इस स्लॉट के दौरान नागरिक केंद्र बंद है।",
+  "slotBookingClosedError": "बुक नहीं कर सकते: इस सेवा के लिए ऑनलाइन बुकिंग बंद है।",
+  "slotsLoadingLabel": "स्लॉट उपलब्धता जांची जा रही है…",
+  "noSlotsAvailableNotice": "इस तारीख के लिए वर्तमान में कोई स्लॉट उपलब्ध नहीं है।"
 }

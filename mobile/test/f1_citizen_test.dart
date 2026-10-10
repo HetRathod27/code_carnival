@@ -12,11 +12,13 @@ class FakeApiClient extends ApiClient {
   final List<OfficeModel> offices;
   final List<ServiceModel> services;
   final TokenModel? tokenToReturn;
+  final List<SlotItemModel>? slots;
 
   FakeApiClient({
     this.offices = const [],
     this.services = const [],
     this.tokenToReturn,
+    this.slots,
   });
 
   @override
@@ -27,6 +29,62 @@ class FakeApiClient extends ApiClient {
   @override
   Future<List<ServiceModel>> fetchServices(String officeId) async {
     return services;
+  }
+
+  @override
+  Future<List<SlotItemModel>> fetchSlots({
+    required String officeId,
+    required String serviceId,
+    String? date,
+    int partySize = 1,
+  }) async {
+    if (slots != null) return slots!;
+    return [
+      SlotItemModel(
+        slotTime: '09:30 AM – 10:30 AM',
+        startTime: '09:30:00',
+        endTime: '10:30:00',
+        available: true,
+        status: 'AVAILABLE',
+        reasonCode: 'AVAILABLE',
+        remainingCapacity: 4,
+        bookedCount: 0,
+        totalCapacity: 4,
+      ),
+      SlotItemModel(
+        slotTime: '10:30 AM – 11:30 AM',
+        startTime: '10:30:00',
+        endTime: '11:30:00',
+        available: true,
+        status: 'AVAILABLE',
+        reasonCode: 'AVAILABLE',
+        remainingCapacity: 4,
+        bookedCount: 0,
+        totalCapacity: 4,
+      ),
+      SlotItemModel(
+        slotTime: '11:30 AM – 12:30 PM',
+        startTime: '11:30:00',
+        endTime: '12:30:00',
+        available: false,
+        status: 'TIME_PASSED',
+        reasonCode: 'TIME_PASSED',
+        remainingCapacity: 4,
+        bookedCount: 0,
+        totalCapacity: 4,
+      ),
+      SlotItemModel(
+        slotTime: '02:00 PM – 03:00 PM',
+        startTime: '14:00:00',
+        endTime: '15:00:00',
+        available: false,
+        status: 'FULLY_BOOKED',
+        reasonCode: 'FULLY_BOOKED',
+        remainingCapacity: 0,
+        bookedCount: 4,
+        totalCapacity: 4,
+      ),
+    ];
   }
 
   @override
@@ -455,6 +513,99 @@ void main() {
 
       // Verify the advance booking limit notice is displayed
       expect(find.text('Bookings are allowed up to 15 days in advance'), findsOneWidget);
+    });
+
+    testWidgets('Time slots display real-time availability badges and status reasons', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final customSlots = [
+        SlotItemModel(
+          slotTime: '09:30 AM – 10:30 AM',
+          startTime: '09:30:00',
+          endTime: '10:30:00',
+          available: true,
+          status: 'AVAILABLE',
+          reasonCode: 'AVAILABLE',
+          remainingCapacity: 4,
+          bookedCount: 0,
+          totalCapacity: 4,
+        ),
+        SlotItemModel(
+          slotTime: '11:30 AM – 12:30 PM',
+          startTime: '11:30:00',
+          endTime: '12:30:00',
+          available: false,
+          status: 'TIME_PASSED',
+          reasonCode: 'TIME_PASSED',
+          remainingCapacity: 4,
+          bookedCount: 0,
+          totalCapacity: 4,
+        ),
+        SlotItemModel(
+          slotTime: '02:00 PM – 03:00 PM',
+          startTime: '14:00:00',
+          endTime: '15:00:00',
+          available: false,
+          status: 'FULLY_BOOKED',
+          reasonCode: 'FULLY_BOOKED',
+          remainingCapacity: 0,
+          bookedCount: 4,
+          totalCapacity: 4,
+        ),
+      ];
+
+      final fakeClient = FakeApiClient(
+        services: sampleServices,
+        slots: customSlots,
+      );
+
+      await tester.pumpWidget(createTestApp(
+        BookScreen(officeId: 'off-1', serviceId: 'srv-1', client: fakeClient),
+      ));
+      await tester.pumpAndSettle();
+
+      // Check all documents to enable booking button
+      await tester.tap(find.byKey(const Key('mandatory_document_checkbox')));
+      await tester.pumpAndSettle();
+      for (int i = 0; i < 3; i++) {
+        await tester.tap(find.byKey(Key('doc_checkbox_$i')));
+        await tester.pumpAndSettle();
+      }
+
+      // Open slot selection sheet
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Book Fixed Appointment'));
+      await tester.pumpAndSettle();
+
+      // Verify availability status badges are displayed
+      expect(find.text('Available'), findsAtLeast(1));
+      expect(find.text('Time Passed'), findsOneWidget);
+      expect(find.text('Fully Booked'), findsOneWidget);
+
+      // Tapping unavailable 'Time Passed' slot shows error message
+      final timePassedFinder = find.text('11:30 AM – 12:30 PM');
+      await tester.ensureVisible(timePassedFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(timePassedFinder);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Cannot book: this slot time has already passed.'), findsAtLeast(1));
+
+      // Tapping unavailable 'Fully Booked' slot shows error message
+      final fullyBookedFinder = find.text('02:00 PM – 03:00 PM');
+      await tester.ensureVisible(fullyBookedFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(fullyBookedFinder);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Cannot book: this slot is fully booked.'), findsAtLeast(1));
+
+      // Tapping available slot selects it cleanly
+      final availableFinder = find.text('09:30 AM – 10:30 AM');
+      await tester.ensureVisible(availableFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(availableFinder);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Confirm Appointment'), findsOneWidget);
     });
   });
 }

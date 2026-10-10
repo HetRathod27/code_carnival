@@ -382,5 +382,19 @@
     }
   },
   "advanceLimitNotice": "મુલાકાત વધુમાં વધુ 15 દિવસ અગાઉ સુધી જ બુક કરી શકાય છે",
-  "dateExceeds15DaysError": "મુલાકાતની તારીખ આજથી 15 દિવસથી વધુ હોઈ શકતી નથી."
+  "dateExceeds15DaysError": "મુલાકાતની તારીખ આજથી 15 દિવસથી વધુ હોઈ શકતી નથી.",
+  "slotAvailable": "ઉપલબ્ધ",
+  "slotTimePassed": "સમય વીતી ગયો",
+  "slotFullyBooked": "સંપૂર્ણ બુક",
+  "slotOfficeClosed": "કચેરી બંધ છે",
+  "slotBookingClosed": "બુકિંગ બંધ છે",
+  "slotInsufficientGroupSlots": "જૂથ માટે પૂરતા સ્લોટ નથી",
+  "slotNoLongerAvailable": "પસંદ કરેલ સ્લોટ હવે ઉપલબ્ધ નથી. કૃપા કરીને અન્ય સ્લોટ પસંદ કરો.",
+  "slotTimePassedError": "બુક કરી શકાતું નથી: આ સ્લોટનો સમય વીતી ગયો છે.",
+  "slotFullyBookedError": "બુક કરી શકાતું નથી: આ સ્લોટ સંપૂર્ણ બુક થઈ ગયો છે.",
+  "slotGroupUnavailableError": "તમારા જૂથ માટે પૂરતા ક્રમિક કતાર સ્લોટ ઉપલબ્ધ નથી.",
+  "slotOfficeClosedError": "બુક કરી શકાતું નથી: આ સ્લોટ દરમિયાન નાગરિક કેન્દ્ર બંધ છે.",
+  "slotBookingClosedError": "બુક કરી શકાતું નથી: આ સેવા માટે ઓનલાઇન બુકિંગ બંધ છે.",
+  "slotsLoadingLabel": "સ્લોટ ઉપલબ્ધતા તપાસી રહ્યા છીએ…",
+  "noSlotsAvailableNotice": "આ તારીખ માટે હાલમાં કોઈ સ્લોટ ઉપલબ્ધ નથી."
 }

@@ -1207,4 +1207,52 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dateExceeds15DaysError =>
       'Appointment date cannot exceed 15 days from today.';
+
+  @override
+  String get slotAvailable => 'Available';
+
+  @override
+  String get slotTimePassed => 'Time Passed';
+
+  @override
+  String get slotFullyBooked => 'Fully Booked';
+
+  @override
+  String get slotOfficeClosed => 'Office Closed';
+
+  @override
+  String get slotBookingClosed => 'Booking Closed';
+
+  @override
+  String get slotInsufficientGroupSlots => 'Not enough consecutive slots';
+
+  @override
+  String get slotNoLongerAvailable =>
+      'Selected slot is no longer available. Please select another slot.';
+
+  @override
+  String get slotTimePassedError =>
+      'Cannot book: this slot time has already passed.';
+
+  @override
+  String get slotFullyBookedError => 'Cannot book: this slot is fully booked.';
+
+  @override
+  String get slotGroupUnavailableError =>
+      'Not enough consecutive queue slots available for your group.';
+
+  @override
+  String get slotOfficeClosedError =>
+      'Cannot book: civic centre is closed during this slot.';
+
+  @override
+  String get slotBookingClosedError =>
+      'Cannot book: online booking is closed for this service.';
+
+  @override
+  String get slotsLoadingLabel => 'Checking slot availability…';
+
+  @override
+  String get noSlotsAvailableNotice =>
+      'No slots are currently available for this date.';
 }

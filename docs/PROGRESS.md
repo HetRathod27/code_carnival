@@ -715,4 +715,40 @@ Running log of milestones, completed tasks, verifications, and status.
   - `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`: Exit code 0 (All 69 pytest tests passed in 68.71s, Ruff: OK, Mypy: OK, Web typecheck & build: OK, Flutter analyze: OK).
 - **Git Commit & Tag**: `m-advance-limit-done`
 
+---
+
+## M-SLOT-AVAILABILITY-REASONS: Full-Day Time Slots with Real-Time Availability & Reasons
+- **Date**: 2026-10-10
+- **Built**:
+  - `api/app/schemas/citizen.py`:
+    - Added `SlotItemOut` schema with `slot_time`, `start_time`, `end_time`, `available`, `status`, `reason_code`, `remaining_capacity`, `booked_count`, and `total_capacity`.
+  - `api/app/services/slot_service.py`:
+    - Implemented `get_service_slots` pure calculation evaluation with strict status precedence:
+      `OFFICE_CLOSED` > `BOOKING_CLOSED` > `TIME_PASSED` > `FULLY_BOOKED` > `INSUFFICIENT_GROUP_SLOTS` > `AVAILABLE`.
+    - Typed `DEFAULT_SLOT_WINDOWS` with `SlotWindow` TypedDict for strict mypy compliance.
+  - `api/app/routers/citizen.py`:
+    - Exposed `GET /v1/citizen/offices/{office_id}/services/{service_id}/slots` endpoint accepting `date` (YYYY-MM-DD) and `party_size` (1..4).
+  - `api/app/services/token_service.py`:
+    - In `book_token`: Integrated slot availability verification against office schedule, clock time, and existing bookings. Rejects bookings with `SLOT_OFFICE_CLOSED`, `SLOT_TIME_PASSED`, `SLOT_FULLY_BOOKED`, or `SLOT_INSUFFICIENT_GROUP_SLOTS`.
+  - `openapi/openapi.json` & `web/src/api/client.ts` / `mobile/lib/api/client.dart`:
+    - Regenerated OpenAPI schemas and added `fetchSlots` API client methods with `SlotItemModel` deserializer.
+  - `mobile/lib/l10n/app_{en,gu,hi}.arb`:
+    - Added comprehensive trilingual translations for slot status badges (`slotAvailable`, `slotTimePassed`, `slotFullyBooked`, `slotOfficeClosed`, `slotBookingClosed`, `slotInsufficientGroupSlots`), loading indicator (`slotsLoadingLabel`), empty notice (`noSlotsAvailableNotice`), and rejection messages across English, Gujarati, and Hindi.
+  - `mobile/lib/features/book/book_screen.dart`:
+    - Reactively fetches slot availability from API upon date selection, quick date chip clicks, or party size changes.
+    - Renders all slots with availability badges and disabled styling for unavailable slots.
+    - Tapping an unavailable slot surfaces an informative banner with the exact localized rejection reason while blocking invalid selection.
+    - Wired `localNotice` into the bottom confirm button validation so unavailable slots prevent booking.
+  - `api/tests/api/test_routes.py`:
+    - Added `test_slots_availability_endpoint_all_states_and_precedence` testing all 6 daily windows, time-passed on today vs future dates, and party-size capacity.
+    - Added `test_booking_rejects_past_or_unavailable_slots` verifying HTTP 400 rejection when attempting to book passed or full slots.
+  - `mobile/test/f1_citizen_test.dart`:
+    - Added widget test `Time slots display real-time availability badges and status reasons` asserting real-time badges, interactive error banners on tapping unavailable slots, and successful selection of available slots.
+- **Verification**:
+  - `scripts/verify.ps1`: Exit code 0 (All 71 pytest tests passed, Ruff clean, Mypy clean on 55 source files, Web typecheck & build clean, Flutter analyze: no issues found).
+  - `flutter test` in `mobile/`: 36/36 tests passed.
+- **Git Commit & Tag**: `m-slot-availability-done`
+
+
+
 

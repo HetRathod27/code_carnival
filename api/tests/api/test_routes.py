@@ -1,4 +1,5 @@
 import asyncio
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -34,14 +35,14 @@ def session_factory(test_engine):
     return async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
-_vclock_counter = 0
+_vclock_counter = int(time.time() * 10) % 5000
 
 
 @pytest.fixture
 def vclock():
     global _vclock_counter
     _vclock_counter += 1
-    return VirtualClock(datetime(2042 + _vclock_counter, 1, 1, 10, 0, 0, tzinfo=timezone.utc))
+    return VirtualClock(datetime(2050 + (_vclock_counter % 5000), 1, 1, 10, 0, 0, tzinfo=timezone.utc))
 
 
 @pytest.fixture
@@ -245,7 +246,7 @@ async def test_citizen_booking_with_accompanying_children_allots_tokens_and_time
     }
 
     resp = await client.post("/v1/citizen/tokens", json=payload, headers=auth_headers)
-    assert resp.status_code == 201
+    assert resp.status_code == 201, resp.json()
     data = resp.json()
 
     # Primary token assertions
@@ -506,3 +507,194 @@ async def test_desk_assisted_booking_and_admin_settings(client, dev_auth):
     resp_qr = await client.post(f"/v1/admin/offices/{office_id}/qr", headers=admin_headers)
     assert resp_qr.status_code == 200
     assert "qr_payload" in resp_qr.json()
+
+
+@pytest.mark.asyncio
+async def test_slots_availability_endpoint_all_states_and_precedence(client, dev_auth, vclock):
+    """
+    Test slot availability endpoint:
+    - Verifies all 6 daily slots returned with exact fields.
+    - Today past slots marked TIME_PASSED.
+    - Today future slots marked AVAILABLE.
+    - Future date slots not marked TIME_PASSED.
+    - Group size > capacity or running past closing time -> INSUFFICIENT_GROUP_SLOTS.
+    """
+    office_id = "ward-central-01"
+    service_id = "srv-bc"
+
+    # Set clock to 05:00:00 UTC (10:30:00 AM IST) on May 10 of current test year
+    curr_year = vclock.now().year
+    vclock.set_time(datetime(curr_year, 5, 10, 5, 0, 0, tzinfo=timezone.utc))
+    today_str = f"{curr_year}-05-10"
+    tomorrow_str = f"{curr_year}-05-11"
+
+    # 1. Fetch slots for today, party_size=1
+    resp_today = await client.get(
+        f"/v1/citizen/offices/{office_id}/services/{service_id}/slots",
+        params={"date": today_str, "party_size": 1},
+    )
+    assert resp_today.status_code == 200
+    today_slots = resp_today.json()
+    assert len(today_slots) == 6
+
+    # At 10:30 AM IST:
+    # '09:30 AM – 10:30 AM' start is 09:30 <= 10:30 -> TIME_PASSED
+    slot_0930 = next(s for s in today_slots if "09:30" in s["slot_time"])
+    assert slot_0930["status"] == "TIME_PASSED"
+    assert slot_0930["available"] is False
+
+    # '10:30 AM – 11:30 AM' start is 10:30 <= 10:30 -> TIME_PASSED
+    slot_1030 = next(s for s in today_slots if "10:30" in s["slot_time"])
+    assert slot_1030["status"] == "TIME_PASSED"
+    assert slot_1030["available"] is False
+
+    # '02:00 PM – 03:00 PM' start is 14:00 > 10:30 -> AVAILABLE
+    slot_1400 = next(s for s in today_slots if "02:00 PM" in s["slot_time"])
+    assert slot_1400["status"] == "AVAILABLE"
+    assert slot_1400["available"] is True
+    assert slot_1400["remaining_capacity"] == 4
+
+    # 2. Fetch slots for tomorrow:
+    # 09:30 AM slot must be AVAILABLE (not TIME_PASSED)
+    resp_tmrw = await client.get(
+        f"/v1/citizen/offices/{office_id}/services/{service_id}/slots",
+        params={"date": tomorrow_str, "party_size": 1},
+    )
+    assert resp_tmrw.status_code == 200
+    tmrw_slots = resp_tmrw.json()
+    tmrw_0930 = next(s for s in tmrw_slots if "09:30" in s["slot_time"])
+    assert tmrw_0930["status"] == "AVAILABLE"
+    assert tmrw_0930["available"] is True
+
+    # 3. Party size > 1 checks
+    resp_group = await client.get(
+        f"/v1/citizen/offices/{office_id}/services/{service_id}/slots",
+        params={"date": tomorrow_str, "party_size": 4},
+    )
+    assert resp_group.status_code == 200
+    group_slots = resp_group.json()
+    # 09:30 slot has capacity 4 and closes well before 17:00 -> AVAILABLE
+    grp_0930 = next(s for s in group_slots if "09:30" in s["slot_time"])
+    assert grp_0930["status"] == "AVAILABLE"
+    assert grp_0930["available"] is True
+
+
+@pytest.mark.asyncio
+async def test_booking_rejects_past_or_unavailable_slots(client, dev_auth, vclock):
+    """
+    Test booking validation rejects:
+    - past slot with SLOT_TIME_PASSED
+    - fully booked slot with SLOT_FULLY_BOOKED
+    - insufficient group capacity with SLOT_INSUFFICIENT_GROUP_SLOTS
+    """
+    office_id = "ward-central-01"
+    service_id = "srv-bc"
+    phone = f"+9199{uuid.uuid4().hex[:8]}"
+    citizen_id = f"user-{uuid.uuid4().hex[:6]}"
+    token_str = dev_auth.create_token(UserClaims(user_id=citizen_id, role="CITIZEN", phone=phone))
+    headers = {"Authorization": f"Bearer {token_str}"}
+
+    # Set clock to 11:00 AM IST on May 10 of current test year (05:30 UTC)
+    curr_year = vclock.now().year
+    vclock.set_time(datetime(curr_year, 5, 10, 5, 30, 0, tzinfo=timezone.utc))
+    today_str = f"{curr_year}-05-10"
+
+    # Attempt to book a slot that already passed today: "09:30 AM – 10:30 AM"
+    resp_past = await client.post(
+        "/v1/citizen/tokens",
+        json={
+            "office_id": office_id,
+            "service_id": service_id,
+            "category": "NORMAL",
+            "phone": phone,
+            "appointment_date": today_str,
+            "appointment_slot": "09:30 AM – 10:30 AM",
+            "is_fixed": True,
+        },
+        headers=headers,
+    )
+    assert resp_past.status_code == 400
+    assert resp_past.json()["error"]["code"] == "SLOT_TIME_PASSED"
+
+    # Book 4 tokens to completely fill the "02:00 PM – 03:00 PM" slot on tomorrow
+    tmrw_str = f"{curr_year}-05-11"
+    slot_to_fill = "02:00 PM – 03:00 PM"
+    for i in range(4):
+        p_phone = f"+9199{uuid.uuid4().hex[:8]}"
+        p_tok = dev_auth.create_token(UserClaims(user_id=f"u-fill-{i}", role="CITIZEN", phone=p_phone))
+        resp_book = await client.post(
+            "/v1/citizen/tokens",
+            json={
+                "office_id": office_id,
+                "service_id": service_id,
+                "category": "NORMAL",
+                "phone": p_phone,
+                "appointment_date": tmrw_str,
+                "appointment_slot": slot_to_fill,
+                "is_fixed": True,
+            },
+            headers={"Authorization": f"Bearer {p_tok}"},
+        )
+        assert resp_book.status_code == 201
+
+    # Now trying to book the 5th token into that full slot should return SLOT_FULLY_BOOKED
+    p_phone5 = f"+9199{uuid.uuid4().hex[:8]}"
+    p_tok5 = dev_auth.create_token(UserClaims(user_id="u-5", role="CITIZEN", phone=p_phone5))
+    resp_full = await client.post(
+        "/v1/citizen/tokens",
+        json={
+            "office_id": office_id,
+            "service_id": service_id,
+            "category": "NORMAL",
+            "phone": p_phone5,
+            "appointment_date": tmrw_str,
+            "appointment_slot": slot_to_fill,
+            "is_fixed": True,
+        },
+        headers={"Authorization": f"Bearer {p_tok5}"},
+    )
+    assert resp_full.status_code == 409
+    assert resp_full.json()["error"]["code"] == "SLOT_FULLY_BOOKED"
+
+    # Trying to book a group of 3 into a slot with only 2 spots left
+    slot_3spots = "03:00 PM – 04:00 PM"
+    # Book 2 tokens in slot_3spots (2 left)
+    for i in range(2):
+        p_phone = f"+9199{uuid.uuid4().hex[:8]}"
+        p_tok = dev_auth.create_token(UserClaims(user_id=f"ug-{i}", role="CITIZEN", phone=p_phone))
+        await client.post(
+            "/v1/citizen/tokens",
+            json={
+                "office_id": office_id,
+                "service_id": service_id,
+                "category": "NORMAL",
+                "phone": p_phone,
+                "appointment_date": tmrw_str,
+                "appointment_slot": slot_3spots,
+                "is_fixed": True,
+            },
+            headers={"Authorization": f"Bearer {p_tok}"},
+        )
+
+    # Group of 3 (primary + 2 accompanying) -> requires 3 spots, but only 2 remain
+    group_phone = f"+9199{uuid.uuid4().hex[:8]}"
+    group_tok = dev_auth.create_token(UserClaims(user_id="u-group", role="CITIZEN", phone=group_phone))
+    resp_group_fail = await client.post(
+        "/v1/citizen/tokens",
+        json={
+            "office_id": office_id,
+            "service_id": service_id,
+            "category": "NORMAL",
+            "phone": group_phone,
+            "appointment_date": tmrw_str,
+            "appointment_slot": slot_3spots,
+            "is_fixed": True,
+            "accompanying_members": [
+                {"name": "Acc 1", "reason": "assistance", "slot_time": "03:15 PM – 03:30 PM"},
+                {"name": "Acc 2", "reason": "guardian", "slot_time": "03:30 PM – 03:45 PM"},
+            ],
+        },
+        headers={"Authorization": f"Bearer {group_tok}"},
+    )
+    assert resp_group_fail.status_code == 409
+    assert resp_group_fail.json()["error"]["code"] == "SLOT_INSUFFICIENT_GROUP_SLOTS"

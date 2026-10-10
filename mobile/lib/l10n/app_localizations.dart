@@ -2127,6 +2127,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Appointment date cannot exceed 15 days from today.'**
   String get dateExceeds15DaysError;
+
+  /// No description provided for @slotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get slotAvailable;
+
+  /// No description provided for @slotTimePassed.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Passed'**
+  String get slotTimePassed;
+
+  /// No description provided for @slotFullyBooked.
+  ///
+  /// In en, this message translates to:
+  /// **'Fully Booked'**
+  String get slotFullyBooked;
+
+  /// No description provided for @slotOfficeClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Office Closed'**
+  String get slotOfficeClosed;
+
+  /// No description provided for @slotBookingClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking Closed'**
+  String get slotBookingClosed;
+
+  /// No description provided for @slotInsufficientGroupSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough consecutive slots'**
+  String get slotInsufficientGroupSlots;
+
+  /// No description provided for @slotNoLongerAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected slot is no longer available. Please select another slot.'**
+  String get slotNoLongerAvailable;
+
+  /// No description provided for @slotTimePassedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot book: this slot time has already passed.'**
+  String get slotTimePassedError;
+
+  /// No description provided for @slotFullyBookedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot book: this slot is fully booked.'**
+  String get slotFullyBookedError;
+
+  /// No description provided for @slotGroupUnavailableError.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough consecutive queue slots available for your group.'**
+  String get slotGroupUnavailableError;
+
+  /// No description provided for @slotOfficeClosedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot book: civic centre is closed during this slot.'**
+  String get slotOfficeClosedError;
+
+  /// No description provided for @slotBookingClosedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot book: online booking is closed for this service.'**
+  String get slotBookingClosedError;
+
+  /// No description provided for @slotsLoadingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking slot availability…'**
+  String get slotsLoadingLabel;
+
+  /// No description provided for @noSlotsAvailableNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'No slots are currently available for this date.'**
+  String get noSlotsAvailableNotice;
 }
 
 class _AppLocalizationsDelegate

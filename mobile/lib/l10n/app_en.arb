@@ -382,5 +382,19 @@
     }
   },
   "advanceLimitNotice": "Bookings are allowed up to 15 days in advance",
-  "dateExceeds15DaysError": "Appointment date cannot exceed 15 days from today."
+  "dateExceeds15DaysError": "Appointment date cannot exceed 15 days from today.",
+  "slotAvailable": "Available",
+  "slotTimePassed": "Time Passed",
+  "slotFullyBooked": "Fully Booked",
+  "slotOfficeClosed": "Office Closed",
+  "slotBookingClosed": "Booking Closed",
+  "slotInsufficientGroupSlots": "Not enough consecutive slots",
+  "slotNoLongerAvailable": "Selected slot is no longer available. Please select another slot.",
+  "slotTimePassedError": "Cannot book: this slot time has already passed.",
+  "slotFullyBookedError": "Cannot book: this slot is fully booked.",
+  "slotGroupUnavailableError": "Not enough consecutive queue slots available for your group.",
+  "slotOfficeClosedError": "Cannot book: civic centre is closed during this slot.",
+  "slotBookingClosedError": "Cannot book: online booking is closed for this service.",
+  "slotsLoadingLabel": "Checking slot availability…",
+  "noSlotsAvailableNotice": "No slots are currently available for this date."
 }

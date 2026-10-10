@@ -151,6 +151,30 @@ export async function fetchServices(officeId: string): Promise<ServiceOut[]> {
   return req<ServiceOut[]>('GET', `/v1/citizen/offices/${officeId}/services`);
 }
 
+export interface SlotItemOut {
+  slot_time: string;
+  start_time: string;
+  end_time: string;
+  available: boolean;
+  status: string;
+  reason_code: string;
+  remaining_capacity: number;
+  booked_count: number;
+  total_capacity: number;
+}
+
+export async function fetchSlots(
+  officeId: string,
+  serviceId: string,
+  date?: string,
+  partySize = 1,
+): Promise<SlotItemOut[]> {
+  const params = new URLSearchParams();
+  if (date) params.set('date', date);
+  params.set('party_size', String(partySize));
+  return req<SlotItemOut[]>('GET', `/v1/citizen/offices/${officeId}/services/${serviceId}/slots?${params.toString()}`);
+}
+
 // ─── Officer ────────────────────────────────────────────────────────────────
 
 export async function fetchQueue(

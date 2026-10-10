@@ -117,3 +117,16 @@ class CitizenConfirmCompletionIn(BaseModel):
     reason_if_not: str | None = None
     rating: int = Field(default=5, ge=1, le=5)
     feedback_text: str | None = None
+
+
+class SlotItemOut(BaseModel):
+    slot_time: str
+    start_time: str
+    end_time: str
+    available: bool
+    status: str
+    reason_code: str
+    remaining_capacity: int
+    booked_count: int
+    total_capacity: int
+

@@ -1,7 +1,7 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends, Header, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,11 +29,13 @@ from api.app.schemas.citizen import (
     ProfileOut,
     ProfileUpdateIn,
     ServiceOut,
+    SlotItemOut,
     TokenBookIn,
     TokenOut,
 )
 from api.app.schemas.common import SuccessResponse
 from api.app.services.officer_service import check_in_token
+from api.app.services.slot_service import get_service_slots
 from api.app.services.token_service import book_token, cancel_token
 
 router = APIRouter(prefix="/v1/citizen", tags=["Citizen"])
@@ -201,6 +203,54 @@ async def list_office_services(
             )
         )
     return out
+
+
+@router.get("/offices/{office_id}/services/{service_id}/slots", response_model=list[SlotItemOut])
+async def get_slots(
+    office_id: str,
+    service_id: str,
+    date: str | None = Query(None, description="Appointment date YYYY-MM-DD"),
+    party_size: int = Query(1, ge=1, le=4, description="Party size (1 to 4)"),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> list[SlotItemOut]:
+    stmt_office = select(Office).where(Office.id == office_id)
+    res_office = await session.execute(stmt_office)
+    office = res_office.scalar_one_or_none()
+    if not office:
+        raise AppException(ErrorCode.NOT_FOUND, f"Office '{office_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    stmt_svc = select(Service).where(Service.id == service_id, Service.office_id == office_id)
+    res_svc = await session.execute(stmt_svc)
+    service = res_svc.scalar_one_or_none()
+    if not service:
+        raise AppException(ErrorCode.NOT_FOUND, f"Service '{service_id}' not found", status.HTTP_404_NOT_FOUND)
+
+    curr_b_date = clock.business_date()
+    target_date = curr_b_date
+    if date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            target_date = curr_b_date
+
+    stmt_qs = select(QueueState).where(
+        QueueState.office_id == office_id,
+        QueueState.service_id == service_id,
+        QueueState.business_date == target_date,
+    )
+    res_qs = await session.execute(stmt_qs)
+    queue_state = res_qs.scalar_one_or_none()
+
+    return await get_service_slots(
+        session=session,
+        clock=clock,
+        office=office,
+        service=service,
+        queue_state=queue_state,
+        target_date=target_date,
+        party_size=party_size,
+    )
 
 
 @router.post("/tokens", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
