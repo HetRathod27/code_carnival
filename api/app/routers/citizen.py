@@ -114,7 +114,11 @@ async def build_token_out(
         else None
     )
 
-    if token.state == "WAITING":
+    if token.state in ("SERVING", "COMPLETED"):
+        calc_eta_minutes = None
+        calc_eta_low = None
+        calc_eta_high = None
+    elif token.state == "WAITING":
         lead_mins = parse_slot_lead_minutes(appointment_slot_str, appointment_date_str, clock)
         if lead_mins is not None and lead_mins > 0:
             calc_eta_minutes = round(max(calc_eta_minutes or 0.0, lead_mins), 1)

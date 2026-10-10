@@ -926,74 +926,76 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ],
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16))),
-                    Text(
-                      token.lastEtaMinutes != null
-                          ? ((token.waitingAhead == 0 && (token.lastEtaMinutes ?? 0) <= 1)
-                              ? l10n.yourTurnIsNext
-                              : '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}')
-                          : l10n.calculatingEta,
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-                // ETA Range (p50 / low / high)
-                if (token.etaLow != null && token.etaHigh != null) ...[
+                if (token.state != 'SERVING') ...[
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text(
-                          l10n.etaRangePrefix,
-                          style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
-                        ),
-                      ),
+                      Expanded(child: Text(l10n.estimatedTurn, style: const TextStyle(fontSize: 16))),
                       Text(
-                        (token.etaLow!.round() <= 0 && token.etaHigh!.round() <= 0)
-                            ? '1 – 2 ${l10n.minutesUnit}'
-                            : (token.etaLow!.round() == token.etaHigh!.round()
-                                ? '~${token.etaLow!.round()} ${l10n.minutesUnit}'
-                                : '${token.etaLow!.round()} – ${token.etaHigh!.round()} ${l10n.minutesUnit}'),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: CivicTheme.textSecondary,
-                        ),
+                        token.lastEtaMinutes != null
+                            ? ((token.waitingAhead == 0 && (token.lastEtaMinutes ?? 0) <= 1)
+                                ? l10n.yourTurnIsNext
+                                : '~${token.lastEtaMinutes!.round()} ${l10n.minutesUnit}')
+                            : l10n.calculatingEta,
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
-                ],
-                // Last ETA Reason
-                if (token.lastEtaReason != null && token.lastEtaReason!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: CivicTheme.primarySoft.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
+                  // ETA Range (p50 / low / high)
+                  if (token.etaLow != null && token.etaHigh != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(Icons.info_outline, size: 16, color: CivicTheme.primary),
-                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            token.lastEtaReason!,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: CivicTheme.primary,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            l10n.etaRangePrefix,
+                            style: const TextStyle(fontSize: 14, color: CivicTheme.textSecondary),
+                          ),
+                        ),
+                        Text(
+                          (token.etaLow!.round() <= 0 && token.etaHigh!.round() <= 0)
+                              ? '1 – 2 ${l10n.minutesUnit}'
+                              : (token.etaLow!.round() == token.etaHigh!.round()
+                                  ? '~${token.etaLow!.round()} ${l10n.minutesUnit}'
+                                  : '${token.etaLow!.round()} – ${token.etaHigh!.round()} ${l10n.minutesUnit}'),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: CivicTheme.textSecondary,
                           ),
                         ),
                       ],
                     ),
-                  ),
+                  ],
+                  // Last ETA Reason
+                  if (token.lastEtaReason != null && token.lastEtaReason!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: CivicTheme.primarySoft.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, size: 16, color: CivicTheme.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              token.lastEtaReason!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: CivicTheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ],
               if (token.childTokens.isNotEmpty) ...[
