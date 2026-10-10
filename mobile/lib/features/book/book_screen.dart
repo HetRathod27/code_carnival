@@ -1395,26 +1395,31 @@ class _BookScreenState extends State<BookScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.assignment_outlined,
-                    color: _isChecklistComplete ? CivicTheme.success : CivicTheme.primary,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n.documentChecklistTitle,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: CivicTheme.textPrimary,
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.assignment_outlined,
+                      color: _isChecklistComplete ? CivicTheme.success : CivicTheme.primary,
+                      size: 24,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.documentChecklistTitle,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: CivicTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               // Document count progress badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
