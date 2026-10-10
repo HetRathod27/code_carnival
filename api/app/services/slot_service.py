@@ -138,7 +138,7 @@ async def get_service_slots(
             status = "OFFICE_CLOSED"
         elif not service.active or (queue_state and queue_state.paused):
             status = "BOOKING_CLOSED"
-        elif target_date < curr_b_date or (target_date == curr_b_date and now_time >= start_t):
+        elif target_date < curr_b_date or (target_date == curr_b_date and now_time >= end_t):
             status = "TIME_PASSED"
         elif remaining_cap == 0:
             status = "FULLY_BOOKED"

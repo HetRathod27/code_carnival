@@ -538,17 +538,17 @@ async def test_slots_availability_endpoint_all_states_and_precedence(client, dev
     assert len(today_slots) == 6
 
     # At 10:30 AM IST:
-    # '09:30 AM – 10:30 AM' start is 09:30 <= 10:30 -> TIME_PASSED
+    # '09:30 AM – 10:30 AM' end boundary is 10:30 <= 10:30 -> TIME_PASSED
     slot_0930 = next(s for s in today_slots if "09:30" in s["slot_time"])
     assert slot_0930["status"] == "TIME_PASSED"
     assert slot_0930["available"] is False
 
-    # '10:30 AM – 11:30 AM' start is 10:30 <= 10:30 -> TIME_PASSED
-    slot_1030 = next(s for s in today_slots if "10:30" in s["slot_time"])
-    assert slot_1030["status"] == "TIME_PASSED"
-    assert slot_1030["available"] is False
+    # '10:30 AM – 11:30 AM' end boundary is 11:30 > 10:30 -> AVAILABLE (remains bookable until 11:30)
+    slot_1030 = next(s for s in today_slots if s["slot_time"].startswith("10:30"))
+    assert slot_1030["status"] == "AVAILABLE"
+    assert slot_1030["available"] is True
 
-    # '02:00 PM – 03:00 PM' start is 14:00 > 10:30 -> AVAILABLE
+    # '02:00 PM – 03:00 PM' end boundary is 15:00 > 10:30 -> AVAILABLE
     slot_1400 = next(s for s in today_slots if "02:00 PM" in s["slot_time"])
     assert slot_1400["status"] == "AVAILABLE"
     assert slot_1400["available"] is True

@@ -174,7 +174,7 @@ async def book_token(
             except Exception:
                 office_now = clock.now()
 
-            if b_date < curr_b_date or (b_date == curr_b_date and office_now.time() >= matched_slot["start_time"]):
+            if b_date < curr_b_date or (b_date == curr_b_date and office_now.time() >= matched_slot["end_time"]):
                 raise BookingError("SLOT_TIME_PASSED", "Selected slot time has already passed", 400)
 
             # 3. Booked Count & Capacity
