@@ -97,7 +97,7 @@
   "slotsFullWarning": "इस समय के लिए स्लॉट भर चुके हैं! कृपया अन्य उपलब्ध स्लॉट या अन्य दिन चुनें। २ दिनों में उपलब्ध किसी भी सामान्य स्लॉट के लिए ₹२० मानक शुल्क लागू है।",
   "slotsFullBadge": "स्लॉट भर गए",
   "availableBadge": "उपलब्ध",
-  "peopleCountPrompt": "आपके साथ कितने लोग आ रहे हैं? (नियम ७.२)",
+  "peopleCountPrompt": "आपके साथ कितने लोग आ रहे हैं?",
   "confirmAppointmentStandard": "अपॉइंटमेंट पुष्टि करें • मानक शुल्क: ₹२०",
   "confirmAppointmentHigher": "अपॉइंटमेंट पुष्टि करें • अतिरिक्त शुल्क: ₹५०",
   "applicantDetailsTitle": "आवेदक का विवरण",

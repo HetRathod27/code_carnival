@@ -97,7 +97,7 @@
   "slotsFullWarning": "Slots are full for this time! Please select another available slot or another day. Booking any available normal slot within 2 days carries a ₹20 standard fee.",
   "slotsFullBadge": "Slots Full",
   "availableBadge": "Available",
-  "peopleCountPrompt": "How many people are coming with you? (Spec Section 7.2)",
+  "peopleCountPrompt": "How many people are coming with you?",
   "confirmAppointmentStandard": "Confirm Appointment • Standard Fee: ₹20",
   "confirmAppointmentHigher": "Confirm Appointment • Higher Fee: ₹50",
   "applicantDetailsTitle": "Applicant Details",

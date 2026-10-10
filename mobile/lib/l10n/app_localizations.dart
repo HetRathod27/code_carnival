@@ -625,7 +625,7 @@ abstract class AppLocalizations {
   /// No description provided for @peopleCountPrompt.
   ///
   /// In en, this message translates to:
-  /// **'How many people are coming with you? (Spec Section 7.2)'**
+  /// **'How many people are coming with you?'**
   String get peopleCountPrompt;
 
   /// No description provided for @confirmAppointmentStandard.

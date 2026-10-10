@@ -287,8 +287,7 @@ class AppLocalizationsGu extends AppLocalizations {
   String get availableBadge => 'ઉપલબ્ધ';
 
   @override
-  String get peopleCountPrompt =>
-      'તમારી સાથે કેટલા લોકો આવી રહ્યા છે? (નિયમ ૭.૨)';
+  String get peopleCountPrompt => 'તમારી સાથે કેટલા લોકો આવી રહ્યા છે?';
 
   @override
   String get confirmAppointmentStandard =>

@@ -97,7 +97,7 @@
   "slotsFullWarning": "આ સમય માટે સ્લોટ ભરાઈ ગયા છે! કૃપા કરીને અન્ય ઉપલબ્ધ સ્લોટ અથવા અન્ય દિવસ પસંદ કરો. ૨ દિવસમાં સામાન્ય સ્લોટ માટે ₹૨૦ સામાન્ય ફી લાગુ પડે છે.",
   "slotsFullBadge": "સ્લોટ ભરાઈ ગયા",
   "availableBadge": "ઉપલબ્ધ",
-  "peopleCountPrompt": "તમારી સાથે કેટલા લોકો આવી રહ્યા છે? (નિયમ ૭.૨)",
+  "peopleCountPrompt": "તમારી સાથે કેટલા લોકો આવી રહ્યા છે?",
   "confirmAppointmentStandard": "મુલાકાત પુષ્ટિ કરો • સામાન્ય ફી: ₹૨૦",
   "confirmAppointmentHigher": "મુલાકાત પુષ્ટિ કરો • વિશેષ ફી: ₹૫૦",
   "applicantDetailsTitle": "અરજદારની વિગતો",

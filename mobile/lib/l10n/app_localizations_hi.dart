@@ -289,7 +289,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get availableBadge => 'उपलब्ध';
 
   @override
-  String get peopleCountPrompt => 'आपके साथ कितने लोग आ रहे हैं? (नियम ७.२)';
+  String get peopleCountPrompt => 'आपके साथ कितने लोग आ रहे हैं?';
 
   @override
   String get confirmAppointmentStandard =>

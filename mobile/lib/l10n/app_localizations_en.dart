@@ -289,8 +289,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get availableBadge => 'Available';
 
   @override
-  String get peopleCountPrompt =>
-      'How many people are coming with you? (Spec Section 7.2)';
+  String get peopleCountPrompt => 'How many people are coming with you?';
 
   @override
   String get confirmAppointmentStandard =>
