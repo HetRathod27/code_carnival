@@ -775,6 +775,42 @@ Running log of milestones, completed tasks, verifications, and status.
   - `scripts/verify.ps1`: Exit code 0 (All 71 pytest tests passed, Ruff clean, Mypy clean on 55 source files, Web typecheck & build clean, Flutter analyze: no issues found).
 - **Git Commit & Tag**: `m-eta-window-done`
 
+---
+
+## M-COUNTER-STATUS-SYNC: Reflect Counter Closed & Break Status in Citizen Service Booking
+- **Date**: 2026-10-10
+- **Built**:
+  - `api/app/schemas/citizen.py`:
+    - Extended `ServiceOut` schema with `counter_status: str = "OPEN"`.
+  - `api/app/routers/citizen.py`:
+    - In `list_office_services`, evaluated counter status per service by querying office counters and `CounterService` mappings. Applied multi-counter precedence: `OPEN` if any eligible counter is open; `BREAK` if all eligible counters are on break; `CLOSED` otherwise.
+    - In `create_token`, enforced backend authoritative counter check for citizen role bookings (`validate_counter_status=(user.role == "CITIZEN")`).
+  - `api/app/services/token_service.py`:
+    - Added `validate_counter_status: bool = False` parameter to `book_token`. Authoritatively rejects citizen bookings with `BookingError("COUNTER_ON_BREAK", ...)` or `BookingError("COUNTER_CLOSED", ...)` when eligible counters are unavailable.
+  - `openapi/openapi.json`:
+    - Regenerated OpenAPI specification containing `counter_status` on `ServiceOut`.
+  - `mobile/lib/api/client.dart`:
+    - Added `counterStatus` to `ServiceModel` along with `isCounterOpen`, `isCounterOnBreak`, and `isCounterClosed` getters.
+  - `mobile/lib/l10n/app_{en,gu,hi}.arb`:
+    - Added `counterClosedBadge`, `counterClosedNotice`, `counterOnBreakBadge`, and `counterOnBreakNotice` across English, Gujarati, and Hindi. Recompiled via `flutter gen-l10n`.
+  - `mobile/lib/features/browse/services_screen.dart`:
+    - Replaced `[ Book Fixed Appointment ]` button with semantic status cards `[ Counter Closed ]` and `[ Counter On Break ]` when counter is not OPEN; disabled tap action when counter cannot serve citizens.
+  - `mobile/lib/features/book/book_screen.dart`:
+    - Displayed semantic banner if counter is not open.
+    - Prevented submission and confirmation if counter is on break or closed.
+    - Localized `COUNTER_CLOSED` and `COUNTER_ON_BREAK` backend rejections.
+  - `api/tests/api/test_counter_status_citizen.py`:
+    - Added comprehensive tests for OPEN, CLOSED, BREAK, multi-counter (one OPEN one CLOSED -> available, all BREAK -> blocked, mixed CLOSED/BREAK -> blocked), dynamic status changes, and backend rejection.
+  - `mobile/test/counter_status_citizen_test.dart`:
+    - Added Flutter widget tests verifying status badges, notices in English, Gujarati, and Hindi, disabled booking flow, and dynamic refresh reflection.
+- **Verification**:
+  - `ruff check api`: All checks passed.
+  - `flutter analyze`: No issues found! (ran in 2.0s).
+  - `flutter test`: 41/41 tests passed.
+  - `scripts/verify.ps1`: Exit code 0 (All 72 pytest tests passed in 82.80s, Ruff OK, OpenAPI export OK, Web typecheck & build OK, Flutter analyze OK).
+- **Git Commit & Tag**: `m-counter-status-done`
+
+
 
 
 

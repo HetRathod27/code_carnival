@@ -41,6 +41,7 @@ class ServiceModel {
   final bool requiresPhysicalVisit;
   final String? onlineAlternativeUrl;
   final int? indicativeWaitMinutes;
+  final String counterStatus;
 
   ServiceModel({
     required this.id,
@@ -53,7 +54,12 @@ class ServiceModel {
     required this.requiresPhysicalVisit,
     this.onlineAlternativeUrl,
     this.indicativeWaitMinutes,
+    this.counterStatus = 'OPEN',
   });
+
+  bool get isCounterOpen => counterStatus == 'OPEN';
+  bool get isCounterOnBreak => counterStatus == 'BREAK';
+  bool get isCounterClosed => counterStatus == 'CLOSED';
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
     return ServiceModel(
@@ -67,6 +73,7 @@ class ServiceModel {
       requiresPhysicalVisit: json['requires_physical_visit'] as bool? ?? true,
       onlineAlternativeUrl: json['online_alternative_url'] as String?,
       indicativeWaitMinutes: (json['indicative_wait_minutes'] as num?)?.round(),
+      counterStatus: (json['counter_status'] as String?) ?? 'OPEN',
     );
   }
 
@@ -74,6 +81,7 @@ class ServiceModel {
     return names[lang]?.toString() ?? names['en']?.toString() ?? code;
   }
 }
+
 
 class SlotItemModel {
   final String slotTime;

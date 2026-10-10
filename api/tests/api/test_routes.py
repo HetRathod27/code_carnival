@@ -594,6 +594,10 @@ async def test_booking_rejects_past_or_unavailable_slots(client, dev_auth, vcloc
     token_str = dev_auth.create_token(UserClaims(user_id=citizen_id, role="CITIZEN", phone=phone))
     headers = {"Authorization": f"Bearer {token_str}"}
 
+    # Open counter for service
+    off_tok = dev_auth.create_token(UserClaims(user_id="off-setup", role="OFFICER", office_id=office_id))
+    await client.post("/v1/officer/counters/cnt-1/status", json={"status": "OPEN"}, headers={"Authorization": f"Bearer {off_tok}"})
+
     # Set clock to 11:00 AM IST on May 10 of current test year (05:30 UTC)
     curr_year = vclock.now().year
     vclock.set_time(datetime(curr_year, 5, 10, 5, 30, 0, tzinfo=timezone.utc))

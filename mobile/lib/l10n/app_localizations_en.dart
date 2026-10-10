@@ -230,6 +230,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appointmentSlotLabel => 'Appointment Slot';
 
   @override
+  String get counterClosedBadge => 'Counter Closed';
+
+  @override
+  String get counterClosedNotice =>
+      'Appointments are temporarily unavailable because the counter is closed.';
+
+  @override
+  String get counterOnBreakBadge => 'Counter On Break';
+
+  @override
+  String get counterOnBreakNotice =>
+      'Appointments are temporarily unavailable while the counter is on break.';
+
+  @override
   String get nowServingAt => 'Now Serving At:';
 
   @override

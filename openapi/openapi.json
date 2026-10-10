@@ -5084,6 +5084,11 @@
               }
             ],
             "title": "Indicative Wait Minutes"
+          },
+          "counter_status": {
+            "type": "string",
+            "title": "Counter Status",
+            "default": "OPEN"
           }
         },
         "type": "object",

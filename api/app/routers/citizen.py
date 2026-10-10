@@ -12,6 +12,7 @@ from api.app.core.db import get_db
 from api.app.core.errors import AppException, ErrorCode
 from api.app.models.entities import (
     Counter,
+    CounterService,
     Device,
     Office,
     OfficeSettings,
@@ -219,6 +220,16 @@ async def list_office_services(
     )
     services = result.scalars().all()
 
+    c_res = await session.execute(select(Counter).where(Counter.office_id == office_id))
+    office_counters = {c.id: c for c in c_res.scalars().all()}
+
+    all_mappings: list[CounterService] = []
+    if office_counters:
+        cs_res = await session.execute(
+            select(CounterService).where(CounterService.counter_id.in_(list(office_counters.keys())))
+        )
+        all_mappings = list(cs_res.scalars().all())
+
     out: list[ServiceOut] = []
     for s in services:
         q_res = await session.execute(
@@ -230,6 +241,22 @@ async def list_office_services(
         )
         waiting_count = q_res.scalar_one_or_none() or 0
         indicative_wait = float(waiting_count * float(s.prior_avg_minutes))
+
+        mapped_counters = [
+            office_counters[m.counter_id]
+            for m in all_mappings
+            if m.service_id == s.id and m.counter_id in office_counters
+        ]
+        eligible_counters = mapped_counters if mapped_counters else list(office_counters.values())
+
+        if not eligible_counters:
+            counter_status = "OPEN"
+        elif any(c.status == "OPEN" for c in eligible_counters):
+            counter_status = "OPEN"
+        elif all(c.status == "BREAK" for c in eligible_counters):
+            counter_status = "BREAK"
+        else:
+            counter_status = "CLOSED"
 
         out.append(
             ServiceOut(
@@ -244,9 +271,11 @@ async def list_office_services(
                 online_alternative_url=s.online_alternative_url,
                 location_hint=s.location_hint,
                 indicative_wait_minutes=indicative_wait,
+                counter_status=counter_status,
             )
         )
     return out
+
 
 
 @router.get("/offices/{office_id}/services/{service_id}/slots", response_model=list[SlotItemOut])
@@ -332,6 +361,7 @@ async def create_token(
         appointment_slot=payload.appointment_slot,
         is_fixed=payload.is_fixed,
         accompanying_members=accompanying_list,
+        validate_counter_status=(user.role == "CITIZEN"),
     )
     t_stmt = select(Token).where(Token.id == book_res["token_id"])
     res_t = await session.execute(t_stmt)

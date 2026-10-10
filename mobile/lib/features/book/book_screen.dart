@@ -423,6 +423,11 @@ class _BookScreenState extends State<BookScreen> {
     }
 
     final l10n = AppLocalizations.of(context)!;
+    if (_service != null && !_service!.isCounterOpen) {
+      setState(() => _error = _service!.isCounterClosed ? l10n.counterClosedNotice : l10n.counterOnBreakNotice);
+      return;
+    }
+
     if (_selectedDayIndex > 15) {
       setState(() => _error = l10n.dateExceeds15DaysError);
       return;
@@ -487,7 +492,11 @@ class _BookScreenState extends State<BookScreen> {
     } catch (e) {
       if (mounted) {
         String errorMsg = e.toString().replaceAll('Exception: ', '');
-        if (errorMsg.contains('SLOT_TIME_PASSED')) {
+        if (errorMsg.contains('COUNTER_CLOSED')) {
+          errorMsg = l10n.counterClosedNotice;
+        } else if (errorMsg.contains('COUNTER_ON_BREAK')) {
+          errorMsg = l10n.counterOnBreakNotice;
+        } else if (errorMsg.contains('SLOT_TIME_PASSED')) {
           errorMsg = l10n.slotTimePassedError;
         } else if (errorMsg.contains('SLOT_FULLY_BOOKED')) {
           errorMsg = l10n.slotFullyBookedError;
@@ -1049,11 +1058,24 @@ class _BookScreenState extends State<BookScreen> {
                       label: Text(
                         _submitting ? 'Booking…' : l10n.bookAppointmentAction,
                       ),
-                      onPressed: (_isChecklistComplete && !_submitting)
+                      onPressed: (_isChecklistComplete && !_submitting && (_service?.isCounterOpen ?? true))
                           ? () => _openTimeSelectionSheet(l10n, currentLang)
                           : null,
                     ),
-                    if (!_isChecklistComplete) ...[
+                    if (_service != null && !_service!.isCounterOpen) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _service!.isCounterClosed
+                            ? l10n.counterClosedNotice
+                            : l10n.counterOnBreakNotice,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _service!.isCounterClosed ? CivicTheme.error : const Color(0xFF856404),
+                        ),
+                      ),
+                    ] else if (!_isChecklistComplete) ...[
                       const SizedBox(height: 8),
                       Text(
                         _checkedDocIndices.length < _getRequiredDocs().length
@@ -1066,6 +1088,7 @@ class _BookScreenState extends State<BookScreen> {
                         ),
                       ),
                     ],
+
                     const SizedBox(height: 12),
                     Center(
                       child: TextButton.icon(
@@ -1146,9 +1169,45 @@ class _BookScreenState extends State<BookScreen> {
               color: CivicTheme.textPrimary,
             ),
           ),
+          if (!service.isCounterOpen) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: service.isCounterClosed ? Colors.grey.shade100 : const Color(0xFFFFF3CD),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: service.isCounterClosed ? Colors.grey.shade400 : const Color(0xFFFFEEBA),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    service.isCounterClosed ? Icons.block : Icons.coffee,
+                    size: 20,
+                    color: service.isCounterClosed ? Colors.grey.shade800 : const Color(0xFF856404),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      service.isCounterClosed
+                          ? AppLocalizations.of(context)!.counterClosedNotice
+                          : AppLocalizations.of(context)!.counterOnBreakNotice,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: service.isCounterClosed ? Colors.grey.shade800 : const Color(0xFF856404),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
+
   }
 
   String _getDocumentName(dynamic doc, String currentLang) {
@@ -1552,6 +1611,15 @@ class _BookScreenState extends State<BookScreen> {
   }
 
   void _openTimeSelectionSheet(AppLocalizations l10n, String currentLang) {
+    if (_service != null && !_service!.isCounterOpen) {
+      setState(() {
+        _error = _service!.isCounterClosed
+            ? l10n.counterClosedNotice
+            : l10n.counterOnBreakNotice;
+      });
+      return;
+    }
+
     DateTime selectedDate = DateTime.now().add(
       Duration(days: _selectedDayIndex),
     );
@@ -1591,6 +1659,18 @@ class _BookScreenState extends State<BookScreen> {
                   date: dateFormatted,
                   partySize: familyCount,
                 );
+                try {
+                  final svcs = await _client.fetchServices(widget.officeId);
+                  final latest = svcs.firstWhere((s) => s.id == widget.serviceId, orElse: () => _service!);
+                  if (mounted) {
+                    setState(() => _service = latest);
+                  }
+                  if (!latest.isCounterOpen) {
+                    setSheetState(() {
+                      localNotice = latest.isCounterClosed ? l10n.counterClosedNotice : l10n.counterOnBreakNotice;
+                    });
+                  }
+                } catch (_) {}
                 setSheetState(() {
                   currentSlots = fetched;
                   isLoadingSlots = false;
@@ -2448,7 +2528,10 @@ class _BookScreenState extends State<BookScreen> {
                           final selectedSlotItem = currentSlots.where((s) => s.slotTime == selectedSlotTime).firstOrNull;
                           final isSlotAvailable = selectedSlotItem?.available ?? true;
                           final slotUnavailableError = !isSlotAvailable ? l10n.slotNoLongerAvailable : null;
-                          final activeError = localNotice ?? accompanyingError ?? dateError ?? slotUnavailableError;
+                          final counterUnavailableError = (_service != null && !_service!.isCounterOpen)
+                              ? (_service!.isCounterClosed ? l10n.counterClosedNotice : l10n.counterOnBreakNotice)
+                              : null;
+                          final activeError = localNotice ?? accompanyingError ?? dateError ?? slotUnavailableError ?? counterUnavailableError;
                           final canConfirm = activeError == null;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,

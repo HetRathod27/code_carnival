@@ -514,6 +514,30 @@ abstract class AppLocalizations {
   /// **'Appointment Slot'**
   String get appointmentSlotLabel;
 
+  /// No description provided for @counterClosedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Counter Closed'**
+  String get counterClosedBadge;
+
+  /// No description provided for @counterClosedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointments are temporarily unavailable because the counter is closed.'**
+  String get counterClosedNotice;
+
+  /// No description provided for @counterOnBreakBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Counter On Break'**
+  String get counterOnBreakBadge;
+
+  /// No description provided for @counterOnBreakNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointments are temporarily unavailable while the counter is on break.'**
+  String get counterOnBreakNotice;
+
   /// No description provided for @nowServingAt.
   ///
   /// In en, this message translates to:

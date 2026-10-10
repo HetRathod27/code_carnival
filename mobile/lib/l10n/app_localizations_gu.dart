@@ -229,6 +229,20 @@ class AppLocalizationsGu extends AppLocalizations {
   String get appointmentSlotLabel => 'મુલાકાત સ્લોટ';
 
   @override
+  String get counterClosedBadge => 'કાઉન્ટર બંધ છે';
+
+  @override
+  String get counterClosedNotice =>
+      'કાઉન્ટર બંધ હોવાથી મુલાકાતો હાલ પૂરતી ઉપલબ્ધ નથી.';
+
+  @override
+  String get counterOnBreakBadge => 'કાઉન્ટર રિસેસ પર છે';
+
+  @override
+  String get counterOnBreakNotice =>
+      'કાઉન્ટર રિસેસ પર હોવાથી મુલાકાતો હાલ પૂરતી ઉપલબ્ધ નથી.';
+
+  @override
   String get nowServingAt => 'હાલમાં સેવા:';
 
   @override

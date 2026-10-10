@@ -19,6 +19,7 @@ class ServiceOut(BaseModel):
     online_alternative_url: str | None = None
     location_hint: dict[str, str] | None = None
     indicative_wait_minutes: float | None = None
+    counter_status: str = "OPEN"
 
 
 class OfficeOut(BaseModel):

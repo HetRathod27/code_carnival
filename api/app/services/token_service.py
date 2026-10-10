@@ -13,6 +13,8 @@ from api.app.eta.admission import check_admission
 from api.app.eta.engine import LiveAdjustedEngine, NaiveEngine
 from api.app.eta.loader import load_queue_snapshot
 from api.app.models.entities import (
+    Counter,
+    CounterService,
     EtaLog,
     IdempotencyKey,
     NotificationOutbox,
@@ -97,6 +99,7 @@ async def book_token(
     appointment_slot: str | None = None,
     is_fixed: bool = False,
     accompanying_members: list[Any] | None = None,
+    validate_counter_status: bool = False,
 ) -> dict[str, Any]:
     """
     Booking (C3, O7) — atomic numbering, one transaction.
@@ -202,6 +205,38 @@ async def book_token(
                         "SLOT_INSUFFICIENT_GROUP_SLOTS",
                         "Not enough consecutive queue slots available for your group",
                         409,
+                    )
+
+    # Counter status check: if all eligible counters are closed or on break, block citizen online booking
+    if validate_counter_status:
+        stmt_counters = (
+            select(Counter)
+            .join(CounterService, CounterService.counter_id == Counter.id)
+            .where(
+                Counter.office_id == office_id,
+                CounterService.service_id == service_id,
+            )
+        )
+        res_counters = await session.execute(stmt_counters)
+        service_counters = list(res_counters.scalars().all())
+        if not service_counters:
+            stmt_all = select(Counter).where(Counter.office_id == office_id)
+            res_all = await session.execute(stmt_all)
+            service_counters = list(res_all.scalars().all())
+
+        if service_counters:
+            if not any(c.status == "OPEN" for c in service_counters):
+                if all(c.status == "BREAK" for c in service_counters):
+                    raise BookingError(
+                        "COUNTER_ON_BREAK",
+                        "Appointments are temporarily unavailable while the counter is on break",
+                        400,
+                    )
+                else:
+                    raise BookingError(
+                        "COUNTER_CLOSED",
+                        "Appointments are temporarily unavailable because the counter is closed",
+                        400,
                     )
 
     db_category = "PRIORITY" if category in ["PRIORITY", "SENIOR", "PREGNANT", "DISABILITY"] else "NORMAL"

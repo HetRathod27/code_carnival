@@ -231,6 +231,20 @@ class AppLocalizationsHi extends AppLocalizations {
   String get appointmentSlotLabel => 'अपॉइंटमेंट स्लॉट';
 
   @override
+  String get counterClosedBadge => 'काउंटर बंद है';
+
+  @override
+  String get counterClosedNotice =>
+      'काउंटर बंद होने के कारण अपॉइंटमेंट अस्थायी रूप से अनुपलब्ध हैं।';
+
+  @override
+  String get counterOnBreakBadge => 'काउंटर ब्रेक पर है';
+
+  @override
+  String get counterOnBreakNotice =>
+      'काउंटर ब्रेक पर होने के कारण अपॉइंटमेंट अस्थायी रूप से अनुपलब्ध हैं।';
+
+  @override
   String get nowServingAt => 'वर्तमान में सेवा:';
 
   @override
