@@ -402,5 +402,15 @@
   "slotOfficeClosedError": "બુક કરી શકાતું નથી: આ સ્લોટ દરમિયાન નાગરિક કેન્દ્ર બંધ છે.",
   "slotBookingClosedError": "બુક કરી શકાતું નથી: આ સેવા માટે ઓનલાઇન બુકિંગ બંધ છે.",
   "slotsLoadingLabel": "સ્લોટ ઉપલબ્ધતા તપાસી રહ્યા છીએ…",
-  "noSlotsAvailableNotice": "આ તારીખ માટે હાલમાં કોઈ સ્લોટ ઉપલબ્ધ નથી."
+  "noSlotsAvailableNotice": "આ તારીખ માટે હાલમાં કોઈ સ્લોટ ઉપલબ્ધ નથી.",
+  "visitHistoryTitle": "મુલાકાત ઇતિહાસ",
+  "visitHistorySubtitle": "તમારી ભૂતકાળની નાગરિક મુલાકાતો, ટોકન વિગતો અને સેવા પરિણામો જુઓ.",
+  "noVisitsFound": "કોઈ ભૂતકાળની મુલાકાતો મળી નથી",
+  "noVisitsFoundSubtitle": "તમારા ભૂતકાળના બુકિંગ અને કાઉન્ટર મુલાકાત રેકોર્ડ્સ અહીં દેખાશે.",
+  "filterAll": "બધી મુલાકાતો",
+  "filterCompleted": "પૂર્ણ થયેલ",
+  "filterUpcoming": "સક્રિય / આગામી",
+  "filterOther": "રદ / ચૂકી ગયેલ",
+  "viewActiveTokenAction": "સક્રિય ટોકન જુઓ",
+  "visitDetailsTitle": "મુલાકાત પ્રવાસ અને વિગતો"
 }

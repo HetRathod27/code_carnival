@@ -1264,4 +1264,36 @@ class AppLocalizationsGu extends AppLocalizations {
   @override
   String get noSlotsAvailableNotice =>
       'આ તારીખ માટે હાલમાં કોઈ સ્લોટ ઉપલબ્ધ નથી.';
+
+  @override
+  String get visitHistoryTitle => 'મુલાકાત ઇતિહાસ';
+
+  @override
+  String get visitHistorySubtitle =>
+      'તમારી ભૂતકાળની નાગરિક મુલાકાતો, ટોકન વિગતો અને સેવા પરિણામો જુઓ.';
+
+  @override
+  String get noVisitsFound => 'કોઈ ભૂતકાળની મુલાકાતો મળી નથી';
+
+  @override
+  String get noVisitsFoundSubtitle =>
+      'તમારા ભૂતકાળના બુકિંગ અને કાઉન્ટર મુલાકાત રેકોર્ડ્સ અહીં દેખાશે.';
+
+  @override
+  String get filterAll => 'બધી મુલાકાતો';
+
+  @override
+  String get filterCompleted => 'પૂર્ણ થયેલ';
+
+  @override
+  String get filterUpcoming => 'સક્રિય / આગામી';
+
+  @override
+  String get filterOther => 'રદ / ચૂકી ગયેલ';
+
+  @override
+  String get viewActiveTokenAction => 'સક્રિય ટોકન જુઓ';
+
+  @override
+  String get visitDetailsTitle => 'મુલાકાત પ્રવાસ અને વિગતો';
 }

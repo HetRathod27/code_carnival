@@ -1270,4 +1270,36 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get noSlotsAvailableNotice =>
       'इस तारीख के लिए वर्तमान में कोई स्लॉट उपलब्ध नहीं है।';
+
+  @override
+  String get visitHistoryTitle => 'यात्रा इतिहास';
+
+  @override
+  String get visitHistorySubtitle =>
+      'अपनी पिछली नागरिक यात्राएं, टोकन विवरण और सेवा परिणाम देखें।';
+
+  @override
+  String get noVisitsFound => 'कोई पिछला दौरा नहीं मिला';
+
+  @override
+  String get noVisitsFoundSubtitle =>
+      'आपकी पिछली बुकिंग और काउंटर यात्रा रिकॉर्ड यहाँ दिखाई देंगे।';
+
+  @override
+  String get filterAll => 'सभी यात्राएं';
+
+  @override
+  String get filterCompleted => 'पूर्ण';
+
+  @override
+  String get filterUpcoming => 'सक्रिय / आगामी';
+
+  @override
+  String get filterOther => 'रद्द / छूटा';
+
+  @override
+  String get viewActiveTokenAction => 'सक्रिय टोकन देखें';
+
+  @override
+  String get visitDetailsTitle => 'यात्रा विवरण और प्रगति';
 }

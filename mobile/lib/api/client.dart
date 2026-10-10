@@ -153,6 +153,11 @@ class TokenModel {
   final String? parentTokenId;
   final String? appointmentDate;
   final String? appointmentSlot;
+  final String? serviceName;
+  final int? citizenRating;
+  final String? citizenFeedback;
+  final bool? citizenConfirmed;
+  final String? createdAt;
   final List<TokenModel> childTokens;
 
   TokenModel({
@@ -187,6 +192,11 @@ class TokenModel {
     this.parentTokenId,
     this.appointmentDate,
     this.appointmentSlot,
+    this.serviceName,
+    this.citizenRating,
+    this.citizenFeedback,
+    this.citizenConfirmed,
+    this.createdAt,
     this.childTokens = const [],
   });
 
@@ -223,6 +233,11 @@ class TokenModel {
       parentTokenId: json['parent_token_id'] as String?,
       appointmentDate: json['appointment_date'] as String?,
       appointmentSlot: json['appointment_slot'] as String?,
+      serviceName: json['service_name'] as String?,
+      citizenRating: (json['citizen_rating'] as num?)?.toInt(),
+      citizenFeedback: json['citizen_feedback'] as String?,
+      citizenConfirmed: json['citizen_confirmed'] as bool?,
+      createdAt: json['created_at'] as String?,
       childTokens: (json['child_tokens'] as List<dynamic>?)
               ?.map((item) => TokenModel.fromJson(item as Map<String, dynamic>))
               .toList() ??
@@ -438,6 +453,20 @@ class ApiClient {
     final body = jsonDecode(res.body);
     if (body == null) return null;
     return TokenModel.fromJson(body);
+  }
+
+  Future<List<TokenModel>> getVisitHistory(String token) async {
+    final res = await _safeGet(
+      Uri.parse('$baseUrl/v1/citizen/tokens/me/history'),
+      headers: _headers(token),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch visit history: ${res.statusCode}');
+    }
+    final List<dynamic> body = (jsonDecode(res.body) as List<dynamic>?) ?? [];
+    return body
+        .map((item) => TokenModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<TokenModel> checkIn({

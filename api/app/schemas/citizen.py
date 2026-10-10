@@ -84,6 +84,11 @@ class TokenOut(BaseModel):
     is_verified: bool = False
     verification_secret: str | None = None
     verification_qr: str | None = None
+    service_name: str | None = None
+    citizen_rating: int | None = None
+    citizen_feedback: str | None = None
+    citizen_confirmed: bool | None = None
+    created_at: datetime | None = None
     child_tokens: list[TokenOut] = []
     server_time: datetime = Field(default_factory=datetime.utcnow)
 

@@ -1274,4 +1274,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noSlotsAvailableNotice =>
       'No slots are currently available for this date.';
+
+  @override
+  String get visitHistoryTitle => 'Visit History';
+
+  @override
+  String get visitHistorySubtitle =>
+      'Track past civic centre visits, token journeys, and service outcomes.';
+
+  @override
+  String get noVisitsFound => 'No Previous Visits Found';
+
+  @override
+  String get noVisitsFoundSubtitle =>
+      'Your past bookings and counter visit records will appear here.';
+
+  @override
+  String get filterAll => 'All Visits';
+
+  @override
+  String get filterCompleted => 'Completed';
+
+  @override
+  String get filterUpcoming => 'Active / Upcoming';
+
+  @override
+  String get filterOther => 'Cancelled / Missed';
+
+  @override
+  String get viewActiveTokenAction => 'View Active Token';
+
+  @override
+  String get visitDetailsTitle => 'Visit Journey & Details';
 }

@@ -402,5 +402,15 @@
   "slotOfficeClosedError": "Cannot book: civic centre is closed during this slot.",
   "slotBookingClosedError": "Cannot book: online booking is closed for this service.",
   "slotsLoadingLabel": "Checking slot availability…",
-  "noSlotsAvailableNotice": "No slots are currently available for this date."
+  "noSlotsAvailableNotice": "No slots are currently available for this date.",
+  "visitHistoryTitle": "Visit History",
+  "visitHistorySubtitle": "Track past civic centre visits, token journeys, and service outcomes.",
+  "noVisitsFound": "No Previous Visits Found",
+  "noVisitsFoundSubtitle": "Your past bookings and counter visit records will appear here.",
+  "filterAll": "All Visits",
+  "filterCompleted": "Completed",
+  "filterUpcoming": "Active / Upcoming",
+  "filterOther": "Cancelled / Missed",
+  "viewActiveTokenAction": "View Active Token",
+  "visitDetailsTitle": "Visit Journey & Details"
 }

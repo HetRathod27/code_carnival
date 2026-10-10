@@ -136,6 +136,24 @@ async def build_token_out(
             calc_eta_low = 1.0
             calc_eta_high = 2.0
 
+    c_rating = None
+    c_feedback = None
+    c_confirmed = None
+    if token.eta_features:
+        c_rating = token.eta_features.get("citizen_rating")
+        c_feedback = (
+            token.eta_features.get("citizen_feedback_text")
+            or token.eta_features.get("citizen_reason_if_not")
+        )
+        c_confirmed = token.eta_features.get("citizen_confirmed")
+
+    service_name = None
+    service_name_stmt = select(Service.names).where(Service.id == token.service_id)
+    service_name_res = await session.execute(service_name_stmt)
+    names_dict = service_name_res.scalar_one_or_none()
+    if isinstance(names_dict, dict):
+        service_name = names_dict.get("en") or (next(iter(names_dict.values())) if names_dict else None)
+
     child_outs: list[TokenOut] = []
     if include_children:
         root_id = token.parent_token_id or token.id
@@ -192,6 +210,11 @@ async def build_token_out(
         verification_qr=verification_qr_str,
         child_tokens=child_outs,
         server_time=clock.now(),
+        service_name=service_name,
+        citizen_rating=c_rating,
+        citizen_feedback=c_feedback,
+        citizen_confirmed=c_confirmed,
+        created_at=token.created_at,
     )
 
 
@@ -445,6 +468,40 @@ async def get_my_active_token(
         return await build_token_out(active_tok, session, clock, include_secret=True)
 
     return None
+
+
+@router.get("/tokens/me/history", response_model=list[TokenOut])
+async def get_my_visit_history(
+    user: UserClaims = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+    clock: Clock = Depends(get_clock),
+) -> list[TokenOut]:
+    user_conds = []
+    if user.phone:
+        user_conds.append(Token.phone == user.phone)
+    if user.user_id:
+        user_conds.append(Token.citizen_id == user.user_id)
+    direct_owner = or_(*user_conds) if user_conds else false()
+
+    parent_ids_subquery = select(Token.id).where(direct_owner, Token.parent_token_id.is_(None))
+    is_my_token = or_(direct_owner, Token.parent_token_id.in_(parent_ids_subquery))
+
+    stmt = (
+        select(Token)
+        .where(is_my_token)
+        .where(or_(Token.parent_token_id.is_(None), ~Token.parent_token_id.in_(parent_ids_subquery)))
+        .order_by(Token.created_at.desc(), Token.business_date.desc(), Token.seq.desc())
+        .limit(100)
+    )
+    res = await session.execute(stmt)
+    tokens = list(res.scalars().all())
+
+    outs: list[TokenOut] = []
+    for tok in tokens:
+        out = await build_token_out(tok, session, clock, include_secret=True, include_children=True)
+        outs.append(out)
+
+    return outs
 
 
 @router.get("/tokens/{token_id}", response_model=TokenOut)

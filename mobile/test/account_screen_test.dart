@@ -151,6 +151,7 @@ void main() {
     // Tap Change city button
     final changeCityButton = find.widgetWithText(TextButton, 'Change');
     expect(changeCityButton, findsOneWidget);
+    await tester.ensureVisible(changeCityButton);
     await tester.tap(changeCityButton);
     await tester.pumpAndSettle();
 

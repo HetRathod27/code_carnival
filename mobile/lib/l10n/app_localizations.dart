@@ -2247,6 +2247,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No slots are currently available for this date.'**
   String get noSlotsAvailableNotice;
+
+  /// No description provided for @visitHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit History'**
+  String get visitHistoryTitle;
+
+  /// No description provided for @visitHistorySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Track past civic centre visits, token journeys, and service outcomes.'**
+  String get visitHistorySubtitle;
+
+  /// No description provided for @noVisitsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No Previous Visits Found'**
+  String get noVisitsFound;
+
+  /// No description provided for @noVisitsFoundSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your past bookings and counter visit records will appear here.'**
+  String get noVisitsFoundSubtitle;
+
+  /// No description provided for @filterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All Visits'**
+  String get filterAll;
+
+  /// No description provided for @filterCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get filterCompleted;
+
+  /// No description provided for @filterUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Active / Upcoming'**
+  String get filterUpcoming;
+
+  /// No description provided for @filterOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled / Missed'**
+  String get filterOther;
+
+  /// No description provided for @viewActiveTokenAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View Active Token'**
+  String get viewActiveTokenAction;
+
+  /// No description provided for @visitDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit Journey & Details'**
+  String get visitDetailsTitle;
 }
 
 class _AppLocalizationsDelegate

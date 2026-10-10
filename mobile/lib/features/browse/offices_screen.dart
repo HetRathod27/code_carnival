@@ -291,6 +291,11 @@ class _OfficesScreenState extends State<OfficesScreen> {
             child: _buildSearchField(context, l10n),
           ),
           IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: l10n.visitHistoryTitle,
+            onPressed: () => context.push('/history'),
+          ),
+          IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'My Account',
             onPressed: () async {

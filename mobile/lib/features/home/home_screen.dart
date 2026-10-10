@@ -419,6 +419,11 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(l10n.appName),
         actions: [
           IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: l10n.visitHistoryTitle,
+            onPressed: () => context.push('/history'),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l10n.retryAction,
             onPressed: () => _loadActiveToken(),
@@ -1502,6 +1507,20 @@ class _HomeScreenState extends State<HomeScreen> {
               label: Text(l10n.bookSlot),
               onPressed: () {
                 context.push('/select-city');
+              },
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.history_rounded, size: 22),
+              label: Text(l10n.visitHistoryTitle),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: CivicTheme.primary,
+                side: const BorderSide(color: CivicTheme.primary),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                context.push('/history');
               },
             ),
           ],

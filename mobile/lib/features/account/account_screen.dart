@@ -336,7 +336,13 @@ class _AccountScreenState extends State<AccountScreen> {
                         _buildPreferencesCard(),
                         const SizedBox(height: 24),
 
-                        // Section 3: Civic Support & Service Status
+                        // Section 3: Visit & Service History
+                        _buildSectionTitle('Visit & Service History', Icons.history_edu),
+                        const SizedBox(height: 8),
+                        _buildHistoryQuickCard(),
+                        const SizedBox(height: 24),
+
+                        // Section 4: Civic Support & Service Status
                         _buildSectionTitle('Civic Support & Service Status', Icons.help_outline),
                         const SizedBox(height: 8),
                         _buildCivicSupportCard(),
@@ -401,6 +407,81 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHistoryQuickCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: CivicTheme.primarySoft, width: 1.5),
+      ),
+      color: Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => context.push('/history'),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: CivicTheme.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.history_rounded, color: CivicTheme.primary, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Past Visits & Appointments',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: CivicTheme.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'View previous tokens, service milestones & feedback',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: CivicTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: CivicTheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: CivicTheme.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text(
+                      'View',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: CivicTheme.primary),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios, size: 12, color: CivicTheme.primary),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
